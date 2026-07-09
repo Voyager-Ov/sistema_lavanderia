@@ -15,6 +15,7 @@ interface KpiCardProps {
   backMessage: string
   colorVariant?: "blue" | "green" | "orange" | "purple"
   className?: string
+  isLoading?: boolean
 }
 
 export function KpiCard({
@@ -24,6 +25,7 @@ export function KpiCard({
   backMessage,
   colorVariant = "blue",
   className,
+  isLoading = false,
 }: KpiCardProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -109,7 +111,7 @@ export function KpiCard({
     <div
       ref={containerRef}
       className={cn(
-        "relative w-full aspect-square cursor-pointer group perspective-1000",
+        "relative w-full min-h-[140px] cursor-pointer group perspective-1000",
         className
       )}
       onClick={toggleCard}
@@ -126,7 +128,7 @@ export function KpiCard({
             {title}
           </h3>
           <p className="text-4xl font-bold tracking-tight text-foreground">
-            {value}
+            {isLoading ? <span className="animate-pulse">...</span> : value}
           </p>
         </div>
         {description && (

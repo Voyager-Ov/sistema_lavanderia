@@ -6,7 +6,7 @@ import { LucideIcon, X } from "lucide-react"
 export interface BulkAction<TData> {
   label: string
   icon?: LucideIcon
-  onClick: (selectedRows: TData[]) => void
+  onClick: (selectedRows: TData[], clearSelection: () => void) => void
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
@@ -47,7 +47,7 @@ export function DataTableBulkActions<TData>({
                   "h-8 rounded-full text-xs font-semibold",
                   !action.variant && "bg-background text-foreground hover:bg-background/90"
                 )}
-                onClick={() => action.onClick(selectedRows)}
+                onClick={() => action.onClick(selectedRows, onClearSelection)}
               >
                 {Icon && <Icon className="mr-2 h-3.5 w-3.5" />}
                 {action.label}

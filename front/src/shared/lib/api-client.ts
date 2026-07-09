@@ -87,4 +87,12 @@ export const apiClient = {
   delete<T>(endpoint: string, options?: Omit<RequestInit, 'method'>) {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   },
+
+  patch<T>(endpoint: string, body: any, options?: Omit<RequestInit, 'method' | 'body'>) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  },
 };

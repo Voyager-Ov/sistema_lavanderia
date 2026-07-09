@@ -67,6 +67,8 @@ export interface DataTableProps<TData, TValue> {
   manualSorting?: boolean
   sorting?: SortingState
   onSortingChange?: React.Dispatch<React.SetStateAction<SortingState>>
+
+  isFetching?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -89,6 +91,7 @@ export function DataTable<TData, TValue>({
   manualSorting = false,
   sorting: externalSorting,
   onSortingChange,
+  isFetching = false,
 }: DataTableProps<TData, TValue>) {
   const [internalSorting, setInternalSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -124,6 +127,7 @@ export function DataTable<TData, TValue>({
     globalFilterFn: "includesString",
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
+    getRowId: (originalRow: any) => originalRow.id ? String(originalRow.id) : undefined,
     
     // Pagination config
     manualPagination,
@@ -141,13 +145,36 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       pagination: currentPagination,
     },
+    // Deshabilitar reset automático de selección para que persista al cambiar de página en paginación manual
+    autoResetRowSelection: false,
   })
 
-  // Obtener filas seleccionadas originales para pasarlas a los bulk actions
-  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
-
   // Utilidad para extraer el ID de la fila (asumiendo que los objetos tienen propiedad 'id')
-  const getRowId = (rowOriginal: any) => rowOriginal.id || ""
+  const getRowId = (rowOriginal: any) => rowOriginal.id ? String(rowOriginal.id) : ""
+
+  // Mantener los objetos de las filas seleccionadas a lo largo de las páginas (para paginación server-side)
+  const [selectedRowObjects, setSelectedRowObjects] = React.useState<Record<string, TData>>({})
+
+  React.useEffect(() => {
+    setSelectedRowObjects(prev => {
+      const next = { ...prev }
+      // Eliminar los que ya no están seleccionados
+      Object.keys(next).forEach(key => {
+        if (!rowSelection[key as keyof typeof rowSelection]) {
+          delete next[key]
+        }
+      })
+      // Agregar/Actualizar los seleccionados en la vista actual
+      table.getRowModel().rows.forEach(row => {
+        if (row.getIsSelected()) {
+          next[getRowId(row.original)] = row.original
+        }
+      })
+      return next
+    })
+  }, [rowSelection, table.getRowModel().rows])
+
+  const selectedRows = Object.values(selectedRowObjects)
 
   return (
     <div className="space-y-4 md:space-y-6 relative">
@@ -255,7 +282,7 @@ export function DataTable<TData, TValue>({
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody>
+              <TableBody className={cn("transition-opacity duration-300", isFetching && "opacity-50 pointer-events-none")}>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     const rowId = getRowId(row.original)

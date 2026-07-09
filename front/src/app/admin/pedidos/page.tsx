@@ -10,7 +10,8 @@ import { Input } from "@/shared/ui/forms/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/forms/select"
 import { Button } from "@/shared/ui/forms/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/overlays/popover"
-import { Calendar as CalendarIcon, Download, Search, CheckCircle } from "lucide-react"
+import { Calendar as CalendarIcon, Download, Search, CheckCircle, Clock, XCircle, Printer } from "lucide-react"
+import { toast } from "sonner"
 import { DataTable } from "@/shared/ui/data-display/data-table"
 import { getPedidoColumns } from "./components/pedido-columns"
 import { CancelOrderSheet } from "./components/cancel-order-sheet"
@@ -24,7 +25,8 @@ export default function PedidosPage() {
   
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [stats, setStats] = useState<DashboardStatsResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isTableFetching, setIsTableFetching] = useState(true)
+  const [isStatsLoading, setIsStatsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeFilter, setActiveFilter] = useState<string>("TODOS")
   
@@ -49,8 +51,8 @@ export default function PedidosPage() {
 
   gsap.registerPlugin(useGSAP)
 
-  const fetchOrdersAndStats = async () => {
-    setIsLoading(true)
+  const fetchOrders = async () => {
+    setIsTableFetching(true)
     try {
       const queryParams: any = {
         estado: activeFilter !== "TODOS" ? activeFilter : undefined,
@@ -67,42 +69,48 @@ export default function PedidosPage() {
         queryParams.sortOrder = sorting[0].desc ? "desc" : "asc"
       }
 
-      const [pedidosRes, statsRes] = await Promise.allSettled([
-        getPedidos(queryParams),
-        getDashboardStats()
-      ])
+      const pedidosRes = await getPedidos(queryParams).catch(e => { console.error("Error cargando pedidos", e); return null; })
 
-      if (pedidosRes.status === "fulfilled" && pedidosRes.value) {
-        setPedidos(pedidosRes.value.data?.items || [])
-        const { totalItems, totalPages, currentPage } = pedidosRes.value.data?.meta || { totalItems: 0, totalPages: 0, currentPage: 1 }
+      if (pedidosRes) {
+        setPedidos(pedidosRes.data?.items || [])
+        const { totalItems, totalPages, currentPage } = pedidosRes.data?.meta || { totalItems: 0, totalPages: 0, currentPage: 1 }
         setTotalItems(totalItems)
         setTotalPages(totalPages)
         setPagination(prev => ({
           ...prev,
           pageIndex: currentPage - 1
         }))
-      } else {
-        console.error("Error cargando pedidos", pedidosRes)
       }
-
-      if (statsRes.status === "fulfilled" && statsRes.value) {
-        setStats(statsRes.value)
-      } else {
-        console.error("Error cargando stats", statsRes)
-      }
-
     } catch (error) {
       console.error("Error fetching pedidos data:", error)
     } finally {
-      setIsLoading(false)
+      setIsTableFetching(false)
     }
   }
+
+  const fetchStats = async () => {
+    setIsStatsLoading(true)
+    try {
+      const statsRes = await getDashboardStats().catch(e => { console.error("Error cargando stats", e); return null; })
+      if (statsRes) {
+        setStats(statsRes)
+      }
+    } catch (error) {
+      console.error("Error fetching stats data:", error)
+    } finally {
+      setIsStatsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
 
   // Effect to load when filter, date, pagination, sorting changes
   // Used debounce internally for searching
   useEffect(() => {
     const handler = setTimeout(() => {
-      fetchOrdersAndStats()
+      fetchOrders()
     }, 300)
     return () => clearTimeout(handler)
   }, [activeFilter, fechaInicio, fechaFin, pagination.pageIndex, pagination.pageSize, sorting, searchTerm])
@@ -113,10 +121,10 @@ export default function PedidosPage() {
     if (items.length > 0) {
       gsap.fromTo(items, 
         { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "power2.out" }
+        { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "power2.out", clearProps: "transform" }
       )
     }
-  }, { scope: containerRef, dependencies: [pedidos] })
+  }, { scope: containerRef })
 
   const handleStatusChange = async (pedidoId: number, nuevoEstado: string) => {
     const rowId = pedidoId.toString()
@@ -131,7 +139,7 @@ export default function PedidosPage() {
       // Update local state without full reload
       setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, estado: nuevoEstado as any } : p))
       
-      getDashboardStats().then(setStats).catch(console.error)
+      fetchStats()
     } catch (error: any) {
       console.error("Error al cambiar estado:", error)
       setRowErrors(prev => ({ 
@@ -146,7 +154,75 @@ export default function PedidosPage() {
   const handleConfirmCancel = async (pedidoId: number, motivo: string, descripcion: string) => {
     const comentario = `Cancelado: ${motivo}. ${descripcion}`.trim()
     await cambiarEstadoPedido(pedidoId, "CANCELADO", comentario)
-    fetchOrdersAndStats()
+    fetchOrders()
+    fetchStats()
+  }
+
+  const processBulkStatusChange = async (selectedRows: Pedido[], nuevoEstado: string, actionName: string, clearSelection: () => void) => {
+    const originalStates = selectedRows.map(p => ({ id: p.id, estado: p.estado }))
+    
+    // Optimistic UI Update
+    setPedidos(prev => prev.map(p => {
+      if (selectedRows.some(sr => sr.id === p.id)) {
+        return { ...p, estado: nuevoEstado as any }
+      }
+      return p
+    }))
+    
+    clearSelection()
+
+    // Llamadas concurrentes
+    const promises = selectedRows.map(p => cambiarEstadoPedido(p.id, nuevoEstado, `Acción masiva: ${actionName}`))
+    const results = await Promise.allSettled(promises)
+    
+    const failedIds: number[] = []
+    const newErrors: Record<string, string> = {}
+    
+    results.forEach((res, index) => {
+      if (res.status === "rejected") {
+        const pId = selectedRows[index].id
+        failedIds.push(pId)
+        
+        // Extract specific error message
+        const errorMessage = res.reason?.message || res.reason?.toString() || "Error al actualizar estado"
+        newErrors[pId.toString()] = errorMessage
+      }
+    })
+    
+    if (failedIds.length > 0) {
+      setRowErrors(prev => ({ ...prev, ...newErrors }))
+      // Revert failed rows
+      setPedidos(prev => prev.map(p => {
+        if (failedIds.includes(p.id)) {
+          const original = originalStates.find(o => o.id === p.id)
+          return original ? { ...p, estado: original.estado } : p
+        }
+        return p
+      }))
+      toast.error(`Error al actualizar ${failedIds.length} pedidos. Revisa la tabla.`)
+    } else {
+      toast.success(`${selectedRows.length} pedidos pasaron a ${actionName}`, {
+        action: {
+          label: "Deshacer",
+          onClick: () => {
+            toast.promise(
+              Promise.all(originalStates.map(o => cambiarEstadoPedido(o.id, o.estado, "Deshacer acción masiva"))),
+              {
+                loading: 'Deshaciendo cambios...',
+                success: () => {
+                  fetchOrders()
+                  fetchStats()
+                  return 'Cambios revertidos correctamente.'
+                },
+                error: 'Error al revertir los cambios.'
+              }
+            )
+          }
+        }
+      })
+    }
+    
+    fetchStats()
   }
 
   const columns = React.useMemo(() => getPedidoColumns({
@@ -161,24 +237,49 @@ export default function PedidosPage() {
 
   const bulkActions: BulkAction<Pedido>[] = [
     {
+      label: "Marcar como En Proceso",
+      icon: Clock,
+      onClick: async (selectedRows, clearSelection) => {
+        await processBulkStatusChange(selectedRows, "EN_PROCESO", "En Proceso", clearSelection)
+      }
+    },
+    {
       label: "Marcar como Listos",
-      icon: <CheckCircle className="h-4 w-4" />,
-      onClick: async (selectedRows) => {
-        // En un caso real llamaríamos a un endpoint de bulk
-        alert(`Acción masiva simulada: ${selectedRows.length} marcados como Listos`)
+      icon: CheckCircle,
+      onClick: async (selectedRows, clearSelection) => {
+        await processBulkStatusChange(selectedRows, "LISTO_PARA_RETIRAR", "Listo", clearSelection)
+      }
+    },
+    {
+      label: "Imprimir Tickets",
+      icon: Printer,
+      onClick: (selectedRows, clearSelection) => {
+        alert("Imprimiendo " + selectedRows.length + " tickets...")
+        clearSelection()
       }
     },
     {
       label: "Exportar CSV",
-      icon: <Download className="h-4 w-4" />,
-      onClick: (selectedRows) => alert("Exportando " + selectedRows.length + " filas")
+      icon: Download,
+      onClick: (selectedRows, clearSelection) => {
+        alert("Exportando " + selectedRows.length + " filas a CSV")
+        clearSelection()
+      }
+    },
+    {
+      label: "Cancelar",
+      icon: XCircle,
+      variant: "destructive",
+      onClick: async (selectedRows, clearSelection) => {
+        await processBulkStatusChange(selectedRows, "CANCELADO", "Cancelado", clearSelection)
+      }
     }
   ]
 
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full gap-6">
 
-      <div className="flex-1 p-4 md:p-8 pt-6 max-w-7xl mx-auto w-full flex flex-col gap-8">
+      <div className="flex-1 p-4 md:p-8 pt-6 w-full flex flex-col gap-8">
         
         {/* Header Section */}
         <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -222,23 +323,37 @@ export default function PedidosPage() {
         </div>
 
         {/* KPIs */}
-        {stats && (
-          <div className="fade-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashboardKpi title="Total Facturado (Hoy)" value={`$${(stats.ingresos?.hoyTotalPedidos || 0).toLocaleString("es-AR")}`} trend="up" subtitle="Ingresos en caja hoy" />
-            <DashboardKpi title="Pedidos Pendientes" value={(stats.pedidosActivos?.PENDIENTE || 0).toString()} trend="neutral" subtitle="A la espera de iniciar" highlight="blue" />
-            <DashboardKpi title="En Proceso" value={(stats.pedidosActivos?.EN_PROCESO || 0).toString()} trend="neutral" subtitle="Lavando/Secando ahora" />
-            <DashboardKpi title="Listos para Retirar" value={(stats.pedidosActivos?.LISTO_PARA_RETIRAR || stats.pedidosActivos?.LISTO || 0).toString()} trend="neutral" subtitle="Avisar a clientes" highlight="blue" />
-          </div>
-        )}
+        <div className="fade-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardKpi isLoading={isStatsLoading} title="Total Facturado (Hoy)" value={`$${(stats?.ingresos?.hoyTotalPedidos || 0).toLocaleString("es-AR")}`} trend="up" subtitle="Ingresos en caja hoy" />
+          <DashboardKpi isLoading={isStatsLoading} title="Pedidos Pendientes" value={(stats?.pedidosActivos?.PENDIENTE || 0).toString()} trend="neutral" subtitle="A la espera de iniciar" highlight="blue" />
+          <DashboardKpi isLoading={isStatsLoading} title="En Proceso" value={(stats?.pedidosActivos?.EN_PROCESO || 0).toString()} trend="neutral" subtitle="Lavando/Secando ahora" />
+          <DashboardKpi isLoading={isStatsLoading} title="Listos para Retirar" value={(stats?.pedidosActivos?.LISTO_PARA_RETIRAR || stats?.pedidosActivos?.LISTO || 0).toString()} trend="neutral" subtitle="Avisar a clientes" highlight="blue" />
+        </div>
 
         {/* DataTable */}
-        <div className="fade-item relative z-0">
+        <div className="fade-item relative z-0 flex flex-col gap-4">
+          
+          {Object.keys(rowErrors).length > 0 && (
+            <div className="flex justify-end animate-in fade-in slide-in-from-top-2 duration-300">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="h-8 rounded-full shadow-sm text-xs"
+                onClick={() => setRowErrors({})}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Limpiar todos los errores ({Object.keys(rowErrors).length})
+              </Button>
+            </div>
+          )}
+
           <DataTable
             columns={columns}
             data={pedidos}
             loadingRowIds={loadingRowIds}
             rowErrors={rowErrors}
             onClearRowError={(id) => setRowErrors(prev => { const newObj = {...prev}; delete newObj[id]; return newObj; })}
+            isFetching={isTableFetching}
             
             // Integracion con buscador interno de DataTable
             searchPlaceholder="Buscar por cliente o ticket..."

@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import { connectionManager } from './src/models/connectionManager.js';
 import { getDashboardStats } from './src/services/dashboard/dashboard.service.js';
 import { obtenerPedidos } from './src/services/pedidos/pedido.service.js';
