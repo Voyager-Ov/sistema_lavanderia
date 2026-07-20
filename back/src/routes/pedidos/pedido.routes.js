@@ -12,5 +12,9 @@ router.post("/", crearPedidoValidator, validarCampos, pedidoController.crearPedi
 router.get("/", pedidoController.getPedidos);
 router.get("/:id", pedidoController.getPedidoById);
 router.patch("/:id/estado", actualizarEstadoValidator, validarCampos, pedidoController.cambiarEstadoPedido);
+router.get("/:id/ticket", pedidoController.imprimirTicket);
+router.post("/:id/tickets", pedidoController.generarTickets);
+router.get("/:id/tickets", pedidoController.getTicketsPedido);
+router.post("/:id/factura", pedidoController.generarFactura);
 
 export default router;

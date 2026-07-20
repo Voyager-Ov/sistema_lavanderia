@@ -21,12 +21,12 @@ export default (sequelize, DataTypes) => {
 				defaultValue: DataTypes.NOW,
 			},
 			categoria: {
-				type: DataTypes.ENUM("Insumos", "Nomina", "Servicios", "Alquiler", "Caja_Diaria", "Otros"), 
+				type: DataTypes.STRING, 
 				allowNull: false,
 			},
 			cajaId: {
 				type: DataTypes.INTEGER,
-				allowNull: true, // Opcional: permite gastos generales del negocio que no salen de la caja del mostrador
+				allowNull: true,
 			},
 			descripcion: {
 				type: DataTypes.TEXT,
@@ -36,13 +36,18 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.INTEGER,
 				allowNull: false,
 			},
+			metodoPagoId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			}
 		},
 		{
 			tableName: "gastos",
 			timestamps: true,
 			indexes: [
 				{ fields: ["negocioId"] },
-				{ fields: ["cajaId"] }
+				{ fields: ["cajaId"] },
+				{ fields: ["metodoPagoId"] }
 			]
 		}
 	);
@@ -51,6 +56,7 @@ export default (sequelize, DataTypes) => {
 		Gasto.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
 		Gasto.belongsTo(models.Usuario, { foreignKey: "registradoPorId", as: "registradoPor", constraints: false });
 		Gasto.belongsTo(models.Caja, { foreignKey: "cajaId", as: "caja" });
+		Gasto.belongsTo(models.MetodoPago, { foreignKey: "metodoPagoId", as: "metodoPago" });
 	};
 
 	return Gasto;

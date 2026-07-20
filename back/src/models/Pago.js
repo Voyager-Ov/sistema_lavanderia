@@ -24,6 +24,16 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.DECIMAL(10, 2),
 				allowNull: false,
 			},
+			montoAFavorGenerado: {
+				type: DataTypes.DECIMAL(10, 2),
+				allowNull: false,
+				defaultValue: 0,
+			},
+			saldoAFavorDisponible: {
+				type: DataTypes.DECIMAL(10, 2),
+				allowNull: false,
+				defaultValue: 0,
+			},
 			cajaId: {
 				type: DataTypes.INTEGER,
 				allowNull: false, // Todo cobro entra en la caja actual del usuario

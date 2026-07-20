@@ -1,0 +1,81 @@
+{
+  "batches": [
+    {
+      "name": "Fase 1: Estructura Base y Manejo de Estado",
+      "tasks": [
+        {
+          "id": "T1",
+          "title": "Configurar Layout y Page (Grid y Estructura Principal)",
+          "owner_role": "frontend_dev",
+          "status": "pending",
+          "parallelizable": false,
+          "depends_on": [],
+          "outputs": [
+            "src/app/admin/configuraciones/layout.tsx",
+            "src/app/admin/configuraciones/page.tsx"
+          ],
+          "exit_criteria": "Página en ruta /admin/configuraciones visible, estructurada con grid responsive (sidebar y área principal)."
+        },
+        {
+          "id": "T2",
+          "title": "Crear Store Global de Configuraciones (Zustand)",
+          "owner_role": "frontend_dev",
+          "status": "pending",
+          "parallelizable": true,
+          "depends_on": [],
+          "outputs": [
+            "src/app/admin/configuraciones/_store/useConfigStore.ts"
+          ],
+          "exit_criteria": "Store inicializado con los modelos de datos base para 'Negocio' y acciones para setear dichos datos."
+        }
+      ]
+    },
+    {
+      "name": "Fase 2: Componentes Core de Interfaz y Animación",
+      "tasks": [
+        {
+          "id": "T3",
+          "title": "Desarrollar SidebarNav con animaciones GSAP",
+          "owner_role": "frontend_dev",
+          "status": "pending",
+          "parallelizable": false,
+          "depends_on": ["T1"],
+          "outputs": [
+            "src/app/admin/configuraciones/_components/SidebarNav.tsx"
+          ],
+          "exit_criteria": "Menú lateral mostrando las diferentes categorías; incluye animación de entrada en cascada (stagger) usando GSAP."
+        },
+        {
+          "id": "T4",
+          "title": "Implementar UnsavedChangesDialog y FloatingSaveBar",
+          "owner_role": "frontend_dev",
+          "status": "pending",
+          "parallelizable": true,
+          "depends_on": ["T1"],
+          "outputs": [
+            "src/app/admin/configuraciones/_components/UnsavedChangesDialog.tsx",
+            "src/app/admin/configuraciones/_components/FloatingSaveBar.tsx"
+          ],
+          "exit_criteria": "Componentes de feedback y prevención de navegación (modales y barras de alerta estilo glassmorphism) diseñados y exportados."
+        }
+      ]
+    },
+    {
+      "name": "Fase 3: Integración y Lógica del Formulario",
+      "tasks": [
+        {
+          "id": "T5",
+          "title": "Construir BusinessForm interactivo (Negocio)",
+          "owner_role": "frontend_dev",
+          "status": "pending",
+          "parallelizable": false,
+          "depends_on": ["T2", "T3", "T4"],
+          "outputs": [
+            "src/app/admin/configuraciones/_components/forms/BusinessForm.tsx"
+          ],
+          "exit_criteria": "Formulario con validación (Zod), prevención de tab changes al detectar edición (isDirty), animación GSAP de error (shake) y envío de datos al store."
+        }
+      ]
+    }
+  ]
+}

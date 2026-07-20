@@ -15,7 +15,7 @@ export interface DashboardStatsResponse {
   pedidosActivos: {
     PENDIENTE: number
     EN_PROCESO: number
-    LISTO: number
+    LISTO_PARA_RETIRAR: number
     ENTREGADO: number
     PAGADO: number
     CANCELADO: number

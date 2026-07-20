@@ -7,7 +7,7 @@ import { setupGracefulShutdown } from "./utils/shutdown.util.js";
 // 1. Fail-Fast: Validar variables de entorno críticas ANTES de arrancar
 checkEnvVariables();
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000; // Update port to 5000
 
 async function start() {
 	try {
@@ -35,3 +35,9 @@ async function start() {
 }
 
 start();
+
+// Evitar que promesas rechazadas no capturadas (ej: de Baileys) tiren el servidor
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ [Server] Promesa rechazada sin capturar:', reason?.message || reason);
+    // No hacemos process.exit() para que el servidor siga corriendo
+});

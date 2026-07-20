@@ -1,0 +1,81 @@
+{
+  "feature": "Crear Pedido",
+  "todos": [
+    {
+      "id": "T1",
+      "title": "Implementar API Clients (Frontend)",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": [
+        "front/src/domains/clientes/api.ts",
+        "front/src/domains/categorias/api.ts",
+        "front/src/domains/productos/api.ts",
+        "front/src/domains/pedidos/api.ts (actualizado)"
+      ],
+      "exit_criteria": "Las funciones getClientes, getCategorias, getProductos y crearPedido están exportadas y tipeadas correctamente utilizando apiClient."
+    },
+    {
+      "id": "T2",
+      "title": "Maquetar Layout Base de Crear Pedido",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["T1"],
+      "outputs": [
+        "front/src/app/admin/pedidos/nuevo/page.tsx"
+      ],
+      "exit_criteria": "Estructura de dos columnas o grid (Catálogo y Carrito) renderizando con Tailwind y estética base del proyecto."
+    },
+    {
+      "id": "T3",
+      "title": "Componente ClientSearch",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": [
+        "front/src/app/admin/pedidos/nuevo/components/client-search.tsx"
+      ],
+      "exit_criteria": "Input de búsqueda con debounce que llama a getClientes y permite seleccionar un cliente, mostrándolo en una tarjeta bonita."
+    },
+    {
+      "id": "T4",
+      "title": "Componente ServiceCatalog (Tabs & Grid)",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": [
+        "front/src/app/admin/pedidos/nuevo/components/service-grid.tsx"
+      ],
+      "exit_criteria": "Renderiza las categorías como tabs y los productos filtrados en una grilla. Las tarjetas de producto deben tener un fallback gráfico (gradientes o iconos) ya que la base de datos no tiene campo de imagen."
+    },
+    {
+      "id": "T5",
+      "title": "Integración del Carrito (OrderCart) y Reglas de Negocio",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["T3", "T4"],
+      "outputs": [
+        "front/src/app/admin/pedidos/nuevo/page.tsx (actualizado)",
+        "front/src/app/admin/pedidos/nuevo/components/order-cart.tsx"
+      ],
+      "exit_criteria": "Permite aumentar/disminuir cantidades. Calcula subtotales/totales. El botón de enviar está deshabilitado si no hay cliente o carrito vacío. Envía el payload correctamente a crearPedido y muestra notificación (sonner)."
+    },
+    {
+      "id": "T6",
+      "title": "Pulido de Diseño y Animaciones (GSAP)",
+      "owner_role": "Frontend Developer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["T5"],
+      "outputs": [
+        "Todos los archivos UI actualizados."
+      ],
+      "exit_criteria": "Aplicación de micro-animaciones en tarjetas de productos al renderizar (stagger), y animaciones fluidas en el carrito."
+    }
+  ]
+}

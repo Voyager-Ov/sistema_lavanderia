@@ -2,9 +2,10 @@ import { AppError } from "../../utils/errors.js";
 import { models } from "../../models/index.js";
 import { getPaginationParams, getPagingData } from "../../utils/pagination.util.js";
 import { Op } from "sequelize";
+import { emitToTenant } from "../../socket/socket.js";
 
 export const registrarGasto = async (negocioId, usuarioId, rol, data) => {
-    const { monto, categoria, descripcion } = data;
+    const { monto, categoria, descripcion, metodoPagoId } = data;
 
     const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" } });
     if (!cajaAbierta) {
@@ -17,14 +18,26 @@ export const registrarGasto = async (negocioId, usuarioId, rol, data) => {
         throw new AppError(`No tienes permiso para registrar gastos de categoría: ${categoria}`, 403);
     }
 
-    return await models.Gasto.create({
+    if (metodoPagoId) {
+        const metodo = await models.MetodoPago.findOne({ where: { id: metodoPagoId, negocioId } });
+        if (!metodo) {
+            throw new AppError("Método de pago no válido.", 400);
+        }
+    }
+
+    const nuevoGasto = await models.Gasto.create({
         negocioId,
         registradoPorId: usuarioId,
         cajaId: cajaAbierta.id,
         monto,
         categoria,
-        descripcion
+        descripcion,
+        metodoPagoId: metodoPagoId || null
     });
+
+    emitToTenant(negocioId, "caja_actualizada", { message: "Gasto registrado" });
+
+    return nuevoGasto;
 };
 
 export const obtenerGastos = async (negocioId, usuarioId, rol, queryParams = {}) => {
@@ -38,16 +51,20 @@ export const obtenerGastos = async (negocioId, usuarioId, rol, queryParams = {})
     }
     
     if (fechaInicio && fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         where.createdAt = {
-            [Op.between]: [new Date(fechaInicio), new Date(fechaFin)]
+            [Op.between]: [new Date(fechaInicio), endDate]
         };
     } else if (fechaInicio) {
         where.createdAt = {
             [Op.gte]: new Date(fechaInicio)
         };
     } else if (fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         where.createdAt = {
-            [Op.lte]: new Date(fechaFin)
+            [Op.lte]: endDate
         };
     }
 

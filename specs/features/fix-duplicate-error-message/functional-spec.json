@@ -1,0 +1,29 @@
+{
+  "feature": "Fix duplicate error message properties in Auth Controller and Frontend",
+  "scope": {
+    "in_scope": [
+      "Normalize the JSON error response sent when an email is already in use during registration, and in other auth errors if applicable.",
+      "Ensure the error response structure is consistent, providing only a 'message' property for the user-facing text.",
+      "Review and update frontend authentication pages to consistently read the error message from a single standard property (e.g. error.data?.message || error.message)."
+    ],
+    "out_of_scope": [
+      "Refactoring the entire global error handling middleware.",
+      "Changing the database schema or auth service logic."
+    ]
+  },
+  "user_journeys": [
+    {
+      "actor": "User/Client Application",
+      "action": "Attempts to register or login with invalid data/credentials.",
+      "expected_outcome": "Receives a clear error message on the frontend. The backend returns a single string property for the error, and the frontend consumes exactly that property without confusion."
+    }
+  ],
+  "acceptance_criteria": [
+    "Given a registration request with an already registered email, When the backend processes it, Then the response JSON should contain ONLY the 'message' property ('El email ya está en uso.').",
+    "Given an error in the authentication flow (register, login, etc.), When the frontend receives the error, Then it should consistently read 'error.data?.message || error.message' and display it without crashing or showing redundant properties."
+  ],
+  "business_rules": [
+    "Error messages should be clear, concise, and not repetitive to avoid confusing consumers of the API.",
+    "The API contract for errors must be strictly adhered to by the frontend clients."
+  ]
+}

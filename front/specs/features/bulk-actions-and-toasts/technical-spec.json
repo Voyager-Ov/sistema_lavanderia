@@ -1,0 +1,98 @@
+{
+  "feature": "Bulk Actions, Toasts Redesign, Tickets Details & Order Cancellation",
+  "architecture": {
+    "frontend": [
+      {
+        "component": "BulkActionsBar (Bottom Island)",
+        "file": "front/src/app/admin/pedidos/page.tsx",
+        "details": "Update the existing floating bottom island. Replace 'Export CSV' with 'Cobrar Masivamente'. Connect 'Imprimir Tickets' to a new `PrintQueueManager`. Connect 'Cancelar' to a new `BulkCancellationWizard`."
+      },
+      {
+        "component": "PrintQueueManager (Impresión Masiva)",
+        "file": "front/src/app/admin/pedidos/_components/print-queue-manager.tsx",
+        "details": "A floating glassmorphism card (bottom right) that tracks printing progress. It manages local state of `queue: Pedido[]` and `processing: boolean`. Uses a `for...of` loop with a small delay (300ms) between `generarTicketsAPI` calls to allow React to paint the progress bar. Includes a 'Cancelar' button that toggles an `abortController` flag. Once all API calls finish, it opens a single popup window concatenating the `getTicketHTML` of the processed orders."
+      },
+      {
+        "component": "BulkCancellationWizard",
+        "file": "front/src/app/admin/pedidos/_components/bulk-cancellation-wizard.tsx",
+        "details": "A Radix UI Dialog. When triggered with `selectedPedidos`, it displays a carousel (using GSAP `x` transforms for sliding). For the current order in view, it shows the order ID/Client. Requires two inputs: `motivoCancelacion` (Select or Text) and `descripcionCancelacion` (Textarea). Validates with Zod. On submit, calls `cambiarEstadoPedido` with 'CANCELADO' and the new fields, then slides GSAP to the next order. Features a premium backdrop-blur background, large typography for order numbers, and spring animations."
+      },
+      {
+        "component": "Sonner Toaster Redesign",
+        "file": "front/src/shared/ui/feedback/sonner.tsx",
+        "details": "Rewrite the `Toaster` configuration to inject premium CSS. Use `bg-white/70 backdrop-blur-2xl border-white/20 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] rounded-2xl` for light mode. Add GSAP entry animations to toasts if possible, or rely on Sonner's native CSS animations but tweaked for a 'spring' feel. Typography must be `font-medium tracking-tight text-gray-900`."
+      },
+      {
+        "component": "TicketPrintTemplate (Thermal Fix)",
+        "file": "front/src/app/admin/pedidos/_components/ticket-print-template.tsx",
+        "details": "Update the `@media print` CSS block. Add `@page { size: 58mm auto; margin: 0; }`. Ensure the container has `width: 58mm; overflow: hidden; page-break-after: always;`. Remove all shadows or rounded corners in print mode. Use standard thermal typography (monospace or strict sans, black/white)."
+      },
+      {
+        "component": "PedidoDetailView (Historical Tickets)",
+        "file": "front/src/app/admin/pedidos/_components/pedido-detail-view.tsx",
+        "details": "Add a new section `Historial de Tickets`. Call a new API endpoint `getTicketsPedidoAPI` to fetch tickets. Render them as small cards showing the `codigo`, date, and a re-print button. Style them with subtle borders and a hover micro-interaction (scale 1.02)."
+      },
+      {
+        "component": "CobrarPedidoSheet (Bulk Adaptation)",
+        "file": "front/src/app/admin/pedidos/components/cobrar-pedido-sheet.tsx",
+        "details": "Adapt the existing sheet or create a small modal `BulkChargeModal` that iterates over the selected orders and calls `cambiarEstadoPedido` with the selected payment method."
+      }
+    ],
+    "backend": [
+      {
+        "model": "Pedido.js",
+        "details": "Add `motivoCancelacion: { type: DataTypes.STRING, allowNull: true }` and `descripcionCancelacion: { type: DataTypes.TEXT, allowNull: true }`."
+      },
+      {
+        "service": "pedido.service.js",
+        "details": "In `cambiarEstadoPedido`, accept `motivoCancelacion` and `descripcionCancelacion` in the `data` payload. Add validation: `if (nuevoEstado === 'CANCELADO' && (!motivo || !desc)) throw new AppError('Motivo y descripción son obligatorios para cancelar')`. Save these fields when updating the `Pedido` instance."
+      }
+    ]
+  },
+  "phased_plan": [
+    {
+      "phase": 1,
+      "goal": "Backend Models & Validation",
+      "tasks": [
+        "Update `Pedido.js` model.",
+        "Update `pedido.service.js` to handle strict validation.",
+        "Update `pedido.controller.js` to pass new fields.",
+        "Run sync script to apply DB changes."
+      ]
+    },
+    {
+      "phase": 2,
+      "goal": "Frontend Aesthetics & CSS",
+      "tasks": [
+        "Redesign `sonner.tsx`.",
+        "Update `TicketPrintTemplate.tsx` CSS for strict thermal formatting."
+      ]
+    },
+    {
+      "phase": 3,
+      "goal": "Bulk Cancel Wizard (Frontend-Design focus)",
+      "tasks": [
+        "Create `bulk-cancellation-wizard.tsx` using GSAP for sliding between orders.",
+        "Wire up the 'Cancelar' button in the bottom island to this wizard."
+      ]
+    },
+    {
+      "phase": 4,
+      "goal": "Print Queue & Bulk Charge",
+      "tasks": [
+        "Create `print-queue-manager.tsx`.",
+        "Implement queue loop logic.",
+        "Wire up 'Imprimir Tickets' in bottom island.",
+        "Create `BulkChargeModal` and wire up 'Cobrar Masivamente'."
+      ]
+    },
+    {
+      "phase": 5,
+      "goal": "Ticket History UI",
+      "tasks": [
+        "Create API fetcher for `getTicketsPedidoAPI`.",
+        "Update `pedido-detail-view.tsx` to list generated tickets."
+      ]
+    }
+  ]
+}

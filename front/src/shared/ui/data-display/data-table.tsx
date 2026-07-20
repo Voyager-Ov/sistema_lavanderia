@@ -13,6 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
+import gsap from "gsap"
 
 import {
   Table,
@@ -24,6 +25,7 @@ import {
 } from "./table"
 import { Input } from "../forms/input"
 import { Button } from "../forms/button"
+import { useAutoAnimate } from "@formkit/auto-animate/react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../forms/select"
 import { Search, Filter, ChevronDown, ArrowUp, ArrowDown, AlertCircle, X } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -31,10 +33,12 @@ import { DataTableBulkActions, BulkAction } from "./data-table-bulk-actions"
 import { Spinner } from "@/shared/ui/feedback/spinner"
 import { cn } from "@/shared/lib/utils"
 
-interface DataTableFilter {
+export interface DataTableFilter {
   key: string
   label: string
-  options?: { label: string; value: string }[]
+  value: string
+  onChange: (value: string) => void
+  options: { label: string; value: string }[]
 }
 
 export interface DataTableProps<TData, TValue> {
@@ -68,7 +72,11 @@ export interface DataTableProps<TData, TValue> {
   sorting?: SortingState
   onSortingChange?: React.Dispatch<React.SetStateAction<SortingState>>
 
+  // Server-side Filtering
+  manualFiltering?: boolean
+
   isFetching?: boolean
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -91,7 +99,9 @@ export function DataTable<TData, TValue>({
   manualSorting = false,
   sorting: externalSorting,
   onSortingChange,
+  manualFiltering = false,
   isFetching = false,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [internalSorting, setInternalSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -114,6 +124,8 @@ export function DataTable<TData, TValue>({
   const currentGlobalFilter = externalGlobalFilter ?? internalGlobalFilter
   const handleGlobalFilterChange = externalOnGlobalFilterChange ?? setInternalGlobalFilter
 
+  const [parentRef] = useAutoAnimate()
+
   const table = useReactTable({
     data,
     columns,
@@ -127,7 +139,7 @@ export function DataTable<TData, TValue>({
     globalFilterFn: "includesString",
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
-    getRowId: (originalRow: any) => originalRow.id ? String(originalRow.id) : undefined,
+    getRowId: (originalRow: any) => originalRow.id ? String(originalRow.id) : String(Math.random()),
     
     // Pagination config
     manualPagination,
@@ -137,6 +149,9 @@ export function DataTable<TData, TValue>({
     // Sorting config
     manualSorting,
     
+    // Filtering config
+    manualFiltering,
+    
     state: {
       sorting: currentSorting,
       columnFilters,
@@ -145,8 +160,6 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       pagination: currentPagination,
     },
-    // Deshabilitar reset automático de selección para que persista al cambiar de página en paginación manual
-    autoResetRowSelection: false,
   })
 
   // Utilidad para extraer el ID de la fila (asumiendo que los objetos tienen propiedad 'id')
@@ -187,13 +200,57 @@ export function DataTable<TData, TValue>({
             placeholder={searchPlaceholder}
             value={currentGlobalFilter ?? ""}
             onChange={(event) => handleGlobalFilterChange(event.target.value)}
-            className="pl-10 border md:border-0 bg-transparent shadow-none focus-visible:ring-1 md:focus-visible:ring-0 text-sm h-10 w-full rounded-xl md:rounded-none"
+            className="pl-10 pr-10 border md:border-0 bg-transparent shadow-none focus-visible:ring-1 md:focus-visible:ring-0 text-sm h-10 w-full rounded-xl md:rounded-none"
           />
+          {(currentGlobalFilter ?? "") !== "" && (
+            <button
+              type="button"
+              onClick={() => handleGlobalFilterChange("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted/50 transition-colors z-10"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Filtros y Resultados */}
         <div className="flex flex-wrap items-center justify-between md:justify-end gap-2 px-1 md:pr-4">
           <div className="flex items-center gap-2">
+            {filters.map((filter) => (
+              <div key={filter.key} className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 hidden sm:inline-block">{filter.label}:</span>
+                <Select value={filter.value} onValueChange={filter.onChange}>
+                  <SelectTrigger className="w-[140px] sm:w-[160px] md:w-[180px] h-9 text-xs rounded-full bg-white shadow-sm font-bold border-gray-200">
+                    <SelectValue placeholder={filter.label} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filter.options.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+            
+            {(table.getState().sorting.length > 0 || (currentGlobalFilter ?? "") !== "" || table.getState().columnFilters.length > 0 || filters.some(f => f.value !== "")) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-xs flex items-center gap-1 px-3 text-brand-red hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full font-semibold transition-colors"
+                onClick={() => {
+                  table.setSorting([])
+                  table.setColumnFilters([])
+                  handleGlobalFilterChange("")
+                  filters.forEach(f => {
+                    if (f.value !== "") f.onChange("")
+                  })
+                }}
+                title="Limpiar filtros y ordenamiento"
+              >
+                Limpiar <X className="h-3 w-3" />
+              </Button>
+            )}
+
             {toolbarExtras}
           </div>
 
@@ -206,7 +263,7 @@ export function DataTable<TData, TValue>({
       {/* Contenido (Tabla o Tarjetas Móviles) */}
       {isMobile && renderMobileCard ? (
         // Vista de Tarjetas Móviles
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4" ref={parentRef}>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const rowId = getRowId(row.original)
@@ -261,7 +318,10 @@ export function DataTable<TData, TValue>({
                       return (
                         <TableHead 
                           key={header.id} 
-                          className="text-xs font-bold text-muted-foreground uppercase tracking-wider h-14 align-middle cursor-pointer select-none"
+                          className={cn(
+                            "text-xs font-bold text-muted-foreground uppercase tracking-wider h-14 align-middle cursor-pointer select-none",
+                            (header.column.columnDef.meta as any)?.className
+                          )}
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <div className="flex items-center gap-1">
@@ -282,7 +342,7 @@ export function DataTable<TData, TValue>({
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody className={cn("transition-opacity duration-300", isFetching && "opacity-50 pointer-events-none")}>
+              <TableBody ref={parentRef} className={cn("transition-opacity duration-300", isFetching && "opacity-50 pointer-events-none")}>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => {
                     const rowId = getRowId(row.original)
@@ -292,14 +352,46 @@ export function DataTable<TData, TValue>({
                     return (
                       <React.Fragment key={row.id}>
                         <TableRow
-                          data-state={row.getIsSelected() && "selected"}
+                          data-state={(!onRowClick && row.getIsSelected()) ? "selected" : undefined}
+                          onClick={(e) => {
+                            if (onRowClick) {
+                              onRowClick(row.original)
+                              
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              const x = e.clientX - rect.left
+                              const y = e.clientY - rect.top
+                              
+                              const ripple = document.createElement("div")
+                              ripple.className = "absolute rounded-full bg-slate-400/30 pointer-events-none z-0"
+                              ripple.style.left = `${x}px`
+                              ripple.style.top = `${y}px`
+                              ripple.style.width = "0px"
+                              ripple.style.height = "0px"
+                              ripple.style.transform = "translate(-50%, -50%)"
+                              
+                              e.currentTarget.appendChild(ripple)
+                              
+                              gsap.to(ripple, {
+                                width: Math.max(rect.width, rect.height) * 2.5,
+                                height: Math.max(rect.width, rect.height) * 2.5,
+                                opacity: 0,
+                                duration: 0.6,
+                                ease: "power2.out",
+                                onComplete: () => ripple.remove()
+                              })
+                            } else {
+                              row.toggleSelected()
+                            }
+                          }}
                           className={cn(
                             "hover:bg-muted/30 transition-all border-b last:border-0",
+                            (onRowClick || !row.getIsSelected()) ? "cursor-pointer" : "",
+                            onRowClick ? "relative overflow-hidden" : "",
                             isRowLoading && "opacity-50 pointer-events-none bg-muted/20"
                           )}
                         >
                           {row.getVisibleCells().map((cell, index) => (
-                            <TableCell key={cell.id} className="py-4 text-sm font-medium relative">
+                            <TableCell key={cell.id} className={cn("py-4 text-sm font-medium relative", (cell.column.columnDef.meta as any)?.className)}>
                               {/* Spinner on the first cell if loading */}
                               {isRowLoading && index === 0 && (
                                 <div className="absolute left-2 top-1/2 -translate-y-1/2">

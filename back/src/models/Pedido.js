@@ -56,6 +56,31 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.INTEGER,
 				allowNull: true,
 			},
+			motivoCancelacion: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			descripcionCancelacion: {
+				type: DataTypes.TEXT,
+				allowNull: true,
+			},
+			facturado: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			facturaCae: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			facturaVtoCae: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			facturaNro: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "pedidos",
@@ -76,6 +101,7 @@ export default (sequelize, DataTypes) => {
 		Pedido.hasMany(models.PedidoItem, { foreignKey: "pedidoId", as: "items" });
 		Pedido.hasMany(models.HistorialPedido, { foreignKey: "pedidoId", as: "historial" });
 		Pedido.hasOne(models.Pago, { foreignKey: "pedidoId", as: "pago" });
+		Pedido.hasMany(models.Ticket, { foreignKey: "pedidoId", as: "tickets" });
 	};
 
 	return Pedido;

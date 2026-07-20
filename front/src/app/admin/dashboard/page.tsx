@@ -3,12 +3,18 @@
 import React, { useRef, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/shared/store/useAuthStore"
-import { Plus, Download, Play, Loader2 } from "lucide-react"
+import { Plus, Download, Play, Loader2, Trophy } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 
 // Import Dashboard API
 import { getDashboardStats, DashboardStatsResponse } from "@/domains/dashboard/api"
+import { obtenerCajaActual, CajaActual } from "@/domains/caja/caja.api"
+import { getPedidos } from "@/domains/pedidos/api"
+import { toast } from "sonner"
+import { format, isBefore, addDays } from "date-fns"
+import { es } from "date-fns/locale"
+import { RegistrarGastoModal } from "@/app/admin/caja/components/registrar-gasto-modal"
 
 // Import new Dashboard Components
 import { DashboardKpi } from "@/shared/ui/dashboard/dashboard-kpi"
@@ -16,14 +22,17 @@ import { DashboardBarChart } from "@/shared/ui/dashboard/dashboard-bar-chart"
 import { DashboardGauge } from "@/shared/ui/dashboard/dashboard-gauge"
 import { DashboardListCard, DashboardListItem } from "@/shared/ui/dashboard/dashboard-list-card"
 import { DashboardActionCard } from "@/shared/ui/dashboard/dashboard-action-card"
+import { formatCurrency } from "@/shared/lib/utils"
 
 export default function AdminDashboardPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const { user } = useAuthStore()
   
   const [stats, setStats] = useState<DashboardStatsResponse | null>(null)
+  const [caja, setCaja] = useState<CajaActual | null>(null)
+  const [alertas, setAlertas] = useState<DashboardListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isGastoModalOpen, setIsGastoModalOpen] = useState(false)
 
   gsap.registerPlugin(useGSAP)
 
@@ -42,19 +51,65 @@ export default function AdminDashboardPage() {
     }
   }, { scope: containerRef, dependencies: [isLoading] })
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getDashboardStats()
-        setStats(data)
-      } catch (error) {
-        console.error("Error fetching dashboard stats:", error)
-      } finally {
-        setIsLoading(false)
+  const fetchStats = async () => {
+    try {
+      setIsLoading(true)
+      const [statsData, cajaData, pedidosData] = await Promise.all([
+        getDashboardStats(),
+        obtenerCajaActual().catch(() => null), // Retorna null si es 404/cerrada
+        getPedidos({ estado: 'PENDIENTE', limit: 5, sortBy: 'fechaEntregaEstimada', sortOrder: 'asc' }).catch(() => null)
+      ])
+      setStats(statsData)
+      setCaja(cajaData)
+      
+      if (pedidosData && pedidosData.data) {
+        const hoy = new Date()
+        setAlertas(pedidosData.data.items.map(p => {
+          let badgeText = "NORMAL"
+          let badgeColor: "red" | "yellow" | "blue" | "green" | "default" = "blue"
+          let rightText = ""
+
+          if (p.fechaEntregaEstimada) {
+            const fechaEst = new Date(p.fechaEntregaEstimada)
+            rightText = format(fechaEst, "dd MMM HH:mm", { locale: es })
+            
+            if (isBefore(fechaEst, hoy)) {
+              badgeText = "VENCIDO"
+              badgeColor = "red"
+            } else if (isBefore(fechaEst, addDays(hoy, 1))) {
+              badgeText = "HOY"
+              badgeColor = "yellow"
+            }
+          }
+
+          return {
+            id: p.id,
+            title: p.cliente?.nombre || 'Cliente Final',
+            subtitle: `Ticket #${p.id} - ${p.items?.length || 0} items`,
+            badgeText,
+            badgeColor,
+            rightText
+          }
+        }))
       }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchStats()
   }, [])
+
+  const handleRetiroClick = () => {
+    if (!caja) {
+      toast.error("Debes abrir un turno (caja) antes de registrar un retiro.")
+      return
+    }
+    setIsGastoModalOpen(true)
+  }
 
   if (isLoading || !stats) {
     return (
@@ -134,7 +189,7 @@ export default function AdminDashboardPage() {
       <div className="fade-up grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <DashboardKpi 
           title="Pedidos del Día" 
-          value={stats.pedidosDelDia.hoy.toString()} 
+          value={(stats.pedidosDelDia.hoy || 0).toString()} 
           trendValue={incrementPedidos} 
           subtitle="Incremento vs ayer"
           backMessage="Total de pedidos recibidos durante el día de hoy en todas las sucursales."
@@ -143,22 +198,22 @@ export default function AdminDashboardPage() {
         />
         <DashboardKpi 
           title="Ingresos Hoy" 
-          value={`$${stats.ingresos.hoyCobrado.toLocaleString()}`} 
+          value={formatCurrency(stats.ingresos.hoyCobrado || 0)}
           trendValue={incrementIngresos} 
           subtitle="Cobrado vs ayer"
-          backMessage={`Dinero en mano hoy. Potencial del día si se cobra todo: $${stats.ingresos.hoyTotalPedidos.toLocaleString()}`}
+          backMessage={`Dinero en mano hoy. Potencial del día si se cobra todo: ${formatCurrency(stats.ingresos.hoyTotalPedidos || 0)}`}
           href="/admin/caja"
         />
         <DashboardKpi 
           title="Servicios Activos" 
-          value={stats.pedidosActivos.EN_PROCESO.toString()} 
+          value={(stats.pedidosActivos.EN_PROCESO || 0).toString()} 
           subtitle="Pedidos en proceso"
           backMessage="Lavadoras, secadoras o planchas que actualmente están procesando un pedido."
           href="/admin/servicios"
         />
         <DashboardKpi 
           title="Entregas Pend." 
-          value={stats.pedidosActivos.LISTO.toString()} 
+          value={(stats.pedidosActivos.LISTO_PARA_RETIRAR || 0).toString()} 
           subtitle="Listos para retirar"
           backMessage="Pedidos listos que el cliente debe retirar el día de hoy."
           href="/admin/pedidos?filtro=listos"
@@ -179,14 +234,14 @@ export default function AdminDashboardPage() {
         </div>
         <div className="xl:col-span-3">
           <DashboardActionCard 
-            title="Acción Rápida" 
-            mainText="Cerrar Caja" 
-            subText="Finaliza el turno actual de forma segura" 
-            buttonText="Hacer Arqueo" 
+            title="Estado de Caja" 
+            mainText={caja ? 'Turno en Curso' : 'Caja Cerrada'} 
+            subText={caja ? `Efectivo: ${formatCurrency(stats.ingresos.hoyCobrado)}` : 'Abre un turno para operar'} 
+            buttonText={caja ? 'Ver Caja' : 'Abrir Caja'} 
             buttonIcon={<Play className="w-5 h-5 fill-current" />}
             color="yellow"
             className="h-full"
-            onButtonClick={() => router.push('/admin/caja/arqueo')}
+            onButtonClick={() => router.push('/admin/caja')}
           />
         </div>
         <div className="xl:col-span-4">
@@ -202,16 +257,22 @@ export default function AdminDashboardPage() {
 
       {/* Row 3: Team, Progress, Time Tracker */}
       <div className="fade-up grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-7">
           <DashboardListCard 
-            title="Mejores Clientes" 
-            actionButtonText="Ver Todos"
-            onActionClick={() => router.push('/admin/clientes')}
-            items={topClientesList}
+            title="Alertas (Pendientes)" 
+            actionButtonText="Ir a Pedidos"
+            onActionClick={() => router.push('/admin/pedidos?estado=PENDIENTE')}
+            items={alertas.length > 0 ? alertas : [{
+              id: "empty",
+              title: "Todo al día",
+              subtitle: "No hay pedidos pendientes urgentes",
+              badgeText: "OK",
+              badgeColor: "green"
+            }]}
             className="h-full max-h-[350px]"
           />
         </div>
-        <div className="xl:col-span-4">
+        <div className="xl:col-span-5">
           <DashboardGauge 
             title="Progreso del Día" 
             currentValue={progresoActual} 
@@ -221,39 +282,14 @@ export default function AdminDashboardPage() {
             className="h-full"
           />
         </div>
-        <div className="xl:col-span-3">
-          {/* Cash Register status */}
-          <div className="bg-brand-red rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between border border-transparent shadow-sm relative overflow-hidden h-full min-h-[250px]">
-            {/* Wavy background decoration */}
-            <div className="absolute top-0 right-0 left-0 h-[100px] bg-red-900/20 blur-[20px] rounded-full -translate-y-1/2 scale-150 pointer-events-none"></div>
-            
-            <h3 className="text-base font-semibold text-red-50 relative z-10">Caja Actual (Hoy)</h3>
-            
-            <div className="relative z-10 flex flex-col items-center mt-4">
-              <span className="text-4xl lg:text-5xl font-bold text-white mb-2 tracking-tight">
-                ${stats.ingresos.hoyCobrado.toLocaleString()}
-              </span>
-              <span className="text-sm font-medium text-red-200 mb-6">Efectivo en caja</span>
-              
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => router.push('/admin/caja/ingreso')}
-                  className="px-6 py-2 rounded-full bg-white text-brand-red font-bold shadow-md hover:scale-105 transition-transform"
-                >
-                  Ingreso
-                </button>
-                <button 
-                  onClick={() => router.push('/admin/caja/retiro')}
-                  className="px-6 py-2 rounded-full bg-white/20 text-white font-bold hover:scale-105 transition-transform"
-                >
-                  Retiro
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
+      {/* Modals */}
+      <RegistrarGastoModal 
+        open={isGastoModalOpen}
+        onOpenChange={setIsGastoModalOpen}
+        onSuccess={fetchStats}
+      />
     </div>
   )
 }

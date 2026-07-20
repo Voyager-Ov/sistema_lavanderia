@@ -27,3 +27,21 @@ export const cerrarCaja = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getHistorialCajas = async (req, res, next) => {
+    try {
+        const result = await cajaService.obtenerHistorialCajas(req.user.negocioId, req.user.id, req.user.rol, req.query);
+        return successResponse(res, 200, null, result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getCajaPorId = async (req, res, next) => {
+    try {
+        const caja = await cajaService.obtenerCajaPorId(req.user.negocioId, req.user.id, req.user.rol, req.params.id);
+        return successResponse(res, 200, null, caja);
+    } catch (error) {
+        next(error);
+    }
+};

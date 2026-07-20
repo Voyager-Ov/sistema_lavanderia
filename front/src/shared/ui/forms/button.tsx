@@ -20,9 +20,13 @@ const buttonVariants = cva(
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         outlineBlue:
-          "border-2 border-brand-blue bg-transparent text-brand-blue hover:bg-brand-blue-muted",
+          "border-2 border-brand-blue bg-transparent text-brand-blue hover:bg-brand-blue/10",
         outlineGreen:
-          "border-2 border-brand-green bg-transparent text-brand-green hover:bg-brand-green-muted",
+          "border-2 border-brand-green bg-transparent text-brand-green hover:bg-brand-green/10",
+        outlineOrange:
+          "border-2 border-brand-orange bg-transparent text-brand-orange hover:bg-brand-orange/10",
+        outlineRed:
+          "border-2 border-brand-red bg-transparent text-brand-red hover:bg-brand-red/10",
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",

@@ -1,5 +1,5 @@
 import { AppError } from "../../utils/errors.js";
-import { models } from "../../models/index.js";
+import { models, sequelize } from "../../models/index.js";
 import { getPaginationParams, getPagingData } from "../../utils/pagination.util.js";
 import { Op } from "sequelize";
 
@@ -41,10 +41,19 @@ export const obtenerClientePorId = async (negocioId, clienteId) => {
                 model: models.Pedido, 
                 as: "pedidos",
                 required: false, // LEFT JOIN
-                attributes: ["id", "estado", "total", "codigoSeguimiento", "createdAt"]
+                attributes: ["id", "estado", "total", "codigoSeguimiento", "createdAt", "cobrado", "facturado"]
+            },
+            {
+                model: models.MovimientoCuentaCorriente,
+                as: "movimientosCuentaCorriente",
+                required: false,
+                attributes: ["id", "tipoMovimiento", "monto", "saldoResultante", "comentario", "createdAt"]
             }
         ],
-        order: [[{ model: models.Pedido, as: "pedidos" }, "createdAt", "DESC"]]
+        order: [
+            [{ model: models.Pedido, as: "pedidos" }, "createdAt", "DESC"],
+            [{ model: models.MovimientoCuentaCorriente, as: "movimientosCuentaCorriente" }, "createdAt", "DESC"]
+        ]
     });
 
     if (!cliente) {
@@ -97,6 +106,10 @@ export const desactivarCliente = async (negocioId, clienteId, motivoBaja) => {
         throw new AppError("Cliente no encontrado.", 404);
     }
 
+    if (parseFloat(cliente.saldoCuentaCorriente) !== 0) {
+        throw new AppError(`No se puede dar de baja al cliente porque tiene un saldo en cuenta corriente de $${cliente.saldoCuentaCorriente}.`, 400);
+    }
+
     // Regla de Negocio: No se puede dar de baja a un cliente si tiene pedidos activos (No Entregados/Cancelados)
     const pedidosActivos = await models.Pedido.count({
         where: {
@@ -113,4 +126,93 @@ export const desactivarCliente = async (negocioId, clienteId, motivoBaja) => {
 
     await cliente.update({ activo: false, motivoBaja });
     return true;
+};
+
+export const registrarPagoCuentaCorriente = async (negocioId, clienteId, pagoData) => {
+    const { monto, metodoPago, comentario } = pagoData;
+
+    if (!monto || parseFloat(monto) <= 0) {
+        throw new AppError("El monto del pago debe ser mayor a 0.", 400);
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+        // Lock row for update
+        const cliente = await models.Cliente.findOne({ 
+            where: { id: clienteId, negocioId },
+            transaction: t,
+            lock: t.LOCK.UPDATE 
+        });
+
+        if (!cliente) {
+            throw new AppError("Cliente no encontrado.", 404);
+        }
+
+        const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente);
+        const nuevoSaldo = saldoAnterior - parseFloat(monto);
+
+        const movimiento = await models.MovimientoCuentaCorriente.create({
+            clienteId,
+            negocioId,
+            tipoMovimiento: "CREDITO",
+            monto: parseFloat(monto),
+            saldoResultante: nuevoSaldo,
+            comentario: comentario || `Pago en ${metodoPago}`
+        }, { transaction: t });
+
+        await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
+
+        await t.commit();
+        return { cliente, movimiento };
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
+};
+
+export const recalcularSaldoCuentaCorriente = async (negocioId, clienteId) => {
+    const t = await sequelize.transaction();
+
+    try {
+        const cliente = await models.Cliente.findOne({ 
+            where: { id: clienteId, negocioId },
+            transaction: t,
+            lock: t.LOCK.UPDATE 
+        });
+
+        if (!cliente) {
+            throw new AppError("Cliente no encontrado.", 404);
+        }
+
+        const movimientos = await models.MovimientoCuentaCorriente.findAll({
+            where: { clienteId, negocioId },
+            order: [['createdAt', 'ASC']],
+            transaction: t
+        });
+
+        let saldoReal = 0;
+        for (const mov of movimientos) {
+            if (mov.tipoMovimiento === 'DEBITO') {
+                saldoReal += parseFloat(mov.monto);
+            } else if (mov.tipoMovimiento === 'CREDITO') {
+                saldoReal -= parseFloat(mov.monto);
+            }
+            
+            // Correct the running balance on the movement if it was wrong
+            if (parseFloat(mov.saldoResultante) !== saldoReal) {
+                await mov.update({ saldoResultante: saldoReal }, { transaction: t });
+            }
+        }
+
+        if (parseFloat(cliente.saldoCuentaCorriente) !== saldoReal) {
+            await cliente.update({ saldoCuentaCorriente: saldoReal }, { transaction: t });
+        }
+
+        await t.commit();
+        return { saldoCorregido: saldoReal };
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
 };

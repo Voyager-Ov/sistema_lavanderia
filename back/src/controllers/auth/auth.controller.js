@@ -9,7 +9,7 @@ export const register = async (req, res, next) => {
         return successResponse(res, 201, "Registro exitoso", result);
     } catch (error) {
         if (error.message === "EMAIL_IN_USE") {
-            return res.status(400).json({ error: "El email ya está en uso.", message: "El email ya está en uso." });
+            return res.status(400).json({ message: "El email ya está en uso." });
         }
         next(error);
     }
@@ -23,10 +23,10 @@ export const login = async (req, res, next) => {
         return successResponse(res, 200, "Login exitoso", result);
     } catch (error) {
         if (error.message === "INVALID_CREDENTIALS") {
-            return res.status(401).json({ error: "Credenciales inválidas.", message: "Credenciales inválidas." });
+            return res.status(401).json({ message: "Credenciales inválidas." });
         }
         if (error.message === "USER_DISABLED") {
-            return res.status(403).json({ error: "Cuenta de usuario desactivada.", message: "Cuenta de usuario desactivada." });
+            return res.status(403).json({ message: "Cuenta de usuario desactivada." });
         }
         next(error);
     }

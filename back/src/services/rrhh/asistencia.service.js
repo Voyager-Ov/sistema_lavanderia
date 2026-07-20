@@ -54,16 +54,20 @@ export const obtenerAsistencias = async (negocioId, usuarioId, rol, queryParams 
     }
 
     if (fechaInicio && fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         whereClause.fechaHoraEntrada = {
-            [Op.between]: [new Date(fechaInicio), new Date(fechaFin)]
+            [Op.between]: [new Date(fechaInicio), endDate]
         };
     } else if (fechaInicio) {
         whereClause.fechaHoraEntrada = {
             [Op.gte]: new Date(fechaInicio)
         };
     } else if (fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         whereClause.fechaHoraEntrada = {
-            [Op.lte]: new Date(fechaFin)
+            [Op.lte]: endDate
         };
     }
 

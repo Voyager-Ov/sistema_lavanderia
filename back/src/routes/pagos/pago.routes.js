@@ -10,9 +10,12 @@ router.use(verificarToken, verificarSuscripcionActiva);
 
 router.get("/metodos", pagoController.obtenerMetodosPago);
 router.post("/metodos", validarCampos, pagoController.crearMetodoPago);
+router.patch("/metodos/:id", pagoController.toggleMetodoPago);
+router.delete("/metodos/:id", pagoController.eliminarMetodoPago);
 
 router.post("/", registrarPagoValidator, validarCampos, pagoController.registrarPago);
 router.post("/:id/facturar", pagoController.facturarPagoRetroactivo);
 router.patch("/:id/anular", pagoController.anularPago);
+router.get("/saldos-a-favor/:clienteId", pagoController.obtenerSaldosAFavor);
 
 export default router;

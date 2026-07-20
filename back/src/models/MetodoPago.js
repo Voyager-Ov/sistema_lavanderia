@@ -15,6 +15,11 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: false,
 			},
+			icono: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "Banknote", // Default to banknote if nothing provided
+			},
 			esFijo: {
 				// Para indicar que "Efectivo" no se puede borrar
 				type: DataTypes.BOOLEAN,

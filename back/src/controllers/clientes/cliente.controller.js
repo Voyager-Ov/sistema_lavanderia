@@ -45,3 +45,21 @@ export const desactivarCliente = async (req, res, next) => {
         next(error);
     }
 };
+
+export const registrarPagoCuentaCorriente = async (req, res, next) => {
+    try {
+        const result = await clienteService.registrarPagoCuentaCorriente(req.user.negocioId, req.params.id, req.body);
+        return successResponse(res, 200, "Pago registrado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const recalcularSaldoCuentaCorriente = async (req, res, next) => {
+    try {
+        const result = await clienteService.recalcularSaldoCuentaCorriente(req.user.negocioId, req.params.id);
+        return successResponse(res, 200, "Saldo recalculado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};

@@ -69,7 +69,7 @@ export default function RegisterPage() {
       }
     } catch (error: any) {
       toast.error("Error al registrarse", {
-        description: error.data?.message || error.message || "Hubo un problema al crear tu cuenta",
+        description: error.message || "Hubo un problema al crear tu cuenta",
       });
       animateFormError();
     } finally {

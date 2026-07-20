@@ -57,3 +57,19 @@ Este módulo gestiona el catálogo de productos y servicios ofrecidos por la lav
 ### 5. Eliminar Producto (Soft Delete)
 - **Ruta y Método**: `DELETE /api/productos/:id`
 - **Acción**: Realiza una baja lógica del producto (`activo: false`) para no romper el historial de pedidos pasados que usaron este producto, pero quitándolo del catálogo visible.
+
+### 6. Obtener Estadísticas de Productos
+- **Ruta y Método**: `GET /api/productos/stats`
+- **Acción**: Retorna estadísticas de uso de productos (ej. productos más vendidos).
+
+### 7. Actualización Masiva de Precios
+- **Ruta y Método**: `PUT /api/productos/bulk/precios`
+- **Acción**: Actualiza los precios de múltiples productos a la vez.
+
+### 8. Actualización Masiva de Disponibilidad
+- **Ruta y Método**: `PATCH /api/productos/bulk/disponibilidad`
+- **Acción**: Actualiza el estado de disponibilidad de múltiples productos en un solo request.
+
+### 9. Obtener Historial de Precios
+- **Ruta y Método**: `GET /api/productos/:id/historial`
+- **Acción**: Retorna el historial de cambios de precios (`HistorialPrecioProducto`) para un producto específico.

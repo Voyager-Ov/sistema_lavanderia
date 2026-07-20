@@ -68,3 +68,11 @@ Este módulo administra la base de datos de clientes de cada negocio (registro, 
     "motivoBaja": "El cliente solicitó eliminar su cuenta"
   }
   ```
+
+### 6. Registrar Pago en Cuenta Corriente
+- **Ruta y Método**: `POST /api/clientes/:id/cuenta-corriente/pagos`
+- **Acción**: Permite que un cliente pague parte o la totalidad de su saldo pendiente en cuenta corriente (por pedidos fiados). Registra el movimiento y ajusta el saldo total.
+
+### 7. Recalcular Saldo de Cuenta Corriente
+- **Ruta y Método**: `POST /api/clientes/:id/cuenta-corriente/recalcular`
+- **Acción**: Fuerza un recálculo del saldo de cuenta corriente del cliente basado en el historial de movimientos (`MovimientoCuentaCorriente`) en caso de desajustes.

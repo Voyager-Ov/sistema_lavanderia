@@ -1,133 +1,271 @@
 import { AppError } from "../../utils/errors.js";
-import { models } from "../../models/index.js";
+import { models, sequelize } from "../../models/index.js";
 import { emitToTenant } from "../../socket/socket.js";
 import { generarFacturaPedido } from "../integraciones/afip.service.js";
 import { connectionManager } from "../../models/connectionManager.js";
 
 export const registrarPago = async (negocioId, usuarioId, data) => {
-    const { pedidoId, metodoPagoId, monto } = data;
+    let { pedidoId, metodoPagoId, monto, dejarVueltoAFavor = false, saldosAplicados = [] } = data;
+    const t = await sequelize.transaction();
 
-    const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" } });
-    if (!cajaAbierta) {
-        throw new AppError("No se puede cobrar pedidos sin abrir una caja.", 400);
-    }
-
-    // Validar Pedido existe y pertenece al negocio
-    const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId } });
-    if (!pedido) {
-        throw new AppError("Pedido no encontrado.", 404);
-    }
-
-    const pagoExistente = await models.Pago.findOne({ where: { pedidoId, estado: "COMPLETADO" } });
-    if (pagoExistente) {
-        throw new AppError("Este pedido ya está registrado como pagado.", 400);
-    }
-
-    const nuevoPago = await models.Pago.create({
-        pedidoId,
-        registradoPorId: usuarioId,
-        metodoPagoId,
-        cajaId: cajaAbierta.id,
-        monto,
-        estado: "COMPLETADO"
-    });
-
-    // Intentar generar factura en AFIP si el negocio lo tiene activo
     try {
-        const ConfiguracionNegocio = connectionManager.centralModels.ConfiguracionNegocio;
-        const config = await ConfiguracionNegocio.findOne({ where: { negocioId } });
-        // 1. Evaluar si debe facturar en este momento
-        let debeFacturar = false;
-        
-        if (config && config.afipActivo && config.afipCertificado && config.afipLlavePrivada) {
-            if (config.afipModoFacturacion === "AUTOMATICO") {
-                debeFacturar = true;
-            } else if (config.afipModoFacturacion === "MANUAL" && data.facturarAfip === true) {
-                debeFacturar = true;
+        if (!metodoPagoId) {
+            const efectivo = await models.MetodoPago.findOne({ where: { negocioId, nombre: { [sequelize.Op.iLike]: "%efectivo%" }, activo: true }, transaction: t });
+            if (!efectivo) throw new AppError("Debe especificar un método de pago o habilitar 'Efectivo'.", 400);
+            metodoPagoId = efectivo.id;
+        }
+
+        const metodoPago = await models.MetodoPago.findByPk(metodoPagoId, { transaction: t });
+        const esEfectivo = metodoPago && metodoPago.nombre.toLowerCase().includes("efectivo");
+
+        const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" }, transaction: t });
+        if (!cajaAbierta) {
+            throw new AppError("No se puede cobrar pedidos sin abrir una caja.", 400);
+        }
+
+        const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId }, transaction: t });
+        if (!pedido) throw new AppError("Pedido no encontrado.", 404);
+        if (pedido.estado === "CANCELADO") throw new AppError("No se puede cobrar un pedido cancelado.", 400);
+        if (pedido.cobrado) throw new AppError("Este pedido ya está registrado como pagado.", 400);
+
+        let totalSaldosAplicados = 0;
+
+        if (saldosAplicados && saldosAplicados.length > 0) {
+            for (const saldo of saldosAplicados) {
+                const pagoOrigen = await models.Pago.findOne({ 
+                    where: { id: saldo.pagoId, estado: "COMPLETADO" },
+                    include: [{ model: models.Pedido, as: "pedido" }],
+                    transaction: t 
+                });
+                
+                if (!pagoOrigen || parseFloat(pagoOrigen.saldoAFavorDisponible) < parseFloat(saldo.monto)) {
+                    throw new AppError(`Saldo a favor insuficiente en el pago #${saldo.pagoId}.`, 400);
+                }
+
+                // Descontar saldo disponible
+                const nuevoDisponible = parseFloat(pagoOrigen.saldoAFavorDisponible) - parseFloat(saldo.monto);
+                await pagoOrigen.update({ saldoAFavorDisponible: nuevoDisponible }, { transaction: t });
+
+                // Registrar en Movimientos como historial
+                await models.MovimientoCuentaCorriente.create({
+                    clienteId: pedido.clienteId,
+                    negocioId,
+                    pedidoId: pedido.id,
+                    tipoMovimiento: "CREDITO",
+                    monto: parseFloat(saldo.monto),
+                    saldoResultante: 0, 
+                    comentario: `Saldo a favor aplicado desde el Pedido #${pagoOrigen.pedido?.codigoSeguimiento || pagoOrigen.pedidoId}`
+                }, { transaction: t });
+
+                totalSaldosAplicados += parseFloat(saldo.monto);
             }
         }
-        
-        // 2. Ejecutar facturación si corresponde
-        if (debeFacturar) {
-            const afipData = await generarFacturaPedido(negocioId, pedido, null, nuevoPago);
-            
-            await nuevoPago.update({
-                cae: afipData.cae,
-                vencimientoCae: afipData.vencimientoCae,
-                nroComprobante: afipData.nroComprobante.toString(),
-                tipoComprobante: afipData.tipoComprobante
-            });
+
+        const totalPedido = parseFloat(pedido.total);
+        const montoIngresado = parseFloat(monto) || 0;
+        const totalAbonado = montoIngresado + totalSaldosAplicados;
+
+        if (totalAbonado < totalPedido) {
+            throw new AppError("El monto total abonado no cubre el total del pedido.", 400);
         }
-    } catch (afipError) {
-        console.error("⚠️ El pago se registró pero falló la facturación de AFIP:", afipError.message);
-        // Podríamos guardar este error en una tabla de notificaciones para el cajero
+
+        const vuelto = totalAbonado - totalPedido;
+        let montoAFavorGenerado = 0;
+        let saldoAFavorDisponible = 0;
+        let montoRealCaja = montoIngresado;
+
+        if (vuelto > 0) {
+            if (!esEfectivo) {
+                throw new AppError("Solo se permite pagar de más o dar vuelto si el método de pago es Efectivo.", 400);
+            }
+            if (dejarVueltoAFavor) {
+                montoAFavorGenerado = vuelto;
+                saldoAFavorDisponible = vuelto;
+                // El cajero se queda con toda la plata física ingresada
+                montoRealCaja = montoIngresado;
+            } else {
+                // El cajero devuelve el vuelto físico
+                montoRealCaja = montoIngresado - vuelto;
+            }
+        }
+
+        const nuevoPago = await models.Pago.create({
+            pedidoId,
+            registradoPorId: usuarioId,
+            metodoPagoId,
+            cajaId: cajaAbierta.id,
+            monto: montoRealCaja,
+            montoAFavorGenerado,
+            saldoAFavorDisponible,
+            estado: "COMPLETADO"
+        }, { transaction: t });
+
+        await pedido.update({ cobrado: true }, { transaction: t });
+
+        // Registrar el pago de caja en MovimientoCuentaCorriente
+        if (montoRealCaja > 0) {
+            await models.MovimientoCuentaCorriente.create({
+                clienteId: pedido.clienteId,
+                negocioId,
+                pedidoId: pedido.id,
+                tipoMovimiento: "CREDITO",
+                monto: montoRealCaja,
+                saldoResultante: 0,
+                comentario: `Cobro en caja para Pedido #${pedido.codigoSeguimiento}`
+            }, { transaction: t });
+        }
+
+        // Recalcular el saldo global real del cliente solo por si acaso lo siguen mirando
+        // Aunque la fuente de la verdad ahora son los pedidos impagos
+        const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
+        if (cliente) {
+            // El saldo bajó por el total del pedido
+            const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
+            const nuevoSaldo = saldoAnterior - totalPedido - montoAFavorGenerado;
+            await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
+        }
+
+        try {
+            const ConfiguracionNegocio = connectionManager.centralModels.ConfiguracionNegocio;
+            const config = await ConfiguracionNegocio.findOne({ where: { negocioId }, transaction: t });
+            let debeFacturar = false;
+            
+            if (config && config.afipActivo && config.afipCertificado && config.afipLlavePrivada) {
+                if (config.afipModoFacturacion === "AUTOMATICO") {
+                    debeFacturar = true;
+                } else if (config.afipModoFacturacion === "MANUAL" && data.facturarAfip === true) {
+                    debeFacturar = true;
+                }
+            }
+            
+            if (debeFacturar) {
+                const afipData = await generarFacturaPedido(negocioId, pedido, null, nuevoPago);
+                await nuevoPago.update({
+                    cae: afipData.cae,
+                    vencimientoCae: afipData.vencimientoCae,
+                    nroComprobante: afipData.nroComprobante.toString(),
+                    tipoComprobante: afipData.tipoComprobante
+                }, { transaction: t });
+            }
+        } catch (afipError) {
+            console.error("⚠️ El pago se registró pero falló la facturación de AFIP:", afipError.message);
+        }
+
+        await t.commit();
+
+        emitToTenant(negocioId, "pago_registrado", {
+            pagoId: nuevoPago.id,
+            pedidoId: pedido.id,
+            monto: montoRealCaja
+        });
+        
+        emitToTenant(negocioId, "pedido_actualizado", {
+            action: "UPDATE_STATUS",
+            pedidoId: pedido.id,
+            cobrado: true
+        });
+
+        return nuevoPago;
+    } catch (error) {
+        await t.rollback();
+        throw error;
     }
-
-    // Actualizar el estado del pedido a cobrado = true
-    await pedido.update({ cobrado: true });
-
-    // Emitir evento al Socket para actualizar dashboard y tablas de pedidos
-    emitToTenant(negocioId, "pago_registrado", {
-        pagoId: nuevoPago.id,
-        pedidoId: pedido.id,
-        monto
-    });
-    
-    // También notificamos que el pedido fue cobrado
-    emitToTenant(negocioId, "pedido_actualizado", {
-        action: "UPDATE_STATUS",
-        pedidoId: pedido.id,
-        cobrado: true
-    });
-
-    return nuevoPago;
 };
 
 export const anularPago = async (negocioId, usuarioId, pagoId) => {
-    const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" } });
-    if (!cajaAbierta) {
-        throw new AppError("No se puede anular pagos. Debe abrir una caja.", 400);
+    const t = await sequelize.transaction();
+    try {
+        const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" }, transaction: t });
+        if (!cajaAbierta) {
+            throw new AppError("No se puede anular pagos. Debe abrir una caja.", 400);
+        }
+
+        const pago = await models.Pago.findOne({ where: { id: pagoId }, include: [{ model: models.Pedido, as: "pedido" }], transaction: t });
+        if (!pago || pago.pedido.negocioId !== negocioId) {
+            throw new AppError("Pago no encontrado.", 404);
+        }
+
+        if (pago.estado === "ANULADO") {
+            throw new AppError("El pago ya está anulado.", 400);
+        }
+
+        const cliente = await models.Cliente.findOne({ where: { id: pago.pedido.clienteId, negocioId }, transaction: t });
+        if (cliente) {
+            const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
+            const nuevoSaldo = saldoAnterior + parseFloat(pago.monto);
+
+            await models.MovimientoCuentaCorriente.create({
+                clienteId: cliente.id,
+                negocioId,
+                pedidoId: pago.pedido.id,
+                tipoMovimiento: "DEBITO",
+                monto: parseFloat(pago.monto),
+                saldoResultante: nuevoSaldo,
+                comentario: `Anulación del Pago #${pago.id} para Pedido #${pago.pedido.codigoSeguimiento}`
+            }, { transaction: t });
+
+            await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
+        }
+
+        await pago.update({ estado: "ANULADO" }, { transaction: t });
+
+        await t.commit();
+
+        emitToTenant(negocioId, "pago_anulado", {
+            pagoId: pago.id,
+            pedidoId: pago.pedido.id
+        });
+
+        // Intentar cancelar el pedido usando la lógica estándar, pero no fallar si no se puede (ya que el pago ya se anuló)
+        try {
+            const { cambiarEstadoPedido } = await import("../pedidos/pedido.service.js");
+            // Se usa "ADMIN" como rol para forzar la cancelación aunque el pedido ya esté en estados avanzados, 
+            // ya que la anulación del pago es una operación de caja fuerte.
+            await cambiarEstadoPedido(negocioId, usuarioId, "ADMIN", pago.pedido.id, "CANCELADO", "Anulación del pago asociado", "Anulación de pago", "El pago asociado a este pedido fue anulado desde caja.");
+        } catch (pedidoError) {
+            console.error("⚠️ El pago se anuló pero falló la cancelación del pedido asociado:", pedidoError.message);
+        }
+
+        return true;
+    } catch (error) {
+        if (!t.finished) await t.rollback();
+        throw error;
     }
-
-    const pago = await models.Pago.findOne({ where: { id: pagoId }, include: [{ model: models.Pedido, as: "pedido" }] });
-    if (!pago || pago.pedido.negocioId !== negocioId) {
-        throw new AppError("Pago no encontrado.", 404);
-    }
-
-    // Si la caja del pago original ya fue cerrada, teóricamente no se puede anular tan simple (descuadra históricos), 
-    // pero por simplicidad inicial, si el pago se anula, le descontamos a la caja actual o simplemente lo marcamos ANULADO.
-    // Lo correcto según el usuario: "aparecer en el recuento que se cancelo". 
-    // Si anulamos el pago, pasa a ANULADO y ya no sumará en los ingresos de SU caja abierta actual.
-    
-    await pago.update({ estado: "ANULADO" });
-    // Revertermos el pedido
-    await pago.pedido.update({ estado: "CANCELADO" });
-
-    emitToTenant(negocioId, "pago_anulado", {
-        pagoId: pago.id,
-        pedidoId: pago.pedido.id
-    });
-    
-    emitToTenant(negocioId, "pedido_actualizado", {
-        action: "UPDATE_STATUS",
-        pedidoId: pago.pedido.id,
-        estado: "CANCELADO"
-    });
-
-    return true;
 };
 
 export const obtenerMetodosPago = async (negocioId) => {
-    return await models.MetodoPago.findAll({ where: { negocioId, esHabilitado: true } });
+    return await models.MetodoPago.findAll({ where: { negocioId } });
 };
 
 export const crearMetodoPago = async (negocioId, data) => {
     return await models.MetodoPago.create({
         negocioId,
         nombre: data.nombre,
-        tipo: data.tipo,
-        esHabilitado: data.esHabilitado !== undefined ? data.esHabilitado : true
+        icono: data.icono || "Banknote",
+        activo: data.activo !== undefined ? data.activo : true,
+        esFijo: false
     });
+};
+
+export const toggleMetodoPago = async (negocioId, id) => {
+    const metodo = await models.MetodoPago.findOne({ where: { id, negocioId } });
+    if (!metodo) {
+        throw new AppError("Método de pago no encontrado.", 404);
+    }
+    await metodo.update({ activo: !metodo.activo });
+    return metodo;
+};
+
+export const eliminarMetodoPago = async (negocioId, id) => {
+    const metodo = await models.MetodoPago.findOne({ where: { id, negocioId } });
+    if (!metodo) {
+        throw new AppError("Método de pago no encontrado.", 404);
+    }
+    if (metodo.esFijo) {
+        throw new AppError("No se puede eliminar un método de pago fijo del sistema.", 400);
+    }
+    await metodo.destroy();
+    return true;
 };
 
 export const facturarPagoRetroactivo = async (negocioId, pagoId) => {
@@ -167,3 +305,28 @@ export const facturarPagoRetroactivo = async (negocioId, pagoId) => {
 
     return pago;
 };
+
+export const obtenerSaldosAFavor = async (negocioId, clienteId) => {
+    const pagos = await models.Pago.findAll({
+        where: {
+            saldoAFavorDisponible: { [sequelize.Op.gt]: 0 },
+            estado: 'COMPLETADO'
+        },
+        include: [{
+            model: models.Pedido,
+            as: 'pedido',
+            where: { clienteId, negocioId },
+            attributes: ['id', 'codigoSeguimiento', 'createdAt']
+        }],
+        order: [['fechaPago', 'ASC']]
+    });
+
+    return pagos.map(p => ({
+        pagoId: p.id,
+        pedidoId: p.pedido.id,
+        codigoSeguimiento: p.pedido.codigoSeguimiento,
+        fechaOriginal: p.fechaPago,
+        montoDisponible: parseFloat(p.saldoAFavorDisponible)
+    }));
+};
+

@@ -1,0 +1,64 @@
+[
+  {
+    "id": "task-1",
+    "title": "Crear Custom Hooks de Lógica",
+    "owner_role": "Frontend Developer",
+    "status": "done",
+    "parallelizable": false,
+    "depends_on": [],
+    "outputs": [
+      "src/app/admin/pedidos/hooks/usePedidosData.ts",
+      "src/app/admin/pedidos/hooks/usePedidosActions.ts",
+      "src/app/admin/pedidos/hooks/usePedidosModals.ts"
+    ],
+    "exit_criteria": "Ambos hooks extraen satisfactoriamente los estados, llamadas a API y bulk actions sin errores de TypeScript."
+  },
+  {
+    "id": "task-2",
+    "title": "Crear Componentes Visuales Básicos",
+    "owner_role": "Frontend Developer",
+    "status": "done",
+    "parallelizable": true,
+    "depends_on": ["task-1"],
+    "outputs": [
+      "src/app/admin/pedidos/components/pedidos-header.tsx",
+      "src/app/admin/pedidos/components/pedidos-kpis.tsx"
+    ],
+    "exit_criteria": "Los componentes renderizan correctamente recibiendo props (sin dependencias internas pesadas)."
+  },
+  {
+    "id": "task-3",
+    "title": "Crear Componentes Complejos (Table y Modals)",
+    "owner_role": "Frontend Developer",
+    "status": "done",
+    "parallelizable": true,
+    "depends_on": ["task-1"],
+    "outputs": [
+      "src/app/admin/pedidos/components/pedidos-table.tsx",
+      "src/app/admin/pedidos/components/pedidos-modals.tsx"
+    ],
+    "exit_criteria": "El DataTable se envuelve correctamente con su Toolbar y Bulk Actions. Los Modales están encapsulados en un solo contenedor."
+  },
+  {
+    "id": "task-4",
+    "title": "Reestructurar `page.tsx` (Integración Final)",
+    "owner_role": "Frontend Developer",
+    "status": "done",
+    "parallelizable": false,
+    "depends_on": ["task-2", "task-3"],
+    "outputs": [
+      "src/app/admin/pedidos/page.tsx"
+    ],
+    "exit_criteria": "La página principal solo invoca los hooks y ensambla los componentes, quedando con menos de 150 líneas."
+  },
+  {
+    "id": "task-5",
+    "title": "Verificación y Limpieza",
+    "owner_role": "QA / Developer",
+    "status": "done",
+    "parallelizable": false,
+    "depends_on": ["task-4"],
+    "outputs": [],
+    "exit_criteria": "La página carga, filtra, cambia estados y los modales abren y cierran sin errores de renderizado. Los imports no utilizados son eliminados."
+  }
+]

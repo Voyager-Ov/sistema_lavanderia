@@ -1,0 +1,81 @@
+{
+  "feature": "Crear Pedido",
+  "architecture": {
+    "frontend": {
+      "page_entry": "app/admin/pedidos/nuevo/page.tsx",
+      "components": [
+        "ClientSearch (Buscador con typeahead)",
+        "ServiceCatalog (Tabs de categorías + Grilla de servicios)",
+        "OrderCart (Resumen, totales y reglas de validación)"
+      ],
+      "data_layer": [
+        "domains/clientes/api.ts -> getClientes(search)",
+        "domains/categorias/api.ts -> getCategorias()",
+        "domains/productos/api.ts -> getProductos(categoriaId)",
+        "domains/pedidos/api.ts -> crearPedido(payload)"
+      ]
+    }
+  },
+  "interfaces_and_contracts": {
+    "Cliente": { "id": "number", "nombre": "string", "telefono": "string?" },
+    "Categoria": { "id": "number", "nombre": "string" },
+    "Producto": { "id": "number", "nombre": "string", "precioActual": "number", "categoriaId": "number" },
+    "CartItem": { "producto": "Producto", "cantidad": "number", "subtotal": "number" },
+    "CrearPedidoPayload": {
+      "clienteId": "number",
+      "items": [
+        { "productoId": "number", "cantidad": "number" }
+      ]
+    },
+    "StateShape": {
+      "selectedClient": "Cliente | null",
+      "activeCategoryId": "number | 'ALL'",
+      "cart": "CartItem[]",
+      "isSubmitting": "boolean"
+    }
+  },
+  "dependency_decisions": {
+    "animations": {
+      "library": "GSAP",
+      "rationale": "Requerimiento explícito de animaciones fluidas; ya está configurado en el proyecto. Se usará para animar la entrada de productos y actualizaciones del carrito."
+    },
+    "state_management": {
+      "library": "React useState / useMemo",
+      "rationale": "El estado del pedido es efímero y se consume sólo en esta pantalla. No justifica Zustand a menos que se requiera persistencia entre vistas."
+    },
+    "notifications": {
+      "library": "sonner",
+      "rationale": "Librería estándar del proyecto para toast notifications en errores y éxitos."
+    }
+  },
+  "failure_modes": {
+    "api_errors": "Se atraparán excepciones en los fetch de clientes/productos/pedidos. Se mostrarán toasts de error descriptivos usando `sonner`.",
+    "empty_search": "Si la búsqueda de clientes no arroja resultados, mostrar un UI state amigable ('No se encontraron clientes').",
+    "network_disconnect_during_submit": "Deshabilitar botón de 'Confirmar' durante `isSubmitting`, mostrar estado de carga, y re-habilitar si falla."
+  },
+  "testing_strategy": {
+    "manual": [
+      "Verificar búsqueda de clientes por debounce.",
+      "Verificar filtrado correcto de productos al cambiar de categoría.",
+      "Verificar cálculo matemático de los subtotales y total general.",
+      "Verificar validación de carrito vacío y cliente faltante."
+    ]
+  },
+  "phased_implementation_plan": {
+    "goal": "Desplegar la pantalla de Crear Pedido 100% funcional y estilizada.",
+    "phases": [
+      {
+        "phase": 1,
+        "tasks": ["Implementar endpoints frontend (API calls) para Clientes, Categorías, Productos y Crear Pedido."]
+      },
+      {
+        "phase": 2,
+        "tasks": ["Maquetar componentes UI base (ClientSearch, ServiceCatalog, OrderCart) siguiendo frontend-design."]
+      },
+      {
+        "phase": 3,
+        "tasks": ["Integrar estado (StateShape) y wiring entre catálogo, buscador y carrito.", "Añadir animaciones GSAP y testing manual."]
+      }
+    ]
+  }
+}

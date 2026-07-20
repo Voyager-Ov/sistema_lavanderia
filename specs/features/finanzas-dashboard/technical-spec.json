@@ -1,0 +1,63 @@
+{
+  "feature": "Finanzas Dashboard - Arquitectura Técnica",
+  "status": "DRAFT",
+  "architecture": {
+    "backend": {
+      "controllers": [
+        {
+          "name": "finanzas.controller.js",
+          "methods": {
+            "getKPIs": "Suma Pagos.monto (estado=COMPLETADO) y Gastos.monto en el rango de fechas. Calcula Pedidos.total (estado=LISTO/ENTREGADO sin pago o con pago ANULADO).",
+            "getMovimientos": "Hace findAll de Pagos y Gastos con Includes (Pedido, MetodoPago, Usuario). Mapea ambos arrays a un formato unificado (MovimientoFinanciero), filtra por búsqueda (en memoria o con ILIKE si es posible, pero en memoria es más seguro para uniones complejas en SQLite/Postgres), ordena por fecha DESC y aplica slice() para la paginación de la UI."
+          }
+        }
+      ],
+      "routes": [
+        "GET /api/finanzas/kpis?fechaDesde&fechaHasta",
+        "GET /api/finanzas/movimientos?fechaDesde&fechaHasta&page&limit&search"
+      ]
+    },
+    "frontend_state": {
+      "management": "React `useState` en el nivel superior (`page.tsx`) para: fechaInicio, fechaFin, search, page. Se pasan como props o Context a los subcomponentes. Al cambiar, disparan refetch de SWR o un useEffect que llama a finanzas.api.ts.",
+      "websockets": "El hook `useSocket` escucha 'caja_actualizada' y 'pago_registrado' para ejecutar `fetchData(false)` y rehidratar los datos silenciosamente."
+    },
+    "frontend_components": [
+      {
+        "name": "FinanzasPage",
+        "layout": "div con className='w-full p-4 md:p-8 flex flex-col gap-8'",
+        "children": ["FinanzasHeader", "FinanzasKPIs", "FinanzasToolbar", "FinanzasTable", "FinanzasCharts"]
+      },
+      {
+        "name": "FinanzasHeader",
+        "design": "Flexbox space-between. A la derecha, DateRangePicker estilo 'Pedidos' (Outline button con icono Calendar).",
+        "logic": "Controla fechaInicio y fechaFin."
+      },
+      {
+        "name": "FinanzasKPIs",
+        "design": "CSS Grid (grid-cols-4). Tarjetas blancas, bordes suaves, iconos con background tenue del color representativo.",
+        "animation": "GSAP stagger. `gsap.from(cards, { y: 20, opacity: 0, stagger: 0.1, ease: 'power2.out', duration: 0.5 })`"
+      },
+      {
+        "name": "FinanzasTable",
+        "design": "Tabla custom. Columnas: Monto formateado (text-emerald-600 para Ingresos, text-rose-600 para Egresos). Badges redondeados para el Tipo. Acciones: Button variant='ghost' hover:bg-transparent hover:text-brand-blue.",
+        "logic": "Paginación inferior clásica. Ordenamiento local si es necesario."
+      },
+      {
+        "name": "FinanzasCharts",
+        "design": "CSS Grid. 1 gráfico grande arriba (Evolución Área/Líneas), 2 gráficos medianos abajo (Barras y PieChart).",
+        "libraries": ["Recharts", "Lucide React"],
+        "data_transformation": "Agrupar movimientos por día para el gráfico de evolución temporal."
+      }
+    ],
+    "design_tokens": {
+      "colors": {
+        "ingreso": "#059669",
+        "egreso": "#e11d48",
+        "balance": "#2563eb",
+        "pendiente": "#ea580c"
+      },
+      "shadows": "shadow-sm para cards estándar, hover:shadow-md para interactivos.",
+      "gradients": "NO PERMITIDOS. Usar fill sólido en Recharts (`fill='#059669'`)."
+    }
+  }
+}

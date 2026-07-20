@@ -1,0 +1,61 @@
+{
+  "feature": "Finanzas Dashboard - Vista Integral",
+  "status": "DRAFT",
+  "scope": {
+    "in_scope": [
+      "Vista unificada de Libro Mayor (Ledger) con todos los flujos de caja: Cobros de Pedidos (Pagos) y Egresos operativos (Gastos).",
+      "Control de acceso estricto: la pantalla y sus APIs solo pueden ser consumidas por el rol ADMIN.",
+      "Sistema de filtrado global por fechas (Hoy, Esta Semana, Este Mes, Este Año, y rango personalizado) que hidrata dinámicamente toda la pantalla.",
+      "SideSheet interactivo para registrar Egresos y Administrar Categorías de gastos.",
+      "Tarjetas de KPIs premium con valores monetarios formateados (Balance Neto, Ingresos, Egresos, Pendiente por Cobrar).",
+      "Tabla de datos avanzada con paginación real, ordenamiento por columnas y buscador de texto completo.",
+      "Sistema de acciones en la tabla con diseño específico: botones con fondo blanco y el ícono adoptando el color de la acción al hacer hover.",
+      "Actualización reactiva en tiempo real vía WebSockets (eventos de caja, pagos y gastos).",
+      "Sección inferior tipo 'Dashboard Grid' con múltiples gráficos analíticos (Recharts).",
+      "Estricto cumplimiento de diseño: uso intensivo del ancho completo (full-width), animaciones core con GSAP (staggers, fade-ins), sin uso de degradados (gradients), y uso de la paleta de colores sólida del sistema."
+    ],
+    "out_of_scope": [
+      "Modelos de 'Ingresos Libres' o 'Ajustes Manuales'.",
+      "Facturación electrónica AFIP.",
+      "Edición de cobros pasados desde esta pantalla (se redirige al pedido)."
+    ]
+  },
+  "user_journeys": [
+    {
+      "persona": "Administrador",
+      "action": "Carga la pantalla de finanzas",
+      "expected_result": "Las 4 tarjetas KPI aparecen con un efecto 'stagger' de abajo hacia arriba (GSAP). La tabla muestra un skeleton loader y luego los datos. Los gráficos se dibujan con animaciones nativas."
+    },
+    {
+      "persona": "Administrador",
+      "action": "Selecciona el filtro 'Este Mes' en la cabecera",
+      "expected_result": "El estado global cambia. KPIs, Tabla y Gráficos entran en estado de carga (spinners/skeletons) y se repueblan con la nueva data calculada por el backend."
+    },
+    {
+      "persona": "Administrador",
+      "action": "Pasa el mouse sobre el botón de 'Eliminar' en un registro de Gasto de la tabla",
+      "expected_result": "El botón, originalmente blanco, cambia el color de su ícono a rojo intenso y eleva sutilmente su sombra, sin cambiar el fondo."
+    },
+    {
+      "persona": "Administrador",
+      "action": "Hace clic en 'Registrar Egreso'",
+      "expected_result": "El SideSheet se despliega desde la derecha. Contiene el formulario de gasto y una tuerca para ir a 'Administrar Categorías', con transiciones GSAP entre ambas vistas internas."
+    }
+  ],
+  "design_rules": [
+    "Layout 100% full-width, eliminando clases max-w-7xl o similares.",
+    "Gráficos (Charts) distribuidos en CSS Grid interactivo, no apilados en una sola columna.",
+    "Prohibido el uso de degradados (bg-gradient, text-transparent bg-clip-text) en fondos, botones o gráficos. Se deben usar colores sólidos (brand-blue, emerald-600, rose-600).",
+    "Micro-interacciones en tarjetas y filas usando gsap-core."
+  ],
+  "acceptance_criteria": [
+    "AC1: El layout general ocupa el 100% del viewport disponible.",
+    "AC2: La cabecera contiene Título, Subtítulo y el selector de fechas exacto al de Pedidos.",
+    "AC3: Existen 4 KPIs: Balance (Azul), Ingresos (Verde), Egresos (Rojo), No Cobrado (Naranja/Gris).",
+    "AC4: La toolbar contiene un buscador de input largo y 2 botones: 'Registrar Egreso' (Rojo sólido) y 'Categorías' (Outline).",
+    "AC5: La tabla fusiona Pagos y Gastos. Las columnas son: Tipo (Badge), Fecha, Descripción, Referencia/Categoría, Método, Registrado Por, Monto (Verde/Rojo), Acciones.",
+    "AC6: Las acciones de la tabla respetan el diseño hover especificado (fondo blanco, ícono color).",
+    "AC7: Existen al menos 3 gráficos: (1) Evolución de Ingresos vs Egresos en el tiempo, (2) Composición de Gastos por Categoría, (3) Resumen de Estados de Cobro.",
+    "AC8: WebSocket actualiza silenciosamente los KPIs y la tabla sin recargar la página completa."
+  ]
+}

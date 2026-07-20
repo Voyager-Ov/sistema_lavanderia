@@ -1,0 +1,70 @@
+{
+  "featureId": "refactor-pedidos-page",
+  "title": "Refactorización de la Página de Pedidos (Admin)",
+  "overview": {
+    "description": "El objetivo principal es refactorizar la página de pedidos del panel de administrador (`admin/pedidos/page.tsx`) para mejorar la mantenibilidad del código, separando responsabilidades (lógica vs interfaz) sin alterar la experiencia del usuario final.",
+    "boundaries": {
+      "inScope": [
+        "Extraer la lógica de obtención de datos (pedidos y KPIs) a custom hooks.",
+        "Extraer la lógica de acciones de negocio (estado, tickets, facturas, cobros) a custom hooks.",
+        "Componentizar bloques visuales: Header (Filtros), KPIs, y la Tabla Principal.",
+        "Agrupar la gestión de modales (Sheets/Wizards) para no saturar el renderizado del componente principal."
+      ],
+      "outOfScope": [
+        "Modificar los endpoints del backend.",
+        "Agregar nuevas funcionalidades o pantallas de usuario.",
+        "Cambiar estilos visuales, colores o el diseño general (UI) de la página."
+      ]
+    }
+  },
+  "useCases": [
+    {
+      "id": "UC-01",
+      "title": "Navegación y carga inicial",
+      "description": "Cuando el administrador ingresa a la vista, los pedidos y KPIs se cargan preservando el estado previo almacenado en la sesión (filtros, paginación)."
+    },
+    {
+      "id": "UC-02",
+      "title": "Filtrado y Búsqueda",
+      "description": "El administrador puede buscar por cliente/ticket y filtrar por estado o rango de fechas, actualizando la tabla sin recargar toda la página."
+    },
+    {
+      "id": "UC-03",
+      "title": "Acciones Individuales",
+      "description": "El administrador puede abrir modales (cobrar, ver detalle, cancelar, tickets) y ejecutar acciones rápidas (cambiar estado) sobre un pedido específico."
+    },
+    {
+      "id": "UC-04",
+      "title": "Acciones Masivas (Bulk)",
+      "description": "El administrador puede seleccionar múltiples filas para realizar cobros, impresión de tickets, cambio de estado o cancelación masiva."
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "given": "El usuario navega a la página de pedidos",
+      "when": "La página termina de cargar",
+      "then": "La UI debe verse y comportarse exactamente igual que antes de la refactorización."
+    },
+    {
+      "id": "AC-02",
+      "given": "El usuario cambia un filtro o página",
+      "when": "Los datos se actualizan",
+      "then": "El estado de búsqueda se mantiene persistido (SessionStorage) para mantener la navegación coherente."
+    },
+    {
+      "id": "AC-03",
+      "given": "El usuario abre un modal o sheet",
+      "when": "El componente se renderiza",
+      "then": "Solo debe renderizarse el modal/sheet afectado, evitando que toda la tabla o los KPIs se vuelvan a renderizar innecesariamente."
+    }
+  ],
+  "uxBehavior": {
+    "interactions": "Las animaciones de GSAP de carga inicial deben seguir presentes. Los toast de feedback (éxito/error) al realizar acciones (individuales o masivas) se mantienen idénticos."
+  },
+  "businessRules": [
+    "Un pedido puede cambiar de estado respetando el ciclo de vida de Lavandería (Pendiente -> En Proceso -> Listo -> Entregado).",
+    "Las cancelaciones requieren justificación obligatoria.",
+    "Para imprimir un ticket que ya fue impreso antes, se recupera el HTML desde el servidor; sino, se genera uno nuevo."
+  ]
+}

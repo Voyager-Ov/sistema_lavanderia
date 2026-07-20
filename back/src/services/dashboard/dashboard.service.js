@@ -75,11 +75,10 @@ export const getDashboardStats = async (negocioId) => {
         group: ['estado']
     });
 
-    // Mapear los estados a un objeto plano
     const estadosMap = {
         PENDIENTE: 0,
         EN_PROCESO: 0,
-        LISTO: 0,
+        LISTO_PARA_RETIRAR: 0,
         ENTREGADO: 0,
         PAGADO: 0,
         CANCELADO: 0
@@ -211,11 +210,11 @@ export const getDashboardStats = async (negocioId) => {
     // Retorno consolidado
     return {
         ingresos: {
-            mesActual: ingresosActuales || 0,
-            mesAnterior: ingresosAnteriores || 0,
-            hoyCobrado: ingresosHoyCobrado || 0,
-            ayerCobrado: ingresosAyerCobrado || 0,
-            hoyTotalPedidos: ingresosHoyEsperado || 0
+            mesActual: parseFloat(ingresosActuales) || 0,
+            mesAnterior: parseFloat(ingresosAnteriores) || 0,
+            hoyCobrado: parseFloat(ingresosHoyCobrado) || 0,
+            ayerCobrado: parseFloat(ingresosAyerCobrado) || 0,
+            hoyTotalPedidos: parseFloat(ingresosHoyEsperado) || 0
         },
         pedidosDelDia: {
             hoy: pedidosHoy || 0,

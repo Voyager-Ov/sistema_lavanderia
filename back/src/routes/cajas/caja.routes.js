@@ -12,4 +12,8 @@ router.get("/actual", cajaController.getCajaActual);
 router.post("/abrir", abrirCajaValidator, validarCampos, cajaController.abrirCaja);
 router.post("/:id/cerrar", cerrarCajaValidator, validarCampos, cajaController.cerrarCaja);
 
+// Nuevas rutas de historial
+router.get("/", cajaController.getHistorialCajas);
+router.get("/:id", cajaController.getCajaPorId);
+
 export default router;

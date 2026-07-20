@@ -1,6 +1,5 @@
 import { Router } from "express";
 import * as configuracionController from "../../controllers/configuracion/configuracion.controller.js";
-import * as whatsappController from "../../controllers/configuracion/whatsapp.controller.js";
 import { verificarToken } from "../../middlewares/auth/auth.middleware.js";
 import { verificarRol } from "../../middlewares/role.middleware.js";
 
@@ -24,9 +23,6 @@ router.post(
 );
 
 // --- Rutas de WhatsApp ---
-router.get("/whatsapp/status", verificarRol(["ADMIN", "SUPERADMIN"]), whatsappController.getEstadoWhatsApp);
-router.post("/whatsapp/conectar", verificarRol(["ADMIN", "SUPERADMIN"]), whatsappController.conectarWhatsApp);
-router.post("/whatsapp/desconectar", verificarRol(["ADMIN", "SUPERADMIN"]), whatsappController.desconectarWhatsApp);
-router.patch("/whatsapp/mensaje", verificarRol(["ADMIN", "SUPERADMIN"]), whatsappController.actualizarMensajeWhatsApp);
+// Automático eliminado, solo se mantiene en UI manual.
 
 export default router;

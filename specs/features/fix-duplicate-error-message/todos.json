@@ -1,0 +1,30 @@
+[
+  {
+    "id": "T1",
+    "title": "Refactor Backend Error Responses",
+    "owner_role": "Backend Engineer",
+    "status": "pending",
+    "parallelizable": false,
+    "depends_on": [],
+    "outputs": [
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\back\\src\\controllers\\auth\\auth.controller.js"
+    ],
+    "exit_criteria": "The 'error' property is removed from 'res.status(...).json()' calls in auth.controller.js, leaving only the 'message' property."
+  },
+  {
+    "id": "T2",
+    "title": "Standardize Frontend Auth Error Handling",
+    "owner_role": "Frontend Engineer",
+    "status": "pending",
+    "parallelizable": true,
+    "depends_on": ["T1"],
+    "outputs": [
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\front\\src\\app\\(auth)\\register\\page.tsx",
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\front\\src\\app\\(auth)\\login\\page.tsx",
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\front\\src\\app\\(auth)\\forgot-password\\page.tsx",
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\front\\src\\app\\(auth)\\reset-password\\page.tsx",
+      "d:\\github desktop\\sistema_lavanderia\\sistema_lavanderia\\front\\src\\app\\(auth)\\verify-email\\page.tsx"
+    ],
+    "exit_criteria": "All authentication-related pages in the frontend catch block explicitly read the error message from 'error.response?.data?.message || error.message' and display it cleanly in the UI via sonner toasts."
+  }
+]

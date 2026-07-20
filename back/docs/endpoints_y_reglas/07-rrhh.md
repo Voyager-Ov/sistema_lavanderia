@@ -33,3 +33,11 @@ Este módulo permite el control de asistencia de los empleados, registrando las 
   - `empleadoId`: Filtra los registros para un empleado en particular (solo útil para Admins).
   - `fechaInicio` y `fechaFin`: Permite buscar asistencias dentro de un rango de fechas de entrada.
 - **Dato Técnico**: Dado que los Usuarios viven en la base de datos central y las Asistencias en la base de datos del negocio (Tenant), el servicio hace el cruce (join) a nivel de código para devolver el nombre y rol del empleado junto a los registros de fichadas.
+
+### 4. Reporte Mensual de Sueldos
+- **Ruta y Método**: `GET /api/rrhh/reportes/sueldos`
+- **Acción**: Genera un reporte consolidado de las horas trabajadas por cada empleado en un mes específico.
+- **Roles Permitidos**: Solo `ADMIN`.
+- **Filtros Soportados**:
+  - `mes`: Mes (1-12).
+  - `anio`: Año (ej. 2026).

@@ -46,7 +46,7 @@ function VerifyEmailContent() {
       router.push("/login");
     } catch (error: any) {
       toast.error("Error al verificar", {
-        description: error.data?.message || error.message || "Código inválido o expirado.",
+        description: error.message || "Código inválido o expirado.",
       });
       animateFormError();
     } finally {
@@ -63,7 +63,7 @@ function VerifyEmailContent() {
       toast.success("Código reenviado", { description: "Revisa tu bandeja de entrada o spam." });
     } catch (error: any) {
       toast.error("Error", {
-        description: error.data?.message || error.message || "No se pudo reenviar el código.",
+        description: error.message || "No se pudo reenviar el código.",
       });
     } finally {
       setIsLoading(false);

@@ -11,7 +11,8 @@ import {
   Building,
   FileText,
   User,
-  Wallet
+  Wallet,
+  BarChart
 } from "lucide-react";
 
 const adminMainMenu = [
@@ -20,20 +21,22 @@ const adminMainMenu = [
   { title: "Caja", icon: Wallet, href: "/admin/caja" },
   { title: "Clientes", icon: Users, href: "/admin/clientes" },
   { title: "Servicios", icon: Building, href: "/admin/servicios" }, // Consider changing icon to something like Sparkles or Layers if needed
+  { title: "Finanzas", icon: Wallet, href: "/admin/finanzas" },
   { 
-    title: "Finanzas", 
-    icon: FileText, 
-    href: "/admin/finanzas",
+    title: "Reportes", 
+    icon: BarChart, 
+    href: "",
     children: [
-      { title: "Reportes", href: "/admin/finanzas/reportes" },
-      { title: "Movimientos", href: "/admin/finanzas/movimientos" }
+      { title: "Servicios", href: "/admin/reportes/servicios" },
+      { title: "Pedidos", href: "/admin/reportes/pedidos" },
+      { title: "Empleados", href: "/admin/reportes/empleados" }
     ]
   }
 ];
 
 const adminAccountMenu = [
   { title: "Mi Perfil", icon: User, href: "/admin/perfil" },
-  { title: "Configuración", icon: Settings, href: "/admin/configuracion" },
+  { title: "Configuración", icon: Settings, href: "/admin/configuraciones" },
 ];
 
 import { usePathname } from "next/navigation";

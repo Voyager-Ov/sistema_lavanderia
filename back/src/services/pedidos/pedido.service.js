@@ -4,9 +4,11 @@ import { generarCodigoSeguimiento } from "../../utils/codeGenerator.util.js";
 import { getPaginationParams, getPagingData } from "../../utils/pagination.util.js";
 import { Op } from "sequelize";
 import { emitToTenant } from "../../socket/socket.js";
+import { generarFacturaPedido } from "../integraciones/afip.service.js";
+import crypto from "crypto";
 
 export const crearPedido = async (negocioId, usuarioId, data) => {
-    const { clienteId, items } = data;
+    const { clienteId, items, fechaEntregaEstimada } = data;
     const t = await sequelize.transaction();
     try {
         // 1. Validar Cliente
@@ -44,7 +46,8 @@ export const crearPedido = async (negocioId, usuarioId, data) => {
             creadoPorId: usuarioId,
             estado: "PENDIENTE",
             codigoSeguimiento,
-            total: totalCalculado
+            total: totalCalculado,
+            fechaEntregaEstimada: fechaEntregaEstimada || null
         }, { transaction: t });
 
         // 4. Crear Ítems
@@ -61,6 +64,22 @@ export const crearPedido = async (negocioId, usuarioId, data) => {
             estadoNuevo: "PENDIENTE",
             comentario: "Pedido creado en el sistema"
         }, { transaction: t });
+
+        // 6. Impactar en Cuenta Corriente (Generar Deuda / DEBITO)
+        const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
+        const nuevoSaldo = saldoAnterior + totalCalculado;
+        
+        await models.MovimientoCuentaCorriente.create({
+            clienteId,
+            negocioId,
+            pedidoId: nuevoPedido.id,
+            tipoMovimiento: "DEBITO",
+            monto: totalCalculado,
+            saldoResultante: nuevoSaldo,
+            comentario: `Deuda por Pedido #${codigoSeguimiento}`
+        }, { transaction: t });
+
+        await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
 
         await t.commit();
         
@@ -91,28 +110,65 @@ export const obtenerPedidos = async (negocioId, queryParams = {}) => {
         where.clienteId = clienteId;
     }
     if (fechaInicio && fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         where.createdAt = {
-            [Op.between]: [new Date(fechaInicio), new Date(fechaFin)]
+            [Op.between]: [new Date(fechaInicio), endDate]
         };
     } else if (fechaInicio) {
         where.createdAt = {
             [Op.gte]: new Date(fechaInicio)
         };
     } else if (fechaFin) {
+        const endDate = new Date(fechaFin);
+        endDate.setUTCHours(23, 59, 59, 999);
         where.createdAt = {
-            [Op.lte]: new Date(fechaFin)
+            [Op.lte]: endDate
         };
     }
 
     const include = [
         { model: models.Cliente, as: "cliente", attributes: ["id", "nombre", "telefono"] },
-        { model: models.Usuario, as: "creador", attributes: ["id", "nombre"] }
+        { model: models.Usuario, as: "creador", attributes: ["id", "nombre"] },
+        { 
+            model: models.PedidoItem, 
+            as: "items", 
+            include: [{ model: models.Producto, as: "producto", attributes: ["nombre"] }]
+        },
+        {
+            model: models.Pago,
+            as: "pago",
+            include: [{ model: models.MetodoPago, as: "metodoPago", attributes: ["nombre"] }]
+        }
     ];
 
     if (search) {
-        include[0].where = {
-            nombre: { [Op.iLike]: `%${search}%` }
-        };
+        // Buscamos primero los IDs de los clientes que coincidan
+        const clientesCoincidentes = await models.Cliente.findAll({
+            where: {
+                negocioId,
+                [Op.or]: [
+                    sequelize.where(
+                        sequelize.fn('LOWER', sequelize.col('nombre')),
+                        'LIKE',
+                        `%${search.toLowerCase()}%`
+                    ),
+                    { telefono: { [Op.like]: `%${search}%` } }
+                ]
+            },
+            attributes: ["id"],
+            raw: true
+        });
+        const clientesIds = clientesCoincidentes.map(c => c.id);
+
+        where[Op.or] = [
+            sequelize.where(
+                sequelize.fn('LOWER', sequelize.col('codigoSeguimiento')),
+                'LIKE',
+                `%${search.toLowerCase()}%`
+            ),
+            { clienteId: { [Op.in]: clientesIds } }
+        ];
     }
 
     // Determinar el ordenamiento
@@ -143,6 +199,120 @@ export const obtenerPedidos = async (negocioId, queryParams = {}) => {
     return getPagingData(data, page, limit);
 };
 
+export const generarTicketHTML = async (negocioId, pedidoId) => {
+    const pedido = await obtenerPedidoPorId(negocioId, pedidoId);
+
+    if (pedido.estado === "CANCELADO") {
+        throw new AppError("No se puede imprimir el ticket de un pedido cancelado.", 400);
+    }
+
+    const { cliente, items } = pedido;
+
+    const fecha = new Date(pedido.createdAt).toLocaleString("es-AR", {
+        timeZone: "America/Argentina/Buenos_Aires",
+    });
+
+    let itemsHtml = items.map(item => `
+        <tr>
+            <td style="padding: 4px 0;">${item.cantidad}x ${item.producto?.nombre || 'Item'}</td>
+            <td style="padding: 4px 0; text-align: right;">$${parseFloat(item.subtotal).toLocaleString("es-AR")}</td>
+        </tr>
+    `).join("");
+
+    return `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Ticket ${pedido.codigoSeguimiento}</title>
+            <style>
+                body {
+                    font-family: 'Courier New', Courier, monospace;
+                    font-size: 12px;
+                    width: 300px;
+                    margin: 0 auto;
+                    padding: 10px;
+                    color: #000;
+                }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .font-bold { font-weight: bold; }
+                .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+                table { width: 100%; border-collapse: collapse; }
+                @media print {
+                    body { margin: 0; padding: 0; width: 100%; }
+                }
+            </style>
+        </head>
+        <body onload="window.print()">
+            <div class="text-center font-bold" style="font-size: 16px;">SISTEMA LAVANDERÍA</div>
+            <div class="text-center">Ticket de Pedido</div>
+            <div class="divider"></div>
+            
+            <div><strong>Ticket:</strong> #${pedido.codigoSeguimiento}</div>
+            <div><strong>Fecha:</strong> ${fecha}</div>
+            <div><strong>Cliente:</strong> ${cliente?.nombre || 'Consumidor Final'}</div>
+            ${cliente?.telefono ? `<div><strong>Teléfono:</strong> ${cliente.telefono}</div>` : ''}
+            
+            <div class="divider"></div>
+            
+            <table>
+                <tbody>
+                    ${itemsHtml}
+                </tbody>
+            </table>
+            
+            <div class="divider"></div>
+            
+            <table>
+                <tr>
+                    <td class="font-bold" style="font-size: 14px;">TOTAL</td>
+                    <td class="font-bold text-right" style="font-size: 14px;">$${parseFloat(pedido.total).toLocaleString("es-AR")}</td>
+                </tr>
+            </table>
+            
+            <div class="divider"></div>
+            <div class="text-center">¡Gracias por su confianza!</div>
+            <div class="text-center" style="font-size: 10px; margin-top: 5px;">Conserve este ticket para retirar.</div>
+        </body>
+        </html>
+    `;
+};
+
+export const generarFacturaElectronica = async (negocioId, pedidoId) => {
+    const pedido = await obtenerPedidoPorId(negocioId, pedidoId);
+    
+    // Validaciones Estrictas
+    if (pedido.estado === "CANCELADO") {
+        throw new AppError("No se puede facturar un pedido cancelado.", 400);
+    }
+
+    if (pedido.facturado) {
+        throw new AppError("Este pedido ya posee una factura emitida.", 400);
+    }
+    
+    if (!pedido.cobrado) {
+        throw new AppError("No se puede facturar un pedido que aún no ha sido cobrado.", 400);
+    }
+    
+    // Aquí llamamos a la integración AFIP
+    // El servicio AFIP ya tira errores (e.g., 400 "Configuración de AFIP está incompleta", 400 "No está activo")
+    // por lo que este controlador es robusto frente a la falta de certificados
+    
+    const factura = await generarFacturaPedido(negocioId, pedido, pedido.cliente, null);
+    
+    // Guardamos el CAE y el Nro de comprobante en la tabla Pedido
+    await pedido.update({ 
+        facturado: true, 
+        facturaCae: factura.cae, 
+        facturaVtoCae: factura.vencimientoCae,
+        facturaNro: factura.nroComprobante 
+    });
+
+    return factura;
+};
+
+
 export const obtenerPedidoPorId = async (negocioId, pedidoId) => {
     const pedido = await models.Pedido.findOne({
         where: { id: pedidoId, negocioId },
@@ -158,7 +328,11 @@ export const obtenerPedidoPorId = async (negocioId, pedidoId) => {
                 as: "historial",
                 include: [{ model: models.Usuario, as: "usuario", attributes: ["id", "nombre", "rol"] }]
             },
-            { model: models.Pago, as: "pagos" }
+            { 
+                model: models.Pago, 
+                as: "pago",
+                include: [{ model: models.MetodoPago, as: "metodoPago" }]
+            }
         ],
         order: [[{ model: models.HistorialPedido, as: "historial" }, "createdAt", "DESC"]]
     });
@@ -170,7 +344,7 @@ export const obtenerPedidoPorId = async (negocioId, pedidoId) => {
     return pedido;
 };
 
-export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, estado, comentario) => {
+export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, estado, comentario, motivoCancelacion, descripcionCancelacion) => {
     const t = await sequelize.transaction();
     try {
         const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId }, transaction: t });
@@ -192,7 +366,49 @@ export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, e
             throw new AppError("No se puede cambiar el estado. El pedido ya se encuentra en ese estado.", 400);
         }
 
-        await pedido.update({ estado }, { transaction: t });
+        if (estado === "CANCELADO") {
+            if (!motivoCancelacion || !descripcionCancelacion) {
+                throw new AppError("Motivo y descripción son obligatorios para cancelar un pedido.", 400);
+            }
+        }
+
+        await pedido.update({ 
+            estado,
+            ...(estado === "CANCELADO" && { motivoCancelacion, descripcionCancelacion })
+        }, { transaction: t });
+
+        // Ajuste por Cancelación
+        if (estado === "CANCELADO" && estadoAnterior !== "CANCELADO") {
+            const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
+            if (cliente) {
+                const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
+                const nuevoSaldo = saldoAnterior - parseFloat(pedido.total);
+
+                await models.MovimientoCuentaCorriente.create({
+                    clienteId: cliente.id,
+                    negocioId,
+                    pedidoId: pedido.id,
+                    tipoMovimiento: "CREDITO",
+                    monto: parseFloat(pedido.total),
+                    saldoResultante: nuevoSaldo,
+                    comentario: `Ajuste por cancelación del Pedido #${pedido.codigoSeguimiento}`
+                }, { transaction: t });
+
+                await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
+
+                // Si el pedido ya había sido cobrado (tiene un pago completado), le sumamos el total al saldoAFavorDisponible
+                // del pago para que el cliente pueda utilizar este crédito en futuros pedidos a través del frontend.
+                const pago = await models.Pago.findOne({
+                    where: { pedidoId: pedido.id, estado: "COMPLETADO" },
+                    transaction: t
+                });
+
+                if (pago) {
+                    const nuevoSaldoAFavor = parseFloat(pago.saldoAFavorDisponible || 0) + parseFloat(pedido.total);
+                    await pago.update({ saldoAFavorDisponible: nuevoSaldoAFavor }, { transaction: t });
+                }
+            }
+        }
 
         await models.HistorialPedido.create({
             pedidoId: pedido.id,
@@ -245,4 +461,52 @@ export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, e
         await t.rollback();
         throw error;
     }
+};
+
+export const generarTickets = async (negocioId, pedidoId, cantidad = 1) => {
+    const t = await sequelize.transaction();
+    try {
+        const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId }, transaction: t });
+        if (!pedido) {
+            throw new AppError("Pedido no encontrado.", 404);
+        }
+
+        if (pedido.estado === "CANCELADO") {
+            throw new AppError("No se puede generar tickets para un pedido cancelado.", 400);
+        }
+
+        const ticketsToCreate = [];
+        for (let i = 0; i < cantidad; i++) {
+            ticketsToCreate.push({
+                pedidoId: pedido.id,
+                codigo: crypto.randomUUID().substring(0, 8).toUpperCase()
+            });
+        }
+
+        const tickets = await models.Ticket.bulkCreate(ticketsToCreate, { 
+            transaction: t,
+            validate: true
+        });
+
+        await t.commit();
+        return tickets;
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
+};
+
+export const getTicketsPedido = async (negocioId, pedidoId) => {
+    // First, verify the order belongs to the tenant
+    const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId } });
+    if (!pedido) {
+        throw new AppError("Pedido no encontrado.", 404);
+    }
+
+    const tickets = await models.Ticket.findAll({
+        where: { pedidoId: pedido.id },
+        order: [['createdAt', 'ASC']]
+    });
+
+    return tickets;
 };

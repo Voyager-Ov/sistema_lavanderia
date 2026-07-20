@@ -1,0 +1,66 @@
+{
+  "architecture_and_boundaries": {
+    "modules": [
+      {
+        "name": "ConfigLayout & ConfigPage",
+        "path": "src/app/admin/configuraciones/layout.tsx & page.tsx",
+        "responsibility": "Manejar la vista base. El page será el contenedor que orqueste la navegación lateral y el contenido activo."
+      },
+      {
+        "name": "SidebarNav",
+        "path": "src/app/admin/configuraciones/_components/SidebarNav.tsx",
+        "responsibility": "Renderizar el menú lateral. Usará GSAP para animar su entrada. En móviles, colapsará a un menú superior o dropdown."
+      },
+      {
+        "name": "Formularios por Categoría",
+        "paths": [
+          "src/app/admin/configuraciones/_components/forms/BusinessForm.tsx",
+          "src/app/admin/configuraciones/_components/forms/OperationsForm.tsx",
+          "src/app/admin/configuraciones/_components/forms/NotificationsForm.tsx",
+          "src/app/admin/configuraciones/_components/forms/HardwareForm.tsx"
+        ],
+        "responsibility": "Componentes de formulario aislados. Cada uno maneja su propio estado local (isDirty, isValid) y solo hace dispatch al store global al guardar con éxito."
+      },
+      {
+        "name": "UnsavedChangesDialog",
+        "path": "src/app/admin/configuraciones/_components/UnsavedChangesDialog.tsx",
+        "responsibility": "Componente basado en Radix UI (AlertDialog) que intercepta el cambio de tab si el formulario activo tiene cambios pendientes."
+      },
+      {
+        "name": "FloatingSaveBar",
+        "path": "src/app/admin/configuraciones/_components/FloatingSaveBar.tsx",
+        "responsibility": "Barra flotante (estilo glassmorphism) que aparece con GSAP (fade-in-up) en el borde inferior cuando se detectan cambios en el formulario activo, con botones de 'Guardar' y 'Descartar'."
+      }
+    ]
+  },
+  "interfaces_and_contracts": {
+    "state_management": "Se usará Zustand (`src/app/admin/configuraciones/_store/useConfigStore.ts`) para simular la base de datos de configuraciones de forma reactiva en todo el frontend.",
+    "zod_schemas": {
+      "BusinessSchema": "z.object({ name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'), address: z.string().min(5, 'Dirección muy corta'), phone: z.string().optional(), currency: z.string(), tax: z.number().min(0).max(100) })",
+      "OperationsSchema": "z.object({ basePrice: z.number().min(0, 'No puede ser negativo'), minCharge: z.number().min(0), estimatedHours: z.number().min(1), enableDelivery: z.boolean(), weightTolerance: z.number().min(0) })"
+    }
+  },
+  "dependencies_decisions": {
+    "Forms": "React Hook Form para el estado de los inputs + Zod (`@hookform/resolvers/zod`) para validación segura y de tipado estricto.",
+    "Animations": "GSAP (`@gsap/react`) para todas las transiciones estructurales (fade entre tabs, barra flotante, error shake).",
+    "UI Components": "Radix UI (para Dialog, Select, Switch, Tabs) combinado con Tailwind CSS para máxima personalización visual bajo la directriz de 'frontend-design'."
+  },
+  "failure_modes_and_edge_handling": {
+    "unsaved_changes": "Si `form.formState.isDirty` es true e intenta cambiar de categoría, el cambio se pausa y el `UnsavedChangesDialog` se dispara.",
+    "validation_errors": "Al intentar enviar (submit) con errores Zod, la UI de React Hook Form actualizará los campos. Implementaremos una animación GSAP de vibración sutil (`shake`) en el input afectado para dar un feedback táctil visual muy premium.",
+    "saving_state": "Durante el guardado, los inputs se deshabilitan para evitar doble-submit."
+  },
+  "testing_strategy": {
+    "quality_gates": "Validar manualmente que el store de Zustand mantenga las persistencias al cambiar entre tabs y que la animación GSAP no interfiera con el ciclo de vida del DOM de React (usando hooks limpios de `@gsap/react`)."
+  },
+  "phased_implementation_plan": {
+    "goal": "Desarrollar la arquitectura principal y los componentes iniciales asegurando un diseño exquisito y funcional.",
+    "tasks": [
+      "1. Crear layout y navegación lateral (`page.tsx` + `SidebarNav.tsx`) con diseño avanzado y GSAP.",
+      "2. Crear el `useConfigStore` y la infraestructura base de Zustand.",
+      "3. Construir el primer formulario (`BusinessForm`) integrando Zod, RHF y animaciones de error.",
+      "4. Implementar el `FloatingSaveBar` y el control de `isDirty` con Radix UI Dialog.",
+      "5. (Posterior) Iterar sobre el resto de las categorías de formularios una vez probada la base."
+    ]
+  }
+}

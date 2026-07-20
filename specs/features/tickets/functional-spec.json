@@ -1,0 +1,54 @@
+{
+  "feature": "Ticket Management and Tracking",
+  "scope": {
+    "inBoundaries": [
+      "Creation of trackable tickets associated with a specific Order (Pedido)",
+      "Ability to assign multiple unique tickets to a single Order",
+      "Tracking the status or location of each individual ticket",
+      "Printing functionality for tickets using a thermal printer",
+      "Backend and Frontend integration for ticket generation, tracking, and printing"
+    ],
+    "outBoundaries": [
+      "Modifications to the billing/invoicing process (unless directly impacted by ticket status)",
+      "Managing the physical inventory of the thermal printer hardware"
+    ]
+  },
+  "userJourneys": [
+    {
+      "persona": "Operario/Cajero",
+      "journey": "When creating or updating an order, the user can generate multiple tickets for the order (e.g., to attach to different bags). Each ticket contains the customer's name, payment status, an ID, a QR code, and a list of all services/items included in the order (e.g., Sábanas x1, Acolchado x2). These tickets are printed via a thermal printer to replace handwritten labels."
+    },
+    {
+      "persona": "Cliente",
+      "journey": "The customer can take a printed ticket and scan the QR code with their phone. This QR code redirects them to a public tracking page where they can see the real-time status of their order."
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "scenario": "Order ticket generation and content",
+      "given": "An existing order with specific items (e.g., Sábanas x1, Acolchado x2)",
+      "when": "The user requests to generate tickets for the order",
+      "then": "The generated tickets display the Customer Name, Payment Status, Order/Ticket ID, a summary of all order items, and a QR code."
+    },
+    {
+      "scenario": "QR Code scanning by customer",
+      "given": "A generated ticket with a QR code",
+      "when": "The customer scans the QR code",
+      "then": "They are taken to a customer-facing view showing the real-time status of their order"
+    },
+    {
+      "scenario": "Multiple tickets per order",
+      "given": "An existing order",
+      "when": "The user needs to label 3 separate bags",
+      "then": "The user can generate 3 tickets. All 3 tickets belong to the same order and contain the identical order summary and QR code, but they exist as individual records to know how many tickets the order has."
+    }
+  ],
+  "businessRules": [
+    "A Ticket belongs to exactly one Order.",
+    "An Order can have zero or multiple Tickets.",
+    "Tickets DO NOT have their own independent statuses; they rely on and reflect the status of the parent Order.",
+    "The QR code on the ticket must point to a customer-friendly order tracking URL.",
+    "Every ticket printed for an order must display the full list of services/items associated with that order.",
+    "Thermal printing should be accessible from the user interface, generating a format compatible with ESC/POS or providing a PDF/Image suitable for 58mm/80mm thermal printers."
+  ]
+}

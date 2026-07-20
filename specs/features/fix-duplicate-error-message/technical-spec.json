@@ -1,0 +1,43 @@
+{
+  "architecture_and_boundaries": {
+    "backend": "Auth Controller (back/src/controllers/auth/auth.controller.js) is responsible for formatting the HTTP error responses for authentication errors (EMAIL_IN_USE, INVALID_CREDENTIALS, USER_DISABLED).",
+    "frontend": "Auth pages (e.g., front/src/app/(auth)/register/page.tsx, login/page.tsx) make HTTP calls to the backend and handle API exceptions via a standard mechanism (typically using sonner for toasts)."
+  },
+  "interfaces_and_contracts": {
+    "api_error_response_shape": {
+      "before": "{ error: 'String', message: 'String' }",
+      "after": "{ message: 'String' }"
+    },
+    "frontend_error_consumption": "The frontend will expect the user-facing error text to be located at 'error.data?.message' (or 'error.response?.data?.message' depending on the axios/fetch wrapper) and fallback to 'error.message'."
+  },
+  "failure_modes_and_edge_handling": {
+    "unknown_errors": "If an error does not have a explicit mapping in the controller, it falls through to 'next(error)' which is handled by the global error handler.",
+    "frontend_fallback": "If the backend response is malformed, the frontend will fallback to a generic message like 'Hubo un problema al procesar tu solicitud'."
+  },
+  "testing_strategy": {
+    "manual_verification": [
+      "Attempt to register with an existing email and verify the network response JSON contains only 'message'.",
+      "Verify the toast notification on the frontend displays the correct message without redundancy.",
+      "Attempt to login with wrong credentials and verify the same."
+    ]
+  },
+  "phased_implementation_plan": {
+    "goal": "Standardize the error response structure for Auth endpoints.",
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Update Auth Controller Error Responses",
+        "description": "Modify 'back/src/controllers/auth/auth.controller.js' to return only the 'message' property in 400/401/403 responses, removing the redundant 'error' property."
+      },
+      {
+        "id": "T2",
+        "title": "Standardize Frontend Error Handling in Auth",
+        "description": "Review 'front/src/app/(auth)/*/page.tsx' and 'front/src/domains/auth/api/auth.api.ts' to ensure they consistently read from the 'message' property."
+      }
+    ],
+    "dependencies": {
+      "T2": ["T1"]
+    },
+    "definition_of_done": "Backend returns single property. Frontend displays it correctly. No redundant error keys are present."
+  }
+}

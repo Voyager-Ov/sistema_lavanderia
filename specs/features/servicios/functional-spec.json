@@ -1,0 +1,78 @@
+{
+  "feature": "Servicios Screen (Admin Portal)",
+  "scope": {
+    "in": [
+      "View list of all services (Productos) and their categories",
+      "Create new services and categories",
+      "Edit existing services and categories",
+      "Deactivate/Activate services (soft delete)",
+      "Bulk actions (change category, deactivate)",
+      "View price history (historial de precios) for each service",
+      "Track service popularity and basic profitability (e.g., usage count in the current month)"
+    ],
+    "out": [
+      "Inventory tracking (services don't have inventory)",
+      "Dynamic pricing based on time/demand"
+    ]
+  },
+  "user_journeys": [
+    {
+      "persona": "Admin",
+      "goal": "Manage available laundry services",
+      "flow": [
+        "Opens the Servicios page.",
+        "Sees KPIs at the top: Total Services, Active Services, Total Categories, and 'Most Requested Service (This Month)'.",
+        "Filters the table by category or status.",
+        "Clicks 'Nuevo Servicio' to open a creation modal.",
+        "Fills in Name, Category, Price, Cost (optional), Estimated Time (optional) and saves.",
+        "The new service appears in the GSAP-animated data table."
+      ]
+    },
+    {
+      "persona": "Admin",
+      "goal": "View price history and performance of a service",
+      "flow": [
+        "Selects a specific service from the table to view its details.",
+        "Sees a timeline or list of previous prices with the date they were changed.",
+        "Sees a small summary of how many times this service was sold in the current month (profitability/usage indicator)."
+      ]
+    },
+    {
+      "persona": "Admin",
+      "goal": "Manage categories",
+      "flow": [
+        "Clicks 'Categorías' to open the category management modal.",
+        "Can add a new category or rename existing ones."
+      ]
+    }
+  ],
+  "business_rules_and_validations": [
+    "Service Creation/Edition:",
+    "- 'Nombre' is strictly required, minimum 3 characters, max 100.",
+    "- 'Precio' is strictly required, must be a number > 0.",
+    "- 'Categoría' is required (must be selected from existing active categories).",
+    "- 'Costo Estimado' is optional, but if provided, must be >= 0.",
+    "- 'Tiempo Estimado' (minutes) is optional, but if provided, must be > 0.",
+    "Price History Rules:",
+    "- When a service is edited and its price changes, the previous price must be recorded in the price history along with the timestamp.",
+    "- Price history records are read-only.",
+    "Category Management:",
+    "- 'Nombre' of the category is required and must be unique within the business."
+  ],
+  "acceptance_criteria": [
+    "Given the admin is on the Servicios page, When they view the data table, Then they should see columns for Name, Category, Price, Estimated Time, Usage (Month), and Status.",
+    "Given the admin views the KPIs, Then one of the cards must display the 'Most Requested Service' of the current month based on real order data.",
+    "Given the admin creates a service, When they omit the name or price, Then the form should display a validation error and prevent submission.",
+    "Given the admin updates the price of a service, When the change is saved, Then a new entry must be added to the service's price history.",
+    "Given the admin clicks 'Ver Historial' on a service, Then they should see a list of past prices with their dates.",
+    "Given the page loads, When the data is fetched, Then the table rows should fade in sequentially using GSAP animations, matching the 'pedidos' UX.",
+    "Given the aesthetic requirements, When the page renders, Then it must follow the established /frontend-design tokens (glassmorphism, clean layout, Lucide icons, modern typography)."
+  ],
+  "ux_behavior": [
+    "Header with fast search and quick filters.",
+    "KPI cards providing quick insights, including 'Most Requested'.",
+    "Data table with GSAP stagger animation on mount.",
+    "Modals/Sheets for editing, creating, and viewing price history, preventing page reload.",
+    "Toasts (sonner) for success/error feedback."
+  ]
+}

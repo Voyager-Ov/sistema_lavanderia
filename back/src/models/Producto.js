@@ -45,6 +45,10 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: true,
 			},
+			imagenUrl: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "productos",
@@ -60,6 +64,7 @@ export default (sequelize, DataTypes) => {
 	Producto.associate = (models) => {
 		Producto.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
 		Producto.belongsTo(models.CategoriaProducto, { foreignKey: "categoriaId", as: "categoria" });
+		Producto.hasMany(models.HistorialPrecioProducto, { foreignKey: "productoId", as: "historialPrecios" });
 	};
 
 	return Producto;

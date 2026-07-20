@@ -1,0 +1,62 @@
+[
+  {
+    "id": "BACK-1",
+    "title": "Create Ticket model and migrations",
+    "owner_role": "Backend Engineer",
+    "status": "todo",
+    "parallelizable": false,
+    "depends_on": [],
+    "outputs": ["Ticket.js model", "Pedido.js associations updated"],
+    "exit_criteria": "Ticket table exists with `codigo` and `pedidoId`. Pedido has many Tickets."
+  },
+  {
+    "id": "BACK-2",
+    "title": "Implement Ticket Generation API",
+    "owner_role": "Backend Engineer",
+    "status": "todo",
+    "parallelizable": true,
+    "depends_on": ["BACK-1"],
+    "outputs": ["POST /api/pedidos/:id/tickets", "GET /api/pedidos/:id/tickets"],
+    "exit_criteria": "Endpoints handle creating N tickets for an order and retrieving them."
+  },
+  {
+    "id": "BACK-3",
+    "title": "Implement Public Tracking API",
+    "owner_role": "Backend Engineer",
+    "status": "todo",
+    "parallelizable": true,
+    "depends_on": ["BACK-1"],
+    "outputs": ["GET /api/tracking/:codigo"],
+    "exit_criteria": "Endpoint returns order summary and items based on ticket code without leaking sensitive data."
+  },
+  {
+    "id": "FRONT-1",
+    "title": "Add Ticket Generation UI",
+    "owner_role": "Frontend Engineer",
+    "status": "todo",
+    "parallelizable": false,
+    "depends_on": ["BACK-2"],
+    "outputs": ["GenerateTickets modal/button in Order Detail view"],
+    "exit_criteria": "User can specify number of tickets and trigger API call."
+  },
+  {
+    "id": "FRONT-2",
+    "title": "Build Thermal Print Template",
+    "owner_role": "Frontend Engineer",
+    "status": "todo",
+    "parallelizable": true,
+    "depends_on": ["FRONT-1"],
+    "outputs": ["TicketPrintTemplate component", "react-qr-code integration"],
+    "exit_criteria": "Template matches 58mm/80mm width. QR code renders correctly. Print triggers using standard CSS @media print or react-to-print."
+  },
+  {
+    "id": "FRONT-3",
+    "title": "Design and Build Customer Tracking Page",
+    "owner_role": "Frontend Engineer",
+    "status": "todo",
+    "parallelizable": true,
+    "depends_on": ["BACK-3"],
+    "outputs": ["/tracking/[codigo] page", "GSAP animations"],
+    "exit_criteria": "Page fetches tracking API and displays a premium UI using frontend-design rules and GSAP for micro-animations."
+  }
+]

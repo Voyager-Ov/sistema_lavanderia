@@ -1,0 +1,45 @@
+{
+  "project": "Finanzas Advanced Charts",
+  "todos": [
+    {
+      "id": "T1",
+      "title": "Implementar lógica de datos (useMemo) para nuevos gráficos",
+      "owner_role": "Frontend Developer",
+      "status": "pending",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": [
+        "Variables de estado derivadas (flujoNetoData, diaSemanaData, rankingCajerosData, volumenData, ticketPromedioData, egresosPorMetodoData) listas en FinanzasCharts.tsx."
+      ],
+      "exit_criteria": "Los arrays procesados se generan correctamente y sin errores a partir de las props de 'movimientos'."
+    },
+    {
+      "id": "T2",
+      "title": "Ajustar layout y estructura del Grid",
+      "owner_role": "Frontend Developer",
+      "status": "pending",
+      "parallelizable": false,
+      "depends_on": [
+        "T1"
+      ],
+      "outputs": [
+        "Clases actualizadas de tailwind para el grid de FinanzasCharts.tsx."
+      ],
+      "exit_criteria": "El grid soporta ordenadamente los 8 gráficos, usando spans adecuados (ej. lg:grid-cols-2 o xl:grid-cols-3) para gráficos anchos vs cuadrados."
+    },
+    {
+      "id": "T3",
+      "title": "Codificar y renderizar los componentes de Recharts",
+      "owner_role": "Frontend Developer",
+      "status": "pending",
+      "parallelizable": false,
+      "depends_on": [
+        "T2"
+      ],
+      "outputs": [
+        "6 nuevos contenedores JSX renderizando AreaChart, BarChart, ComposedChart y PieChart correspondientes."
+      ],
+      "exit_criteria": "Los 6 gráficos se visualizan en pantalla de forma estética con Tooltips habilitados y colores acordes al tema."
+    }
+  ]
+}

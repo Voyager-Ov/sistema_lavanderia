@@ -3,8 +3,7 @@ import * as trackingController from "../../controllers/tracking/tracking.control
 
 const router = Router();
 
-// RUTA PÚBLICA: No requiere JWT ni middleware de suscripción,
-// ya que un cliente final no tiene usuario en el sistema.
-router.get("/:codigo", trackingController.getTrackingPedido);
+// Endpoint público para tracking
+router.get("/:negocioId/:codigo", trackingController.getTrackingInfo);
 
 export default router;

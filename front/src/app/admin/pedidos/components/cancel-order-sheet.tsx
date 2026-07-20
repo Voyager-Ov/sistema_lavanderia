@@ -6,22 +6,7 @@ import { Button } from "@/shared/ui/forms/button"
 import { Textarea } from "@/shared/ui/forms/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/forms/select"
 import { Label } from "@/shared/ui/forms/label"
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetDescription, 
-  SheetHeader, 
-  SheetTitle,
-  SheetFooter
-} from "@/shared/ui/overlays/sheet"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerFooter
-} from "@/shared/ui/overlays/drawer"
+import { FormSheet } from "@/shared/ui/composite/form-sheet"
 import { Pedido } from "@/domains/pedidos/api"
 import { AlertCircle } from "lucide-react"
 
@@ -41,7 +26,6 @@ const MOTIVOS = [
 ]
 
 export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: CancelOrderSheetProps) {
-  const isMobile = useIsMobile()
   const [motivo, setMotivo] = React.useState("")
   const [descripcion, setDescripcion] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
@@ -120,61 +104,27 @@ export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: Canc
     </div>
   )
 
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="bg-white">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Cancelar Pedido #{pedido.id}</DrawerTitle>
-            <DrawerDescription>
-              Por favor indica el motivo por el cual se cancela el ticket <strong>{pedido.codigoSeguimiento}</strong>.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="overflow-y-auto max-h-[60vh]">
-            <FormContent />
-          </div>
-          <DrawerFooter className="pt-2 pb-6">
-            <Button 
-              variant="destructive" 
-              className="w-full rounded-xl h-12 text-base font-bold" 
-              onClick={handleConfirm}
-              disabled={isLoading}
-            >
-              Confirmar Cancelación
-            </Button>
-            <Button variant="outline" className="w-full rounded-xl h-12 text-base font-bold" onClick={() => onOpenChange(false)}>
-              Volver
-            </Button>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-    )
-  }
-
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md bg-white overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Cancelar Pedido #{pedido.id}</SheetTitle>
-          <SheetDescription>
-            Por favor indica el motivo por el cual se cancela el ticket <strong>{pedido.codigoSeguimiento}</strong>.
-          </SheetDescription>
-        </SheetHeader>
-        <FormContent />
-        <SheetFooter className="mt-6 flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button variant="outline" className="w-full sm:w-auto rounded-xl h-11 font-bold" onClick={() => onOpenChange(false)}>
-            Volver
-          </Button>
-          <Button 
-            variant="destructive" 
-            className="w-full sm:w-auto rounded-xl h-11 font-bold" 
-            onClick={handleConfirm}
-            disabled={isLoading}
-          >
-            Confirmar Cancelación
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+    <FormSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Cancelar Pedido #${pedido.id}`}
+      description={`Por favor indica el motivo por el cual se cancela el ticket ${pedido.codigoSeguimiento}.`}
+    >
+      <FormContent />
+      <div className="flex flex-col sm:flex-row gap-2 mt-4">
+        <Button variant="outline" className="w-full rounded-xl h-12 font-bold order-2 sm:order-1" onClick={() => onOpenChange(false)}>
+          Volver
+        </Button>
+        <Button 
+          variant="destructive" 
+          className="w-full rounded-xl h-12 font-bold order-1 sm:order-2" 
+          onClick={handleConfirm}
+          disabled={isLoading}
+        >
+          Confirmar Cancelación
+        </Button>
+      </div>
+    </FormSheet>
   )
 }

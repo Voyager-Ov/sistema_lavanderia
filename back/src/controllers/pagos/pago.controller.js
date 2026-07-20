@@ -37,6 +37,24 @@ export const crearMetodoPago = async (req, res, next) => {
     }
 };
 
+export const toggleMetodoPago = async (req, res, next) => {
+    try {
+        const metodo = await pagoService.toggleMetodoPago(req.user.negocioId, req.params.id);
+        return successResponse(res, 200, "Método de pago actualizado", metodo);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const eliminarMetodoPago = async (req, res, next) => {
+    try {
+        await pagoService.eliminarMetodoPago(req.user.negocioId, req.params.id);
+        return successResponse(res, 200, "Método de pago eliminado");
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const facturarPagoRetroactivo = async (req, res, next) => {
     try {
         const pago = await pagoService.facturarPagoRetroactivo(req.user.negocioId, req.params.id);
@@ -45,3 +63,13 @@ export const facturarPagoRetroactivo = async (req, res, next) => {
         next(error);
     }
 };
+
+export const obtenerSaldosAFavor = async (req, res, next) => {
+    try {
+        const saldos = await pagoService.obtenerSaldosAFavor(req.user.negocioId, req.params.clienteId);
+        return successResponse(res, 200, "Saldos a favor obtenidos", saldos);
+    } catch (error) {
+        next(error);
+    }
+};
+

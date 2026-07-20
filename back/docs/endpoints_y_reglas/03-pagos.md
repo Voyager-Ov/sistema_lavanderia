@@ -18,6 +18,7 @@ Este módulo se encarga del registro, facturación y anulación de los pagos aso
 - **Reglas de Negocio**:
   - **Caja Obligatoria**: El usuario que registra el pago **debe tener una caja abierta** (`ABIERTA`) en el negocio. Si no tiene caja, el sistema rechaza el pago.
   - **Cobro Único**: Un pedido no puede cobrarse dos veces (rechaza si ya existe un pago en estado `COMPLETADO` para ese pedido).
+  - **Estado del Pedido**: Un pedido en estado `CANCELADO` no puede ser cobrado.
   - **Facturación AFIP (Automática/Manual)**: Si el negocio tiene habilitada y configurada la facturación de AFIP, y está en modo `AUTOMATICO` (o es `MANUAL` y se envía `facturarAfip: true`), el sistema contacta con AFIP y adjunta el `cae`, `nroComprobante` y `tipoComprobante` al registro del pago.
 - **Cuerpo (Payload) Esperado**:
   ```json
@@ -51,7 +52,7 @@ Este módulo se encarga del registro, facturación y anulación de los pagos aso
 
 ### 4. Obtener Métodos de Pago
 - **Ruta y Método**: `GET /api/pagos/metodos`
-- **Acción**: Lista los métodos de pago habilitados para el negocio (`esHabilitado: true`).
+- **Acción**: Lista los métodos de pago para el negocio (activos e inactivos).
 
 ### 5. Crear Método de Pago
 - **Ruta y Método**: `POST /api/pagos/metodos`
@@ -60,7 +61,14 @@ Este módulo se encarga del registro, facturación y anulación de los pagos aso
   ```json
   {
     "nombre": "Transferencia Bancaria",
-    "tipo": "TRANSFERENCIA",
-    "esHabilitado": true
+    "icono": "Banknote"
   }
   ```
+
+### 6. Alternar Estado (Activar/Desactivar) Método de Pago
+- **Ruta y Método**: `PATCH /api/pagos/metodos/:id`
+- **Acción**: Activa o desactiva un método de pago. Los métodos `esFijo = true` (ej. Efectivo) no se pueden desactivar ni eliminar.
+
+### 7. Eliminar Método de Pago
+- **Ruta y Método**: `DELETE /api/pagos/metodos/:id`
+- **Acción**: Elimina permanentemente un método de pago. Los métodos fijos (`esFijo = true`) o los que ya tienen pagos asociados no pueden ser eliminados.

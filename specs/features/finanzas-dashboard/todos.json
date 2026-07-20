@@ -1,0 +1,84 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Configuración Inicial de Rutas Backend",
+      "owner_role": "Backend",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["back/src/routes/finanzas/finanzas.routes.js", "back/src/app.js"],
+      "exit_criteria": "Rutas base registradas en app.js y protegidas con rol ADMIN."
+    },
+    {
+      "id": "2",
+      "title": "Controlador de Finanzas (Lógica Unificada)",
+      "owner_role": "Backend",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["1"],
+      "outputs": ["back/src/controllers/finanzas/finanzas.controller.js"],
+      "exit_criteria": "Endpoint getKPIs calcula sumatorias exactas usando Op.gte/lte. Endpoint getMovimientos une Pagos y Gastos, formatea como MovimientoFinanciero y pagina."
+    },
+    {
+      "id": "3",
+      "title": "Frontend: Cliente API e Interfaces",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["2"],
+      "outputs": ["front/src/domains/finanzas/finanzas.api.ts"],
+      "exit_criteria": "Tipos exportados (MovimientoFinanciero, FinanzasKPIs). Funciones axios creadas."
+    },
+    {
+      "id": "4",
+      "title": "Frontend: Página Principal (Layout y Estado)",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["3"],
+      "outputs": ["front/src/app/admin/finanzas/page.tsx"],
+      "exit_criteria": "Manejo de estado complejo (fechaInicio, fechaFin, search, data, isLoading, WebSocket). Contenedor full-width."
+    },
+    {
+      "id": "5",
+      "title": "Frontend: Componentes de Cabecera",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["4"],
+      "outputs": ["front/src/app/admin/finanzas/components/FinanzasHeader.tsx", "front/src/app/admin/finanzas/components/FinanzasToolbar.tsx"],
+      "exit_criteria": "Selector de fechas funcional (copiado de pedidos). Buscador y botones de Registrar Egreso."
+    },
+    {
+      "id": "6",
+      "title": "Frontend: Componente KPIs con Animación",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["4"],
+      "outputs": ["front/src/app/admin/finanzas/components/FinanzasKPIs.tsx"],
+      "exit_criteria": "Renderiza 4 tarjetas con diseño premium sin degradados. Usa gsap.from con stagger para la carga inicial."
+    },
+    {
+      "id": "7",
+      "title": "Frontend: Tabla de Libro Mayor",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["4"],
+      "outputs": ["front/src/app/admin/finanzas/components/FinanzasTable.tsx"],
+      "exit_criteria": "Tabla mapea ingresos (verde) y egresos (rojo). Acciones con fondo blanco e icono coloreado al hover. Paginador funcional."
+    },
+    {
+      "id": "8",
+      "title": "Frontend: Gráficos Recharts en Grid",
+      "owner_role": "Frontend",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["4", "7"],
+      "outputs": ["front/src/app/admin/finanzas/components/FinanzasCharts.tsx"],
+      "exit_criteria": "Implementar 2 o 3 gráficos (AreaChart de evolución, BarChart de comparativa) usando colores sólidos. Distribución en CSS grid (ej. gráfico principal arriba ancho completo, secundarios abajo)."
+    }
+  ]
+}

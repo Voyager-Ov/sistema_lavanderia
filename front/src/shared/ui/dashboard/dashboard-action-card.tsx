@@ -40,7 +40,7 @@ export function DashboardActionCard({
     <div className={cn("bg-white rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between border border-gray-100 shadow-sm transition-shadow hover:shadow-md", className)}>
       <div>
         <h3 className="text-base font-semibold text-gray-900 mb-4">{title}</h3>
-        <p className={cn("text-2xl font-bold leading-tight mb-2", colors.text)}>
+        <p className="text-2xl font-bold leading-tight mb-2 text-gray-900">
           {mainText}
         </p>
         <p className="text-sm text-gray-500 font-medium">

@@ -1,0 +1,82 @@
+{
+  "feature": "Ticket Management and Tracking",
+  "architecture": {
+    "backend": {
+      "models": [
+        "Create Ticket.js (Sequelize Model): Fields `id` (PK), `pedidoId` (FK), `codigo` (String, unique short ID or UUID), timestamps.",
+        "Update Pedido.js: Add `Pedido.hasMany(models.Ticket)`."
+      ],
+      "routes": [
+        "POST /api/pedidos/:id/tickets: Receives `{ cantidad: number }`. Creates N tickets for the order.",
+        "GET /api/pedidos/:id/tickets: Returns all tickets for a specific order.",
+        "GET /api/tracking/:codigo: Public endpoint. Finds Ticket by code, includes parent Pedido, PedidoItems, and Cliente. Returns safe public data for the tracking page."
+      ]
+    },
+    "frontend": {
+      "components": [
+        "TicketPrintTemplate: A React component styled for 58mm/80mm thermal printers using CSS `@media print`. Contains Customer Name, Payment Status, Order Items list, and a QR Code.",
+        "GenerateTicketsModal: UI to specify the number of tickets to generate."
+      ],
+      "pages": [
+        "Order View/Edit: Integrate GenerateTicketsModal and a 'Print Tickets' action (using browser native `window.print()` or `react-to-print`).",
+        "Public Tracking Page (`/tracking/[codigo]`): A responsive page for customers to view real-time order status, populated by `GET /api/tracking/:codigo`."
+      ]
+    }
+  },
+  "interfaces": {
+    "TicketCreationRequest": {
+      "cantidad": "number (e.g., 3)"
+    },
+    "TicketResponse": {
+      "id": "number",
+      "pedidoId": "number",
+      "codigo": "string",
+      "createdAt": "date"
+    },
+    "PublicTrackingResponse": {
+      "ticketCodigo": "string",
+      "pedidoId": "number",
+      "estado": "string (e.g., EN_PROCESO, LISTO)",
+      "cobrado": "boolean",
+      "clienteNombre": "string",
+      "items": [{"nombre": "string", "cantidad": "number", "precio": "number"}]
+    }
+  },
+  "dependencies": {
+    "backend": [],
+    "frontend": [
+      "qrcode.react or react-qr-code (for rendering the QR code inside the TicketPrintTemplate)",
+      "react-to-print (optional, simplifies triggering print of a specific React component)",
+      "gsap (for smooth micro-animations on the UI and tracking page, using GSAP core/react integration)"
+    ]
+  },
+  "failureModes": {
+    "Database Errors": "Handle unique constraint violations if a generated `codigo` collides (use secure random short IDs).",
+    "Invalid Tracking Code": "If the customer scans a QR with an invalid/deleted code, `/tracking/[codigo]` should show a user-friendly 'Order not found' page."
+  },
+  "qualityAndDesign": {
+    "Animations": "Use gsap-core / gsap-react for micro-animations (e.g., page loads, state transitions in tracking page).",
+    "UI/UX": "Follow frontend-design skill rules: avoid generic aesthetics, ensure the customer tracking page feels premium, responsive, and polished."
+  },
+  "testingStrategy": {
+    "Backend": "API integration tests to verify POST `/api/pedidos/:id/tickets` creates exact N tickets and GET `/api/tracking/:codigo` returns correct public data without leaking sensitive info.",
+    "Frontend": "Visual check of the `@media print` layout to ensure it fits a standard thermal printer width without overflowing."
+  },
+  "phasedImplementation": [
+    {
+      "phase": 1,
+      "goal": "Backend Data Layer & APIs",
+      "tasks": ["Create Ticket model", "Update Pedido associations", "Implement API routes (POST, GET)", "Implement public tracking endpoint"]
+    },
+    {
+      "phase": 2,
+      "goal": "Frontend Generation & Printing",
+      "tasks": ["Add UI to generate tickets", "Install QR/print libraries", "Create TicketPrintTemplate with CSS print rules", "Wire up 'Print' button"]
+    },
+    {
+      "phase": 3,
+      "goal": "Frontend Public Tracking",
+      "tasks": ["Create `/tracking/[codigo]` page", "Fetch data from public tracking API", "Style customer-facing status view"]
+    }
+  ]
+}

@@ -15,6 +15,10 @@ import RegistroAsistenciaModel from "./RegistroAsistencia.js";
 import CajaModel from "./Caja.js";
 import MicroFrontendModel from "./MicroFrontend.js";
 import ConfiguracionNegocioModel from "./ConfiguracionNegocio.js";
+import TicketModel from "./Ticket.js";
+import MovimientoCuentaCorrienteModel from "./MovimientoCuentaCorriente.js";
+import HistorialPrecioProductoModel from "./HistorialPrecioProducto.js";
+import CategoriaGastoModel from "./CategoriaGasto.js";
 
 class ConnectionManager {
     constructor() {
@@ -132,6 +136,10 @@ class ConnectionManager {
             Caja: CajaModel(sequelizeInstance, DataTypes),
             MicroFrontend: MicroFrontendModel(sequelizeInstance, DataTypes),
             ConfiguracionNegocio: ConfiguracionNegocioModel(sequelizeInstance, DataTypes),
+            Ticket: TicketModel(sequelizeInstance, DataTypes),
+            MovimientoCuentaCorriente: MovimientoCuentaCorrienteModel(sequelizeInstance, DataTypes),
+            HistorialPrecioProducto: HistorialPrecioProductoModel(sequelizeInstance, DataTypes),
+            CategoriaGasto: CategoriaGastoModel(sequelizeInstance, DataTypes),
         };
 
         // En Postgres, debemos indicar a cada modelo a qué esquema pertenece ANTES de asociar

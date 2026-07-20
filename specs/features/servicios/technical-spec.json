@@ -1,0 +1,62 @@
+{
+  "architecture": {
+    "frontend": "Next.js App Router (front/src/app/admin/servicios). Stateful UI managed by custom hooks (useServiciosData, useServiciosActions). Component structure split into Header, KPIs, Table, and Modals.",
+    "backend": "Express.js REST API. Controllers handling logic, Sequelize for ORM. New model `HistorialPrecioProducto` will be created."
+  },
+  "contracts": {
+    "api_endpoints": [
+      {
+        "method": "GET",
+        "path": "/api/productos",
+        "response": "List of { id, nombre, precioActual, categoriaId, activo, ... }"
+      },
+      {
+        "method": "GET",
+        "path": "/api/productos/stats",
+        "response": "{ total: number, activos: number, categorias: number, masSolicitado: { nombre, cantidad } }"
+      },
+      {
+        "method": "POST",
+        "path": "/api/productos",
+        "payload": "{ nombre (str, req), precioActual (num, req, >0), categoriaId (num, req), costoEstimado (num, opt, >=0), tiempoEstimadoMinutos (num, opt, >0) }",
+        "response": "Created Producto object."
+      },
+      {
+        "method": "PUT",
+        "path": "/api/productos/:id",
+        "payload": "Same as POST.",
+        "behavior": "If precioActual changes, trigger creation of HistorialPrecioProducto entry before updating.",
+        "response": "Updated Producto object."
+      },
+      {
+        "method": "GET",
+        "path": "/api/productos/:id/historial",
+        "response": "List of { id, precioAnterior, precioNuevo, createdAt } ordered by createdAt DESC."
+      },
+      {
+        "method": "POST",
+        "path": "/api/categorias-producto",
+        "payload": "{ nombre: string }",
+        "response": "Created category."
+      }
+    ],
+    "frontend_state": {
+      "servicios": "Array<Producto>",
+      "stats": "Object with KPI values",
+      "modalsState": "isOpen state for Create, Edit, and History modals",
+      "zod_schemas": "Used in react-hook-form to match backend validations precisely."
+    }
+  },
+  "design_and_dependencies": {
+    "ui_libraries": "Tailwind CSS, Radix UI (Dialog, DropdownMenu), Lucide React.",
+    "animation": "GSAP (@gsap/react) for `.fade-item` stagger on table mount, mirroring /pedidos page.",
+    "forms": "react-hook-form + zod for client-side validations that strictly mirror backend expectations.",
+    "notifications": "sonner for toast notifications."
+  },
+  "phased_implementation_plan": {
+    "phase_1": "Backend Models & DB Migration. Create HistorialPrecioProducto model and associate it. Build/update routes and controllers for /api/productos and /api/categorias-producto.",
+    "phase_2": "Frontend Hooks & Services. Create fetchers (useServiciosData, useServiciosActions) and configure endpoints.",
+    "phase_3": "Frontend UI Components. Build Header, KPIs, and Table with GSAP animations.",
+    "phase_4": "Frontend Forms & Modals. Implement react-hook-form with zod schemas for Create/Edit Service and View History."
+  }
+}

@@ -175,7 +175,7 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
           ) : (
             // Iconos del menú normal
             navItems.map((item) => {
-              const isActive = !item.isAction && item.href ? pathname.startsWith(item.href) : false;
+              const isActive = !item.isAction && 'href' in item && item.href ? pathname.startsWith(item.href) : false;
               const Icon = item.icon;
 
               return (
@@ -184,7 +184,7 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
                   onClick={(e) => {
                     if (item.isAction && item.action) {
                       item.action();
-                    } else if (item.href) {
+                    } else if ('href' in item && item.href) {
                       e.preventDefault();
                       router.push(item.href);
                     }

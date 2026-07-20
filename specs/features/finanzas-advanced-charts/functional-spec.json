@@ -1,0 +1,52 @@
+{
+  "feature": "Finanzas Advanced Charts",
+  "scope": {
+    "in_scope": [
+      "Agregar 6 nuevos gráficos a la pantalla de Finanzas basados en los movimientos financieros actuales.",
+      "Reorganizar el layout de la pantalla de Finanzas para acomodar de manera estética la nueva cantidad de gráficos (grid dinámico o secciones).",
+      "Procesar los datos de ingresos y egresos en el frontend para generar las métricas requeridas."
+    ],
+    "out_of_scope": [
+      "Modificaciones en el backend o en la estructura de la base de datos.",
+      "Exportación de estos gráficos a PDF/Excel en esta etapa."
+    ]
+  },
+  "user_journeys": [
+    {
+      "persona": "Administrador/Dueño",
+      "action": "Ingresa a la pantalla de Finanzas",
+      "expectation": "Visualiza un panel de control completo (dashboard) con gráficos que le permiten entender rápidamente el balance neto, los patrones de consumo por día de la semana, el rendimiento de sus empleados y los volúmenes transaccionales."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-1",
+      "description": "El sistema debe mostrar un gráfico de Flujo Neto Acumulado (Ingresos - Egresos) a lo largo del tiempo."
+    },
+    {
+      "id": "AC-2",
+      "description": "El sistema debe mostrar un gráfico de Barras Apiladas agrupando Ingresos y Egresos por día de la semana (Lunes a Domingo)."
+    },
+    {
+      "id": "AC-3",
+      "description": "El sistema debe mostrar un ranking (Top) de empleados/cajeros según el volumen de ingresos que registraron."
+    },
+    {
+      "id": "AC-4",
+      "description": "El sistema debe mostrar un gráfico combinado que compare la cantidad de transacciones (volumen) versus el monto total ingresado por día."
+    },
+    {
+      "id": "AC-5",
+      "description": "El sistema debe mostrar la evolución del Ticket Promedio (Ingresos Totales / Cantidad de transacciones) en el tiempo."
+    },
+    {
+      "id": "AC-6",
+      "description": "El sistema debe mostrar un gráfico de Dona con la distribución de Egresos por Método de Pago."
+    }
+  ],
+  "ux_behavior": {
+    "layout": "Los gráficos deben distribuirse en una grilla responsive. Gráficos de evolución (tiempo) ocuparán preferentemente 2 columnas en desktop. Gráficos de distribución (Donas/Rankings) ocuparán 1 columna.",
+    "interactions": "Todos los gráficos deben contar con un Tooltip interactivo al pasar el mouse por encima que detalle los valores exactos.",
+    "empty_states": "Si no hay datos para un gráfico específico (ej: no hay egresos), mostrar un mensaje de 'Sin datos para este período'."
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "architecture": {
+    "moduleBoundaries": [
+      {
+        "module": "hooks/usePedidosData.ts",
+        "responsibility": "Manejo del estado de datos (pedidos, KPIs, paginación, filtros, ordenamiento) y llamadas a la API (fetchOrders, fetchStats). Manejo de persistencia en SessionStorage."
+      },
+      {
+        "module": "hooks/usePedidosActions.ts",
+        "responsibility": "Manejo de acciones específicas y masivas: cambio de estado, generación de facturas, preparación para cobros e impresión de tickets. Devuelve el array de bulkActions."
+      },
+      {
+        "module": "components/pedidos-header.tsx",
+        "responsibility": "Renderiza el encabezado, título, botón de nuevo pedido y el Popover complejo de filtrado por fechas."
+      },
+      {
+        "module": "components/pedidos-kpis.tsx",
+        "responsibility": "Renderiza las 4 tarjetas de DashboardKpi. Recibe los stats y el estado de carga por props."
+      },
+      {
+        "module": "components/pedidos-table.tsx",
+        "responsibility": "Envoltorio del componente DataTable. Recibe los pedidos, columnas, paginación, bulkActions y la barra de herramientas de filtros (estado)."
+      },
+      {
+        "module": "components/pedidos-modals.tsx",
+        "responsibility": "Agrupa todos los modales (CancelOrder, CobrarPedido, BulkCancellation, PrintQueue, BulkCharge, GenerarTickets, y el div de tickets en HTML oculto). Maneja los estados booleanos de isOpen de cada uno de ellos a través de un estado interno o mediante funciones expuestas."
+      }
+    ]
+  },
+  "interfaces": {
+    "usePedidosData": {
+      "returns": "{ pedidos, stats, isTableFetching, isStatsLoading, pagination, setPagination, sorting, setSorting, searchTerm, setSearchTerm, activeFilter, setActiveFilter, fechaInicio, setFechaInicio, fechaFin, setFechaFin, fetchOrders, fetchStats }"
+    },
+    "usePedidosActions": {
+      "inputs": "{ fetchOrders, fetchStats }",
+      "returns": "{ handleStatusChange, handlePrintTicket, handleGenerateFactura, bulkActions, rowErrors, loadingRowIds, setRowErrors }"
+    }
+  },
+  "dependencyDecisions": [
+    {
+      "library": "React / Next.js",
+      "rationale": "Mantener las herramientas actuales del proyecto. No se agregarán librerías externas nuevas."
+    },
+    {
+      "pattern": "Custom Hooks vs Context",
+      "rationale": "Para mantenerlo simple y atado al ciclo de vida de la página `admin/pedidos/page.tsx`, usaremos custom hooks en lugar de Context API global, ya que el estado es propio de esta vista."
+    }
+  ],
+  "failureModes": {
+    "errorHandling": "Los errores de llamadas a la API o al ejecutar un bulkAction se seguirán mostrando mediante notificaciones Toast (librería Sonner) y mensajes de error por fila (rowErrors) capturados internamente en el hook `usePedidosActions`."
+  },
+  "phasedImplementation": [
+    {
+      "phase": "Fase 1: Hooks de Lógica",
+      "tasks": [
+        "Crear `hooks/usePedidosData.ts` migrando estados y efectos de page.tsx",
+        "Crear `hooks/usePedidosActions.ts` migrando lógicas de estado masivo y facturación"
+      ],
+      "dod": "Ambos hooks existen y son importables sin errores de sintaxis."
+    },
+    {
+      "phase": "Fase 2: Componentización UI",
+      "tasks": [
+        "Crear `pedidos-header.tsx`",
+        "Crear `pedidos-kpis.tsx`",
+        "Crear `pedidos-table.tsx`",
+        "Crear `pedidos-modals.tsx`"
+      ],
+      "dod": "Los componentes UI reciben props estrictamente tipadas y compilan correctamente."
+    },
+    {
+      "phase": "Fase 3: Integración",
+      "tasks": [
+        "Reescribir `admin/pedidos/page.tsx` para que consuma los hooks y renderice los nuevos componentes.",
+        "Limpiar imports sin uso."
+      ],
+      "dod": "La página compila y la funcionalidad original sigue intacta."
+    }
+  ]
+}

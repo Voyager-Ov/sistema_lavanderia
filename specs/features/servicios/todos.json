@@ -1,0 +1,72 @@
+[
+  {
+    "id": "backend-1",
+    "title": "Create HistorialPrecioProducto model and DB relations",
+    "owner_role": "Backend",
+    "status": "pending",
+    "parallelizable": false,
+    "depends_on": [],
+    "outputs": ["back/src/models/HistorialPrecioProducto.js", "back/src/models/Producto.js (relations)"],
+    "exit_criteria": "Model is created, synced with SQLite, and belongsTo Producto."
+  },
+  {
+    "id": "backend-2",
+    "title": "Implement /api/productos and /api/categorias-producto CRUD",
+    "owner_role": "Backend",
+    "status": "pending",
+    "parallelizable": false,
+    "depends_on": ["backend-1"],
+    "outputs": ["back/src/controllers/productos.js", "back/src/routes/productos.js", "back/src/controllers/categorias-producto.js", "back/src/routes/categorias-producto.js"],
+    "exit_criteria": "Endpoints for GET, POST, PUT, DELETE work. PUT handles price history insertion."
+  },
+  {
+    "id": "backend-3",
+    "title": "Implement /api/productos/stats for KPIs",
+    "owner_role": "Backend",
+    "status": "pending",
+    "parallelizable": true,
+    "depends_on": ["backend-1"],
+    "outputs": ["back/src/controllers/productos.js (stats method)"],
+    "exit_criteria": "Returns total, active, total categories, and the most requested service in the current month."
+  },
+  {
+    "id": "frontend-1",
+    "title": "Create frontend data hooks",
+    "owner_role": "Frontend",
+    "status": "pending",
+    "parallelizable": true,
+    "depends_on": [],
+    "outputs": ["front/src/app/admin/servicios/hooks/useServiciosData.ts", "front/src/app/admin/servicios/hooks/useServiciosActions.ts", "front/src/app/admin/servicios/hooks/useServiciosModals.ts"],
+    "exit_criteria": "Hooks can fetch products, stats, and manage modal states via zustand/useState."
+  },
+  {
+    "id": "frontend-2",
+    "title": "Build page structure, header and KPIs",
+    "owner_role": "Frontend",
+    "status": "pending",
+    "parallelizable": false,
+    "depends_on": ["frontend-1"],
+    "outputs": ["front/src/app/admin/servicios/page.tsx", "front/src/app/admin/servicios/components/servicios-header.tsx", "front/src/app/admin/servicios/components/servicios-kpis.tsx"],
+    "exit_criteria": "Page loads with layout similar to pedidos. KPIs display data from backend."
+  },
+  {
+    "id": "frontend-3",
+    "title": "Build GSAP animated data table",
+    "owner_role": "Frontend",
+    "status": "pending",
+    "parallelizable": true,
+    "depends_on": ["frontend-1"],
+    "outputs": ["front/src/app/admin/servicios/components/servicios-table.tsx", "front/src/app/admin/servicios/components/servicio-columns.tsx"],
+    "exit_criteria": "Table renders rows that fade in. Shows all columns including Usage (Month)."
+  },
+  {
+    "id": "frontend-4",
+    "title": "Build forms and modals",
+    "owner_role": "Frontend",
+    "status": "pending",
+    "parallelizable": true,
+    "depends_on": ["frontend-1"],
+    "outputs": ["front/src/app/admin/servicios/components/servicios-modals.tsx", "front/src/app/admin/servicios/components/servicios-history-modal.tsx"],
+    "exit_criteria": "Modals use react-hook-form and zod for strictly validated creation and editing. History modal shows past prices."
+  }
+]

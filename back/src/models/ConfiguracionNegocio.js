@@ -51,13 +51,18 @@ export default (sequelize, DataTypes) => {
 				allowNull: true,
 			},
 			mensajeTicket: {
-				type: DataTypes.STRING,
+				type: DataTypes.TEXT,
 				allowNull: true,
 			},
 			imprimirTicketAutomatico: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
 				defaultValue: false,
+			},
+			mostrarQrTicket: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
 			},
 			// --- Integración AFIP (ARCA) ---
 			afipActivo: {
@@ -97,6 +102,11 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 				defaultValue: "¡Hola {{nombre}}! Tu pedido en {{negocio}} ya está LISTO PARA RETIRAR. ¡Te esperamos!",
+			},
+			whatsappMensajeManual: {
+				type: DataTypes.TEXT,
+				allowNull: true,
+				defaultValue: "Hola {{nombre}}, te escribimos para informarte que tu pedido {{codigo}} se encuentra *{{estado}}*. Detalle: {{detalle}}",
 			},
 			// --- Integraciones (Otras) ---
 			mercadopagoAccessToken: {

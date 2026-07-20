@@ -1,0 +1,125 @@
+{
+  "feature": "Pantalla de Clientes (Clients Screen) & Cuentas Corrientes",
+  "scope": {
+    "in_scope": [
+      "Listado paginado de clientes activos con búsqueda (nombre, teléfono, email).",
+      "Creación de nuevos clientes mediante una página dedicada (sin anchos fijos).",
+      "Edición de información de clientes existentes mediante un sidesheet o bottom sheet.",
+      "Vista de detalle del cliente, incluyendo su historial de pedidos.",
+      "Baja lógica (soft delete) de clientes con ingreso de motivo.",
+      "Animaciones de UI fluidas consistentes con la pantalla de Pedidos (usando GSAP).",
+      "Gestión de cuentas corrientes o saldos para clientes grandes (pagos a fin de mes), requiriendo expansión en el backend."
+    ],
+    "out_of_scope": [
+      "Eliminación física (hard delete) de clientes en base de datos."
+    ]
+  },
+  "user_journeys": [
+    {
+      "id": "J1",
+      "title": "Exploración y Búsqueda",
+      "steps": [
+        "El usuario ingresa a la pantalla de Clientes.",
+        "Visualiza tarjetas de KPIs (ej. Clientes Totales, Deuda Total en Cuentas Corrientes).",
+        "Visualiza la tabla o grilla con los clientes, mostrando su saldo actual.",
+        "El usuario utiliza la barra superior para buscar un cliente por su número de teléfono o nombre."
+      ]
+    },
+    {
+      "id": "J2",
+      "title": "Creación de Nuevo Cliente",
+      "steps": [
+        "El usuario hace clic en el botón '+ Nuevo Cliente' (estilo pill).",
+        "El sistema navega a una página nueva completa (ej. /admin/clientes/nuevo) sin restricciones de ancho, con el formulario de creación.",
+        "El usuario completa Nombre, Teléfono (requeridos) y guarda el cliente."
+      ]
+    },
+    {
+      "id": "J3",
+      "title": "Edición de Cliente",
+      "steps": [
+        "Desde la lista o el detalle, el usuario selecciona 'Editar'.",
+        "Se abre un componente sidesheet o bottom sheet animado con GSAP.",
+        "El usuario actualiza la información y guarda, cerrando el panel con una animación de salida suave."
+      ]
+    },
+    {
+      "id": "J4",
+      "title": "Gestión de Cuenta Corriente y Detalle",
+      "steps": [
+        "El usuario hace clic sobre el nombre de un cliente.",
+        "Accede a la vista de detalle donde puede ver el historial de pedidos y el estado de la Cuenta Corriente (saldo deudor/a favor).",
+        "El usuario puede registrar un pago parcial o total a la cuenta corriente del cliente a final de mes."
+      ]
+    },
+    {
+      "id": "J5",
+      "title": "Baja Lógica (Soft Delete)",
+      "steps": [
+        "El usuario selecciona la opción 'Dar de baja'.",
+        "El sistema valida si el cliente tiene pedidos activos o saldo deudor en su cuenta corriente.",
+        "Se solicita un motivo de baja y se archiva el cliente."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Given un usuario en la pantalla de clientes, When escribe en el buscador, Then la lista se filtra por coincidencias parciales."
+    },
+    {
+      "id": "AC2",
+      "description": "Given el formulario de nuevo cliente en página dedicada, When se intenta registrar un teléfono ya existente, Then el sistema muestra un error claro."
+    },
+    {
+      "id": "AC3",
+      "description": "Given un cliente con cuenta corriente, When realiza compras sin pagar en el momento, Then la deuda se acumula en su saldo."
+    },
+    {
+      "id": "AC4",
+      "description": "Given la intención de dar de baja un cliente, When el cliente tiene deuda o pedidos en curso, Then el sistema bloquea la acción."
+    }
+  ],
+  "ux_expectations": {
+    "layout": "Creación en página independiente (responsive, sin anchos fijos). Edición en Sidesheet/Bottom Sheet. Lista similar a la de Pedidos con KPIs adaptados.",
+    "animations": "Uso de GSAP para animar la entrada de elementos (staggering) y el Sidesheet de edición."
+  },
+  "business_rules": [
+    "Todos los roles (Admin/Empleado) pueden consultar.",
+    "Sólo Admin y Empleado pueden crear, editar, dar de baja o asentar pagos de cuenta corriente.",
+    "El teléfono del cliente es único.",
+    "Se expandirá el modelo de backend para soportar un 'saldo' y movimientos de cuenta corriente asociados al cliente."
+  ],
+  "data_and_validations": {
+    "creation_data": {
+      "expected_fields": ["nombre (string, requerido)", "telefono (string, requerido)", "email (string, opcional)"],
+      "validations": [
+        "El nombre no puede estar vacío.",
+        "El teléfono debe ser único dentro del mismo negocio (si se repite, el backend rechaza con error 400).",
+        "Si se envía email, debe tener formato válido."
+      ]
+    },
+    "update_data": {
+      "expected_fields": ["nombre (string, opcional)", "telefono (string, opcional)", "email (string, opcional)"],
+      "validations": [
+        "Si se actualiza el teléfono, se vuelve a validar que no exista en otro cliente del mismo negocio."
+      ]
+    },
+    "current_account_payment": {
+      "expected_fields": ["monto (number, requerido)", "metodoPago (string, requerido)"],
+      "validations": [
+        "El monto debe ser mayor a 0.",
+        "El pago reduce el saldo deudor del cliente.",
+        "Genera un registro inmutable en el historial de cuenta corriente (movimiento de crédito)."
+      ]
+    },
+    "soft_delete": {
+      "expected_fields": ["motivoBaja (string, requerido)"],
+      "validations": [
+        "El motivoBaja no puede estar vacío.",
+        "Falla si el cliente tiene saldo deudor > 0.",
+        "Falla si el cliente tiene pedidos con estado distinto a ENTREGADO o CANCELADO."
+      ]
+    }
+  }
+}

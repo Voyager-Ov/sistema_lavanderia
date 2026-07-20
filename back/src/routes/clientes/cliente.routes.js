@@ -17,5 +17,7 @@ router.get("/:id", clienteController.getClienteById);
 router.post("/", verificarRol(["admin", "empleado"]), crearClienteValidator, validarCampos, clienteController.crearCliente);
 router.put("/:id", verificarRol(["admin", "empleado"]), actualizarClienteValidator, validarCampos, clienteController.actualizarCliente);
 router.patch("/:id/estado", verificarRol(["admin", "empleado"]), desactivarClienteValidator, validarCampos, clienteController.desactivarCliente);
+router.post("/:id/cuenta-corriente/pagos", verificarRol(["admin", "empleado"]), clienteController.registrarPagoCuentaCorriente);
+router.post("/:id/cuenta-corriente/recalcular", verificarRol(["admin", "empleado"]), clienteController.recalcularSaldoCuentaCorriente);
 
 export default router;

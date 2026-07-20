@@ -49,5 +49,26 @@ Este módulo permite gestionar las preferencias y la integración de servicios d
 ### 7. Actualizar Plantilla de Mensaje
 - **Ruta y Método**: `PATCH /api/configuracion/whatsapp/mensaje`
 - **Acción**: Actualiza el texto automático que se enviará a los clientes cuando un pedido cambie a estado `LISTO_PARA_RETIRAR`.
-- **Validaciones**:
   - `mensaje`: Obligatorio. **Debe contener obligatoriamente la variable `{{nombre}}`** para asegurar la personalización del mensaje.
+
+---
+
+## Integración de Métodos de Pago
+
+### 8. Configurar Métodos de Pago
+- **Ruta y Método**: `PATCH /api/configuracion/pagos`
+- **Acción**: Permite habilitar o deshabilitar métodos de pago globales (Efectivo, Tarjeta, Transferencia) y definir datos bancarios.
+- **Reglas de Negocio (Finanzas)**:
+  - Al menos un método de pago debe estar habilitado siempre para poder procesar órdenes.
+  - Si se habilita "Transferencia", es obligatorio proveer un `CBU` o `Alias`.
+
+---
+
+## Control de Caja (Apertura y Cierre)
+
+### 9. Configuración Automática de Caja
+- **Ruta y Método**: `PATCH /api/configuracion/caja`
+- **Acción**: Configura parámetros del ciclo de vida de la caja registradora diaria.
+- **Reglas de Negocio (Operaciones)**:
+  - `cierreAutomatico`: Si está habilitado, el sistema debe registrar el cierre de la caja de forma automática a la hora establecida (`horaCierre`), contabilizando el dinero esperado según los registros.
+  - La hora de cierre automático debe ser válida (formato HH:MM) y posterior a la hora de apertura habitual (para evitar cierres prematuros).

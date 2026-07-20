@@ -1,0 +1,74 @@
+{
+  "feature": "Módulo Central de Configuraciones del Sistema (Frontend)",
+  "scope": {
+    "in": [
+      "Diseño de interfaz de usuario de alto nivel para la página de configuraciones del Sistema de Lavandería.",
+      "Layout Maestro: Sidebar lateral para navegación rápida entre módulos de configuración y área principal de contenido con Scroll dinámico.",
+      "Categorías principales: Negocio, Operaciones (Lavandería), Usuarios/Roles, Notificaciones, Hardware/Tickets, y Apariencia.",
+      "Componentes de formulario avanzados: Drag and drop (para logos), switches interactivos, selectores de color, campos con formato de máscara (teléfonos, CUIT/RUT).",
+      "Validación robusta en el cliente usando Zod y React Hook Form con prevención activa de guardado si hay errores.",
+      "Feedback visual de estado: Indicador de 'Guardando...', 'Cambios sin guardar' y Toasts de éxito/error animadas.",
+      "Experiencia fluida con animaciones GSAP: Transiciones suaves al cambiar de categoría, animaciones de entrada en lista y micro-animaciones (hovers, loaders)."
+    ],
+    "out": [
+      "Implementación real de los endpoints del backend (por ahora los datos y guardados se simularán con un store de Zustand para probar la UI).",
+      "Sincronización en tiempo real de configuraciones con otros clientes activos simultáneamente."
+    ]
+  },
+  "user_journeys": [
+    {
+      "user": "Administrador Principal",
+      "action": "Abre el módulo de configuraciones",
+      "outcome": "El sistema carga el Layout Maestro con una animación GSAP tipo 'fade-in' y 'stagger' para los ítems del sidebar, revelando por defecto la vista 'General / Negocio'."
+    },
+    {
+      "user": "Administrador Principal",
+      "action": "Navega a la sección 'Hardware / Tickets' y modifica el pie de página del ticket",
+      "outcome": "El componente detecta cambios (isDirty). Aparece una barra flotante o indicador animado que advierte 'Tienes cambios sin guardar'. Al pulsar 'Guardar', se deshabilita el botón con un spinner fluido, se simula el delay, y finaliza con un Toast verde y desaparición de la advertencia."
+    },
+    {
+      "user": "Administrador",
+      "action": "Configura precios y operaciones en 'Operaciones'",
+      "outcome": "Intenta guardar sin establecer el 'Costo base por Kg'. El formulario lo bloquea, el campo vacío titila sutilmente en rojo (GSAP) y un tooltip explica que es un campo requerido."
+    }
+  ],
+  "acceptance_criteria": [
+    "AC1 (Arquitectura UI): La interfaz debe usar una grilla asimétrica o de lectura clara (ej. Sidebar 250px, contenido fluido), permitiendo el crecimiento futuro de más categorías de opciones.",
+    "AC2 (Formularios): Todos los campos deben estar envueltos en componentes de Radix UI o similares accesibles, manejados estrictamente por React Hook Form.",
+    "AC3 (Diseño Visual): Seguir la directiva frontend-design. Uso de colores neutros oscuros (si es dark mode) con acentos de color primario radiante, bordes suaves (rounded-xl), y sombras sutiles (glassmorphism en la barra flotante de 'Guardar').",
+    "AC4 (GSAP Animaciones): Al cambiar de una tab (ej. de Negocio a Notificaciones), el contenido anterior debe hacer un 'fade-out' rápido, y el nuevo un 'fade-in-up' sin parpadeos estructurales.",
+    "AC5 (Responsive): En móvil, el sidebar se convierte en un menú hamburguesa desplegable o en tabs horizontales deslizables.",
+    "AC6 (Prevención de Pérdida de Datos): Si hay cambios sin guardar e intenta cambiar de tab/categoría, un Dialog (modal) de Radix UI debe advertirle y pedir confirmación."
+  ],
+  "ux_expectations": [
+    "Micro-interacciones: Los toggles/switches deben tener un rebote sutil.",
+    "Tipografía: Interfaz jerárquica clara. Títulos grandes para las secciones, descripciones sutiles (text-muted-foreground) debajo de cada opción para explicar qué hace cada configuración.",
+    "El panel debe sentirse 'vivo' y responder al instante a los clics, sin dependencias largas del servidor para actualizar la UI."
+  ],
+  "configuration_categories": {
+    "Negocio": {
+      "fields": ["Nombre del local", "Logo (Upload)", "Dirección", "Teléfono de contacto", "Moneda (Select)", "Impuesto (%)"]
+    },
+    "Operaciones": {
+      "fields": ["Precio por defecto por Kg", "Cobro mínimo (monto)", "Tiempo estimado de entrega (horas)", "Habilitar entrega a domicilio (Switch)", "Tolerancia de peso extra (gr)"]
+    },
+    "Notificaciones": {
+      "fields": ["Enviar WhatsApp automático al finalizar (Switch)", "Plantilla de WhatsApp (Textarea)", "Enviar Email con comprobante (Switch)"]
+    },
+    "Usuarios y Roles": {
+      "fields": ["Gestor visual de roles (Lista de usuarios con opción de cambiar rol Admin/Cajero/Operador)"]
+    },
+    "Hardware y Tickets": {
+      "fields": ["Impresora térmica habilitada (Switch)", "Mensaje de encabezado del ticket", "Mensaje de pie de página", "Mostrar código QR en ticket (Switch)"]
+    },
+    "Apariencia": {
+      "fields": ["Tema (Claro, Oscuro, Sistema)", "Color de acento primario (Color picker simplificado)"]
+    }
+  },
+  "business_rules": [
+    "La configuración de 'Precio por defecto' nunca puede ser menor a 0.",
+    "El 'Nombre del local' y 'Dirección' son obligatorios para generar tickets válidos.",
+    "El 'Impuesto' debe estar entre 0% y 100%.",
+    "La 'Tolerancia de peso extra' previene que se cobre de más por variaciones mínimas de la balanza (ej. 100g)."
+  ]
+}

@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
       toast.success("Correo enviado", { description: "Revisa tu bandeja de entrada o spam." });
     } catch (error: any) {
       toast.error("Error", {
-        description: error.data?.message || error.message || "No se pudo procesar la solicitud.",
+        description: error.message || "No se pudo procesar la solicitud.",
       });
       animateFormError();
     } finally {

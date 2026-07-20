@@ -57,3 +57,19 @@ Este módulo gestiona el flujo principal del negocio: la creación, consulta y a
     "comentario": "Terminado antes de tiempo"
   }
   ```
+
+### 5. Imprimir Ticket Principal (Comprobante)
+- **Ruta y Método**: `GET /api/pedidos/:id/ticket`
+- **Acción**: Retorna los datos formateados para imprimir el comprobante general del pedido.
+
+### 6. Generar Tickets Físicos (Para ropa)
+- **Ruta y Método**: `POST /api/pedidos/:id/tickets`
+- **Acción**: Genera tickets individuales asociados al pedido (utiliza el modelo `Ticket`). Útiles para grapar a las bolsas de ropa, cada uno con un código único.
+
+### 7. Obtener Tickets Físicos
+- **Ruta y Método**: `GET /api/pedidos/:id/tickets`
+- **Acción**: Devuelve todos los códigos de tickets asociados a un pedido específico.
+
+### 8. Generar Factura (AFIP)
+- **Ruta y Método**: `POST /api/pedidos/:id/factura`
+- **Acción**: Intenta generar la factura electrónica de AFIP para el pedido completo, útil si se requiere facturar manualmente por fuera del pago automático.

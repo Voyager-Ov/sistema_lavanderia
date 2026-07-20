@@ -1,121 +1,49 @@
 "use client"
 
-import React, { useRef, useState, useEffect } from "react"
+import React, { useRef, useMemo } from "react"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
-import { Pedido, getPedidos, cambiarEstadoPedido } from "@/domains/pedidos/api"
-import { getDashboardStats, DashboardStatsResponse } from "@/domains/dashboard/api"
-import { KpiCard as DashboardKpi } from "@/shared/ui/data-display/kpi-card"
-import { Input } from "@/shared/ui/forms/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/forms/select"
-import { Button } from "@/shared/ui/forms/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/overlays/popover"
-import { Calendar as CalendarIcon, Download, Search, CheckCircle, Clock, XCircle, Printer } from "lucide-react"
-import { toast } from "sonner"
-import { DataTable } from "@/shared/ui/data-display/data-table"
-import { getPedidoColumns } from "./components/pedido-columns"
-import { CancelOrderSheet } from "./components/cancel-order-sheet"
-import { BulkAction } from "@/shared/ui/data-display/data-table-bulk-actions"
 import { useRouter } from "next/navigation"
-import { SortingState } from "@tanstack/react-table"
+import { getPedidoColumns } from "./components/pedido-columns"
+import { PedidosHeader } from "./components/pedidos-header"
+import { PedidosKpis } from "./components/pedidos-kpis"
+import { PedidosTable } from "./components/pedidos-table"
+import { PedidosModals } from "./components/pedidos-modals"
+import { usePedidosData } from "./hooks/usePedidosData"
+import { usePedidosActions } from "./hooks/usePedidosActions"
+import { usePedidosModals } from "./hooks/usePedidosModals"
+import { CheckCircle2, Clock, Printer, XCircle } from "lucide-react"
 
 export default function PedidosPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  
-  const [pedidos, setPedidos] = useState<Pedido[]>([])
-  const [stats, setStats] = useState<DashboardStatsResponse | null>(null)
-  const [isTableFetching, setIsTableFetching] = useState(true)
-  const [isStatsLoading, setIsStatsLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilter, setActiveFilter] = useState<string>("TODOS")
-  
-  // Advanced filters state
-  const [fechaInicio, setFechaInicio] = useState("")
-  const [fechaFin, setFechaFin] = useState("")
-  
-  // Pagination & Sorting state
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 })
-  const [totalItems, setTotalItems] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  // DataTable uses state { id: "colName", desc: boolean }[]
-  const [sorting, setSorting] = useState<SortingState>([])
 
-  // Cancel order state
-  const [pedidoToCancel, setPedidoToCancel] = useState<Pedido | null>(null)
-  const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
+  const {
+    pedidos, setPedidos,
+    stats,
+    isTableFetching, isStatsLoading,
+    searchTerm, setSearchTerm,
+    activeFilter, setActiveFilter,
+    fechaInicio, setFechaInicio,
+    fechaFin, setFechaFin,
+    pagination, setPagination,
+    sorting, setSorting,
+    totalPages,
+    fetchOrders, fetchStats,
+    setQuickFilter,
+  } = usePedidosData()
 
-  // Loading row state (for optimistic updates)
-  const [loadingRowIds, setLoadingRowIds] = useState<string[]>([])
-  const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
+  const {
+    loadingRowIds,
+    rowErrors, setRowErrors,
+    handleStatusChange,
+    processBulkStatusChange,
+    handleGenerateFactura
+  } = usePedidosActions({ pedidos, setPedidos, fetchOrders, fetchStats })
+
+  const { modalsProps, handlePrintTicket } = usePedidosModals()
 
   gsap.registerPlugin(useGSAP)
-
-  const fetchOrders = async () => {
-    setIsTableFetching(true)
-    try {
-      const queryParams: any = {
-        estado: activeFilter !== "TODOS" ? activeFilter : undefined,
-        search: searchTerm || undefined,
-        limit: pagination.pageSize,
-        page: pagination.pageIndex + 1
-      }
-      
-      if (fechaInicio) queryParams.fechaInicio = fechaInicio;
-      if (fechaFin) queryParams.fechaFin = fechaFin;
-      
-      if (sorting.length > 0) {
-        queryParams.sortBy = sorting[0].id
-        queryParams.sortOrder = sorting[0].desc ? "desc" : "asc"
-      }
-
-      const pedidosRes = await getPedidos(queryParams).catch(e => { console.error("Error cargando pedidos", e); return null; })
-
-      if (pedidosRes) {
-        setPedidos(pedidosRes.data?.items || [])
-        const { totalItems, totalPages, currentPage } = pedidosRes.data?.meta || { totalItems: 0, totalPages: 0, currentPage: 1 }
-        setTotalItems(totalItems)
-        setTotalPages(totalPages)
-        setPagination(prev => ({
-          ...prev,
-          pageIndex: currentPage - 1
-        }))
-      }
-    } catch (error) {
-      console.error("Error fetching pedidos data:", error)
-    } finally {
-      setIsTableFetching(false)
-    }
-  }
-
-  const fetchStats = async () => {
-    setIsStatsLoading(true)
-    try {
-      const statsRes = await getDashboardStats().catch(e => { console.error("Error cargando stats", e); return null; })
-      if (statsRes) {
-        setStats(statsRes)
-      }
-    } catch (error) {
-      console.error("Error fetching stats data:", error)
-    } finally {
-      setIsStatsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
-  // Effect to load when filter, date, pagination, sorting changes
-  // Used debounce internally for searching
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchOrders()
-    }, 300)
-    return () => clearTimeout(handler)
-  }, [activeFilter, fechaInicio, fechaFin, pagination.pageIndex, pagination.pageSize, sorting, searchTerm])
-
-  // Animations
   useGSAP(() => {
     const items = gsap.utils.toArray('.fade-item')
     if (items.length > 0) {
@@ -126,283 +54,138 @@ export default function PedidosPage() {
     }
   }, { scope: containerRef })
 
-  const handleStatusChange = async (pedidoId: number, nuevoEstado: string) => {
-    const rowId = pedidoId.toString()
-    setLoadingRowIds(prev => [...prev, rowId])
-    setRowErrors(prev => {
-      const { [rowId]: _, ...rest } = prev
-      return rest
-    })
-
-    try {
-      await cambiarEstadoPedido(pedidoId, nuevoEstado)
-      // Update local state without full reload
-      setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, estado: nuevoEstado as any } : p))
-      
-      fetchStats()
-    } catch (error: any) {
-      console.error("Error al cambiar estado:", error)
-      setRowErrors(prev => ({ 
-        ...prev, 
-        [rowId]: error.response?.data?.message || "Error al cambiar el estado" 
-      }))
-    } finally {
-      setLoadingRowIds(prev => prev.filter(id => id !== rowId))
+  const columns = useMemo(() => getPedidoColumns({
+    onView: (pedido) => {
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        modalsProps.setPedidoToView(pedido)
+        modalsProps.setIsViewSheetOpen(true)
+      } else {
+        router.push(`/admin/pedidos/${pedido.id}`)
+      }
+    },
+    onCancel: (pedido) => {
+      modalsProps.setPedidoToCancel(pedido)
+      modalsProps.setIsCancelSheetOpen(true)
+    },
+    onChangeStatus: handleStatusChange,
+    onPrintTicket: handlePrintTicket,
+    onGenerateFactura: handleGenerateFactura,
+    onCobrar: (pedido) => {
+      modalsProps.setPedidoToCobrar(pedido)
+      modalsProps.setIsCobrarSheetOpen(true)
     }
-  }
+  }), [handleStatusChange, modalsProps, handlePrintTicket, handleGenerateFactura, router])
 
-  const handleConfirmCancel = async (pedidoId: number, motivo: string, descripcion: string) => {
-    const comentario = `Cancelado: ${motivo}. ${descripcion}`.trim()
-    await cambiarEstadoPedido(pedidoId, "CANCELADO", comentario)
-    fetchOrders()
-    fetchStats()
-  }
-
-  const processBulkStatusChange = async (selectedRows: Pedido[], nuevoEstado: string, actionName: string, clearSelection: () => void) => {
-    const originalStates = selectedRows.map(p => ({ id: p.id, estado: p.estado }))
-    
-    // Optimistic UI Update
-    setPedidos(prev => prev.map(p => {
-      if (selectedRows.some(sr => sr.id === p.id)) {
-        return { ...p, estado: nuevoEstado as any }
-      }
-      return p
-    }))
-    
-    clearSelection()
-
-    // Llamadas concurrentes
-    const promises = selectedRows.map(p => cambiarEstadoPedido(p.id, nuevoEstado, `Acción masiva: ${actionName}`))
-    const results = await Promise.allSettled(promises)
-    
-    const failedIds: number[] = []
-    const newErrors: Record<string, string> = {}
-    
-    results.forEach((res, index) => {
-      if (res.status === "rejected") {
-        const pId = selectedRows[index].id
-        failedIds.push(pId)
-        
-        // Extract specific error message
-        const errorMessage = res.reason?.message || res.reason?.toString() || "Error al actualizar estado"
-        newErrors[pId.toString()] = errorMessage
-      }
-    })
-    
-    if (failedIds.length > 0) {
-      setRowErrors(prev => ({ ...prev, ...newErrors }))
-      // Revert failed rows
-      setPedidos(prev => prev.map(p => {
-        if (failedIds.includes(p.id)) {
-          const original = originalStates.find(o => o.id === p.id)
-          return original ? { ...p, estado: original.estado } : p
-        }
-        return p
-      }))
-      toast.error(`Error al actualizar ${failedIds.length} pedidos. Revisa la tabla.`)
-    } else {
-      toast.success(`${selectedRows.length} pedidos pasaron a ${actionName}`, {
-        action: {
-          label: "Deshacer",
-          onClick: () => {
-            toast.promise(
-              Promise.all(originalStates.map(o => cambiarEstadoPedido(o.id, o.estado, "Deshacer acción masiva"))),
-              {
-                loading: 'Deshaciendo cambios...',
-                success: () => {
-                  fetchOrders()
-                  fetchStats()
-                  return 'Cambios revertidos correctamente.'
-                },
-                error: 'Error al revertir los cambios.'
-              }
-            )
+  const bulkActions = [
+    {
+      label: "Cambiar Estado",
+      type: "dropdown",
+      icon: Clock,
+      colorClass: "bg-white/60 text-gray-700 hover:text-gray-900 hover:bg-white border border-white shadow-sm",
+      options: [
+        {
+          label: "Marcar como Pendientes",
+          icon: Clock,
+          colorClass: "text-blue-600 hover:bg-blue-50 data-[highlighted]:bg-blue-50 data-[highlighted]:text-blue-700",
+          onClick: async (selectedRows: any, clearSelection: any) => {
+            await processBulkStatusChange(selectedRows, "PENDIENTE", "Pendiente", clearSelection)
+          }
+        },
+        {
+          label: "Marcar como En Proceso",
+          icon: Clock,
+          colorClass: "text-orange-600 hover:bg-orange-50 data-[highlighted]:bg-orange-50 data-[highlighted]:text-orange-700",
+          onClick: async (selectedRows: any, clearSelection: any) => {
+            await processBulkStatusChange(selectedRows, "EN_PROCESO", "En Proceso", clearSelection)
+          }
+        },
+        {
+          label: "Marcar como Listos",
+          icon: CheckCircle2,
+          colorClass: "text-green-600 hover:bg-green-50 data-[highlighted]:bg-green-50 data-[highlighted]:text-green-700",
+          onClick: async (selectedRows: any, clearSelection: any) => {
+            await processBulkStatusChange(selectedRows, "LISTO_PARA_RETIRAR", "Listo para retirar", clearSelection)
           }
         }
-      })
-    }
-    
-    fetchStats()
-  }
-
-  const columns = React.useMemo(() => getPedidoColumns({
-    onView: (pedido) => router.push(`/admin/pedidos/${pedido.id}`),
-    onEdit: (pedido) => router.push(`/admin/pedidos/editar/${pedido.id}`),
-    onCancel: (pedido) => {
-      setPedidoToCancel(pedido)
-      setIsCancelSheetOpen(true)
-    },
-    onChangeStatus: handleStatusChange
-  }), [])
-
-  const bulkActions: BulkAction<Pedido>[] = [
-    {
-      label: "Marcar como En Proceso",
-      icon: Clock,
-      onClick: async (selectedRows, clearSelection) => {
-        await processBulkStatusChange(selectedRows, "EN_PROCESO", "En Proceso", clearSelection)
-      }
-    },
-    {
-      label: "Marcar como Listos",
-      icon: CheckCircle,
-      onClick: async (selectedRows, clearSelection) => {
-        await processBulkStatusChange(selectedRows, "LISTO_PARA_RETIRAR", "Listo", clearSelection)
-      }
+      ]
     },
     {
       label: "Imprimir Tickets",
       icon: Printer,
-      onClick: (selectedRows, clearSelection) => {
-        alert("Imprimiendo " + selectedRows.length + " tickets...")
-        clearSelection()
+      colorClass: "bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100/90 border-indigo-100 hover:shadow-md backdrop-blur-md",
+      onClick: async (selectedRows: any, clearSelection: any) => {
+        modalsProps.setPedidosToBulkPrint(selectedRows)
+        modalsProps.setIsBulkPrintActive(true)
+        ;(window as any)._clearPrintSelection = clearSelection
       }
     },
     {
-      label: "Exportar CSV",
-      icon: Download,
-      onClick: (selectedRows, clearSelection) => {
-        alert("Exportando " + selectedRows.length + " filas a CSV")
-        clearSelection()
+      label: "Cobrar Masivamente",
+      icon: Clock,
+      colorClass: "bg-green-50/80 text-green-700 hover:bg-green-100/90 border-green-100 hover:shadow-md backdrop-blur-md",
+      onClick: (selectedRows: any, clearSelection: any) => {
+        modalsProps.setPedidosToBulkCharge(selectedRows)
+        modalsProps.setIsBulkChargeOpen(true)
+        ;(window as any)._clearChargeSelection = clearSelection
       }
     },
     {
       label: "Cancelar",
       icon: XCircle,
       variant: "destructive",
-      onClick: async (selectedRows, clearSelection) => {
-        await processBulkStatusChange(selectedRows, "CANCELADO", "Cancelado", clearSelection)
+      onClick: async (selectedRows: any, clearSelection: any) => {
+        modalsProps.setPedidosToBulkCancel(selectedRows)
+        modalsProps.setIsBulkCancelOpen(true)
+        ;(window as any)._clearSelection = clearSelection
       }
     }
   ]
 
+  const refreshAll = () => {
+    fetchOrders()
+    fetchStats()
+  }
+
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full gap-6">
-
-      <div className="flex-1 p-4 md:p-8 pt-6 w-full flex flex-col gap-8">
+      <div className="flex-1 w-full flex flex-col gap-8">
         
-        {/* Header Section */}
-        <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-1">Pedidos</h1>
-            <p className="text-gray-500 font-medium text-sm">Gestiona y haz seguimiento de todos los tickets activos.</p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="rounded-xl h-12 font-bold text-gray-700 bg-white border-2 border-gray-100 shadow-sm gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  Filtrar por Fecha
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4 rounded-2xl" align="end">
-                <div className="space-y-4">
-                  <h4 className="font-bold text-gray-900">Rango de fechas</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Desde</label>
-                      <Input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="h-10 text-xs" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500">Hasta</label>
-                      <Input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="h-10 text-xs" />
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="ghost" size="sm" onClick={() => { setFechaInicio(""); setFechaFin(""); }}>Limpiar</Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+        <PedidosHeader
+          fechaInicio={fechaInicio}
+          setFechaInicio={setFechaInicio}
+          fechaFin={fechaFin}
+          setFechaFin={setFechaFin}
+          setQuickFilter={setQuickFilter}
+          onClearFilters={() => { setFechaInicio(""); setFechaFin(""); setPagination((p: any) => ({...p, pageIndex: 0})) }}
+        />
 
-            <Button className="rounded-xl h-12 px-6 shadow-sm hover:shadow-md transition-all font-bold gap-2">
-              <span className="text-lg leading-none">+</span> Crear Nuevo Pedido
-            </Button>
-          </div>
-        </div>
+        <PedidosKpis stats={stats} isLoading={isStatsLoading} />
 
-        {/* KPIs */}
-        <div className="fade-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <DashboardKpi isLoading={isStatsLoading} title="Total Facturado (Hoy)" value={`$${(stats?.ingresos?.hoyTotalPedidos || 0).toLocaleString("es-AR")}`} trend="up" subtitle="Ingresos en caja hoy" />
-          <DashboardKpi isLoading={isStatsLoading} title="Pedidos Pendientes" value={(stats?.pedidosActivos?.PENDIENTE || 0).toString()} trend="neutral" subtitle="A la espera de iniciar" highlight="blue" />
-          <DashboardKpi isLoading={isStatsLoading} title="En Proceso" value={(stats?.pedidosActivos?.EN_PROCESO || 0).toString()} trend="neutral" subtitle="Lavando/Secando ahora" />
-          <DashboardKpi isLoading={isStatsLoading} title="Listos para Retirar" value={(stats?.pedidosActivos?.LISTO_PARA_RETIRAR || stats?.pedidosActivos?.LISTO || 0).toString()} trend="neutral" subtitle="Avisar a clientes" highlight="blue" />
-        </div>
-
-        {/* DataTable */}
-        <div className="fade-item relative z-0 flex flex-col gap-4">
-          
-          {Object.keys(rowErrors).length > 0 && (
-            <div className="flex justify-end animate-in fade-in slide-in-from-top-2 duration-300">
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="h-8 rounded-full shadow-sm text-xs"
-                onClick={() => setRowErrors({})}
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                Limpiar todos los errores ({Object.keys(rowErrors).length})
-              </Button>
-            </div>
-          )}
-
-          <DataTable
-            columns={columns}
-            data={pedidos}
-            loadingRowIds={loadingRowIds}
-            rowErrors={rowErrors}
-            onClearRowError={(id) => setRowErrors(prev => { const newObj = {...prev}; delete newObj[id]; return newObj; })}
-            isFetching={isTableFetching}
-            
-            // Integracion con buscador interno de DataTable
-            searchPlaceholder="Buscar por cliente o ticket..."
-            globalFilter={searchTerm}
-            onGlobalFilterChange={(val) => { setSearchTerm(val); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-            
-            // Filtros extras en la barra de herramientas
-            toolbarExtras={
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500 hidden sm:inline-block">Estado:</span>
-                <Select
-                  value={activeFilter}
-                  onValueChange={(val) => { setActiveFilter(val); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-                >
-                  <SelectTrigger className="w-[180px] h-9 text-xs rounded-full bg-white shadow-sm font-bold border-gray-200">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TODOS">Todos</SelectItem>
-                    <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                    <SelectItem value="EN_PROCESO">En Proceso</SelectItem>
-                    <SelectItem value="LISTO_PARA_RETIRAR">Listo para Retirar</SelectItem>
-                    <SelectItem value="ENTREGADO">Entregado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            }
-
-            // Server pagination props
-            manualPagination={true}
-            pageCount={totalPages}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            
-            // Server sorting props
-            manualSorting={true}
-            sorting={sorting}
-            onSortingChange={setSorting}
-            
-            bulkActions={bulkActions}
-          />
-        </div>
+        <PedidosTable
+          pedidos={pedidos}
+          columns={columns as any}
+          loadingRowIds={loadingRowIds}
+          rowErrors={rowErrors}
+          onClearRowError={(id) => setRowErrors((prev: any) => { const newObj = {...prev}; delete newObj[id]; return newObj; })}
+          onClearAllErrors={() => setRowErrors({})}
+          isTableFetching={isTableFetching}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          pagination={pagination}
+          setPagination={setPagination}
+          totalPages={totalPages}
+          sorting={sorting}
+          setSorting={setSorting}
+          bulkActions={bulkActions as any}
+        />
       </div>
-      
-      <CancelOrderSheet 
-        pedido={pedidoToCancel}
-        open={isCancelSheetOpen}
-        onOpenChange={setIsCancelSheetOpen}
-        onConfirm={handleConfirmCancel}
+
+      <PedidosModals 
+        props={modalsProps} 
+        onActionSuccess={refreshAll} 
+        handleGenerateFactura={handleGenerateFactura} 
       />
     </div>
   )

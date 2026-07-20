@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AppLayout } from "@/shared/ui/layout/app-layout";
+import { usePathname } from "next/navigation";
 import { RoleGuard } from "@/shared/ui/layout/guards/RoleGuard";
 import { useAuthStore } from "@/shared/store/useAuthStore";
 import { 
@@ -32,7 +33,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
   const segments = pathname.split("/").filter(Boolean);
-  const breadcrumbs = segments.map((segment) => {
+  const breadcrumbs = segments.map((segment: string) => {
     let label = segment.charAt(0).toUpperCase() + segment.slice(1);
     if (label.toLowerCase() === "pos") label = "Terminal";
     return { label };

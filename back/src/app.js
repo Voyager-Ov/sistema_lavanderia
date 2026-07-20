@@ -4,6 +4,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth/auth.routes.js";
 import usuarioRoutes from "./routes/usuarios/usuario.routes.js";
@@ -13,10 +15,13 @@ import categoriaRoutes from "./routes/categorias/categoria.routes.js";
 import productoRoutes from "./routes/productos/producto.routes.js";
 import cajaRoutes from "./routes/cajas/caja.routes.js";
 import gastoRoutes from "./routes/gastos/gasto.routes.js";
+import categoriaGastoRoutes from "./routes/gastos/categoriaGasto.routes.js";
 import pagoRoutes from "./routes/pagos/pago.routes.js";
+import finanzasRoutes from "./routes/finanzas/finanzas.routes.js";
 import pedidoRoutes from "./routes/pedidos/pedido.routes.js";
 import asistenciaRoutes from "./routes/rrhh/asistencia.routes.js";
-import reporteRoutes from "./routes/rrhh/reporte.routes.js";
+import reporteRrhhRoutes from "./routes/rrhh/reporte.routes.js";
+import reportesRoutes from "./routes/reportes/reportes.routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { successResponse } from "./utils/response.util.js";
 
@@ -35,6 +40,10 @@ app.use(dynamicCors);
 
 app.use(express.json());
 app.use(cookieParser());
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 // Rate Limiting Global: Protege a TODA la API de ataques DDoS o saturación
 const globalLimiter = rateLimit({
@@ -63,10 +72,13 @@ app.use("/api/categorias", categoriaRoutes);
 app.use("/api/productos", productoRoutes);
 app.use("/api/cajas", cajaRoutes);
 app.use("/api/gastos", gastoRoutes);
+app.use("/api/categorias-gastos", categoriaGastoRoutes);
 app.use("/api/pagos", pagoRoutes);
+app.use("/api/finanzas", finanzasRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/rrhh/asistencias", asistenciaRoutes);
-app.use("/api/rrhh/reportes", reporteRoutes);
+app.use("/api/rrhh/reportes", reporteRrhhRoutes);
+app.use("/api/reportes", reportesRoutes);
 app.use("/api/microfrontends", mfRoutes);
 app.use("/api/superadmin", superadminRoutes);
 app.use("/api/configuracion", configuracionRoutes);

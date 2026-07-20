@@ -13,7 +13,7 @@ interface KpiCardProps {
   value: string | number
   description?: string
   backMessage: string
-  colorVariant?: "blue" | "green" | "orange" | "purple"
+  colorVariant?: "blue" | "green" | "orange" | "purple" | "red" | "yellow"
   className?: string
   isLoading?: boolean
 }
@@ -35,6 +35,8 @@ export function KpiCard({
     green: "bg-brand-green text-white",
     orange: "bg-brand-orange text-white",
     purple: "bg-brand-purple text-white",
+    red: "bg-red-500 text-white",
+    yellow: "bg-yellow-400 text-slate-900",
   }
   
   const borders = {
@@ -42,6 +44,8 @@ export function KpiCard({
     green: "border-brand-green",
     orange: "border-brand-orange",
     purple: "border-brand-purple",
+    red: "border-red-500",
+    yellow: "border-yellow-400",
   }
 
   const { contextSafe } = useGSAP({ scope: containerRef })

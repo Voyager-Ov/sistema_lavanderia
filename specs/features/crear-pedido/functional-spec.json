@@ -1,0 +1,70 @@
+{
+  "feature": "Crear Pedido",
+  "scope": {
+    "in_scope": [
+      "Pantalla interactiva tipo Punto de Venta (POS) para crear un nuevo pedido.",
+      "Buscador de clientes con autocompletado/resultados en tiempo real.",
+      "Visualización de servicios (productos) categorizados, con soporte para imágenes/iconos.",
+      "Carrito de compras lateral o integrado para gestionar la selección (añadir, quitar, modificar cantidad).",
+      "Validación de reglas de negocio en el frontend antes de enviar al backend.",
+      "Integración con las APIs de clientes, categorías, productos y pedidos."
+    ],
+    "out_of_scope": [
+      "Creación de nuevos clientes desde esta misma pantalla (se asume que se seleccionan los existentes por ahora, a menos que se requiera).",
+      "Edición de precios de servicios directamente en el carrito (se usarán los precios fijos del catálogo).",
+      "Procesamiento de pagos (el pedido se crea como PENDIENTE, el cobro ocurre en otro flujo)."
+    ]
+  },
+  "user_journeys": [
+    {
+      "actor": "Administrador/Empleado",
+      "goal": "Crear un pedido rápidamente para un cliente que llega al local.",
+      "flow": [
+        "Ingresa a la pantalla 'Crear Pedido'.",
+        "Escribe el nombre o teléfono del cliente en el buscador y lo selecciona de la lista de resultados.",
+        "Navega por las categorías de servicios (ej. Lavado, Planchado, Tintorería).",
+        "Hace clic en las tarjetas de los servicios solicitados para añadirlos al pedido.",
+        "Ajusta la cantidad de cada servicio en el resumen del pedido.",
+        "Verifica el total y hace clic en 'Confirmar Pedido'.",
+        "Ve una animación de éxito y es redirigido o se limpia la pantalla para un nuevo pedido."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "scenario": "Búsqueda y selección de cliente",
+      "given": "El usuario está en la pantalla de Crear Pedido",
+      "when": "Escribe 3 o más letras en el buscador de clientes",
+      "then": "Se muestran los clientes coincidentes. Al seleccionar uno, este queda asignado al pedido actual."
+    },
+    {
+      "scenario": "Navegación de catálogo",
+      "given": "El usuario está en la pantalla de Crear Pedido",
+      "when": "Hace clic en una categoría (ej. 'Lavado')",
+      "then": "Se muestran únicamente los servicios pertenecientes a dicha categoría, con su imagen/icono y precio."
+    },
+    {
+      "scenario": "Gestión del carrito",
+      "given": "El usuario ha seleccionado un servicio",
+      "when": "Hace clic en el servicio",
+      "then": "El servicio se añade al carrito con cantidad 1. Si hace clic de nuevo, la cantidad aumenta. Puede usar botones +/- en el carrito."
+    },
+    {
+      "scenario": "Validación de creación",
+      "given": "El usuario no ha seleccionado un cliente o el carrito está vacío",
+      "when": "Intenta hacer clic en 'Confirmar Pedido'",
+      "then": "El botón está deshabilitado o muestra un error indicando las reglas faltantes."
+    }
+  ],
+  "ux_behavior": {
+    "aesthetics": "Estilo moderno y limpio, utilizando el sistema de diseño actual (Tailwind). Posible diseño de dos columnas (Catálogo a la izquierda, Carrito a la derecha).",
+    "interactions": "Feedback inmediato al hacer clic. Animaciones suaves con GSAP al añadir ítems al carrito. Búsqueda sin recargar la página (debounced).",
+    "performance": "La UI no debe bloquearse al buscar o cambiar de categoría."
+  },
+  "business_rules": [
+    "Un pedido DEBE tener un cliente válido seleccionado.",
+    "Un pedido DEBE tener al menos 1 servicio (ítem) seleccionado.",
+    "La cantidad de cualquier ítem no puede ser menor a 1.",
+    "El total se calcula sumando (precio del servicio * cantidad) de todos los ítems seleccionados."
+  ]
+}

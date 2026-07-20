@@ -66,7 +66,7 @@ function ResetPasswordForm() {
       setTimeout(() => router.push("/login"), 3000);
     } catch (error: any) {
       toast.error("Error", {
-        description: error.data?.message || error.message || "El enlace pudo haber expirado.",
+        description: error.message || "El enlace pudo haber expirado.",
       });
       animateFormError();
       if (error.status === 400) {

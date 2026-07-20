@@ -1,0 +1,76 @@
+{
+  "feature": "Pantalla de Clientes & Cuentas Corrientes - Technical Spec",
+  "architecture_and_boundaries": {
+    "database": {
+      "table_clientes": {
+        "action": "ALTER",
+        "changes": [
+          "Añadir columna `saldoCuentaCorriente` (DECIMAL 10,2, default 0)."
+        ]
+      },
+      "table_movimientos_cuenta": {
+        "action": "CREATE",
+        "description": "Nueva tabla para registrar el historial inmutable de pagos y deudas.",
+        "columns": [
+          "id (UUID, PK)",
+          "clienteId (UUID, FK a Clientes)",
+          "negocioId (UUID, FK a Negocios)",
+          "pedidoId (UUID, FK a Pedidos, nullable) - Respalda el movimiento con un servicio específico",
+          "tipoMovimiento (ENUM: 'DEBITO' [Suma Deuda], 'CREDITO' [Resta Deuda])",
+          "monto (DECIMAL 10,2)",
+          "saldoResultante (DECIMAL 10,2) - Snapshot del saldo posterior al movimiento",
+          "comentario (STRING) - Ej. 'Pago en efectivo', 'Deuda por Pedido #123'",
+          "createdAt, updatedAt"
+        ]
+      }
+    },
+    "backend_api": {
+      "GET /api/clientes": "Devuelve lista de clientes. Incluir el `saldoCuentaCorriente` en la respuesta.",
+      "POST /api/clientes": "Crea cliente con `saldoCuentaCorriente` inicial en 0.",
+      "PUT /api/clientes/:id": "Actualiza datos del cliente (nombre, teléfono, email). Valida unicidad de teléfono excluyendo al propio ID.",
+      "PATCH /api/clientes/:id/estado": "Bloquea baja lógica si `saldoCuentaCorriente > 0` o si tiene pedidos activos.",
+      "POST /api/clientes/:id/cuenta-corriente/pagos": "Nuevo endpoint. Recibe `{ monto, metodoPago, comentario }`. Valida `monto > 0`. Resta `monto` del `saldoCuentaCorriente` del cliente. Crea un registro en `movimientos_cuenta` de tipo `CREDITO`.",
+      "POST /api/clientes/:id/cuenta-corriente/recalcular": "Endpoint de auditoría/sincronización. Suma todos los DEBITO y resta los CREDITO de la tabla movimientos vinculados a servicios (Pedidos) y pagos reales, para recalcular y corregir el `saldoCuentaCorriente` del cliente ante posibles desfasajes."
+    },
+    "frontend_architecture": {
+      "routes": [
+        "/admin/clientes/page.tsx (Listado de Clientes con tabla/búsqueda)",
+        "/admin/clientes/nuevo/page.tsx (Formulario dedicado de creación sin anchos fijos)"
+      ],
+      "components": [
+        "ClientesHeader: Barra superior con buscador y botón '+ Nuevo Cliente'.",
+        "ClientesKPIs: Tarjetas mostrando Totales y Deuda Acumulada global.",
+        "ClienteEditSidesheet: Componente (Sheet de shadcn/ui animado) para editar datos.",
+        "ClienteDetailSidesheet: Vista de detalle (Sheet) con 2 pestañas: 'Historial de Pedidos' y 'Cuenta Corriente' (con botón para Registrar Pago y opción de Recalcular Saldo)."
+      ],
+      "state_management": "Custom hook `useClientesData` para encapsular llamadas a API, paginación, filtros y refetching (similar a `usePedidosData`)."
+    }
+  },
+  "interfaces_and_payloads": {
+    "CrearClientePayload": {
+      "nombre": "string (min 2)",
+      "telefono": "string",
+      "email": "string? (valid email format)"
+    },
+    "RegistrarPagoPayload": {
+      "monto": "number (mayor a 0)",
+      "metodoPago": "string (ej. EFECTIVO, TRANSFERENCIA)",
+      "comentario": "string?"
+    }
+  },
+  "dependency_decisions": {
+    "gsap": "Se utilizará gsap y @gsap/react para orquestar la animación de stagger en la carga de la tabla de clientes.",
+    "shadcn_ui_sheet": "Se empleará el componente Sheet preexistente para los sidesheets (edición y detalle) para mantener consistencia con los modales nativos."
+  },
+  "failure_modes_and_edges": {
+    "concurrency_on_payments": "Si dos pagos se envían al mismo tiempo, el saldo resultante podría desfasarse. Solución: Utilizar transacciones de base de datos (`sequelize.transaction`) con lock en la fila del cliente al actualizar el saldo.",
+    "duplicate_phone": "Manejo explícito del error Unique Constraint de BD, transformándolo en un mensaje 400 amistoso para el usuario: 'El teléfono ya está en uso'.",
+    "ledger_discrepancy": "El saldo cacheado (`saldoCuentaCorriente`) podría desincronizarse por errores de red. Solución: Cada deuda generada debe respaldarse con el `pedidoId` de un servicio real en el historial. El endpoint de recálculo permite corregir el saldo leyendo directamente de la fuente inmutable."
+  },
+  "phased_implementation_plan": {
+    "Phase_1_Database": "Migraciones y actualización de Modelos Sequelize (Cliente + MovimientoCuentaCorriente).",
+    "Phase_2_Backend_API": "Implementar lógica de endpoints, validaciones de unicidad, validación de borrado y transacciones de pagos.",
+    "Phase_3_Frontend_Views": "Crear UI de Lista de Clientes, KPIs y Página Nueva (Creación).",
+    "Phase_4_Frontend_Modals": "Implementar los Sidesheets de Edición y Vista de Detalle con Gestión de Cuenta Corriente e Integración GSAP."
+  }
+}

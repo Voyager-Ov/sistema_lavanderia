@@ -1,0 +1,72 @@
+{
+  "feature": "Bulk Actions, Toasts Redesign, Tickets Details & Order Cancellation",
+  "scope": [
+    "Bottom island (bulk actions) in Pedidos page",
+    "Bulk ticket generation and printing",
+    "Toast notifications global styling",
+    "Order detail page (show generated tickets)",
+    "Thermal printing visual fix",
+    "Order cancellation with mandatory reason and description"
+  ],
+  "boundaries": {
+    "in_scope": [
+      "Replacing 'Export CSV' with a new bulk action",
+      "Implementing a cancellable queue for bulk printing tickets",
+      "Redesigning `sonner` toasts to match premium aesthetics",
+      "Fixing thermal print CSS to avoid blank A4 rendering",
+      "Showing historical generated tickets in the order detail page",
+      "Updating DB schemas (Pedido) to store motivoCancelacion and descripcionCancelacion",
+      "Adding a UI modal/queue to input reason and description order-by-order when cancelling in bulk",
+      "Validating cancellation fields in frontend and backend"
+    ],
+    "out_of_scope": [
+      "Changes to other backend logic not related to tickets or cancellations"
+    ]
+  },
+  "user_journeys": [
+    {
+      "name": "Cancelable Bulk Print",
+      "steps": [
+        "User selects multiple orders in the table.",
+        "User clicks 'Imprimir Tickets' in the bottom island.",
+        "A queue starts processing orders sequentially.",
+        "A visual indicator shows progress.",
+        "System creates trackable tickets in the DB for each order.",
+        "User clicks 'Cancelar' on the progress indicator.",
+        "The queue stops immediately, preventing further tickets from generating."
+      ]
+    },
+    {
+      "name": "View Generated Tickets",
+      "steps": [
+        "User opens an order detail.",
+        "User sees a new section listing all previously generated tickets for this order."
+      ]
+    },
+    {
+      "name": "Order-by-Order Bulk Cancellation",
+      "steps": [
+        "User selects multiple orders and clicks Cancel.",
+        "A wizard/carousel UI appears showing the first order to cancel.",
+        "User inputs mandatory 'Motivo' and 'Descripción'.",
+        "User submits, the order is cancelled, and the wizard moves to the next order automatically.",
+        "Backend validates the inputs and updates the database."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    "Given multiple selected orders, when clicking 'Imprimir Tickets', exactly 1 ticket is generated in the DB and printed for each selected order via a queue.",
+    "Given an active print queue, when the user clicks Cancel, the queue aborts.",
+    "Given the bottom island, the 'Exportar CSV' button is removed and replaced with a 'Cobrar Masivamente' action (which will open a modal to select the payment method).",
+    "Given the print dialog, the CSS strictly enforces thermal printer dimensions (e.g., 58mm/80mm) without rendering as an A4 page.",
+    "Given the order detail view, a section displays the list of generated tickets associated with the order.",
+    "Given an attempt to cancel multiple orders, the system requires a reason and description PER ORDER via a sequential UI, saving them to the DB.",
+    "Given any system action that triggers a Toast, the Toast appears with a premium glassmorphism design."
+  ],
+  "ux_behavior": [
+    "Queue Progress: A fixed or floating UI element showing progress.",
+    "Toasts: Smooth GSAP-like entry, blur background, distinct success/error colors, premium typography.",
+    "Cancellation Carousel: A sequential wizard showing the current order being cancelled, allowing distinct inputs for each."
+  ],
+  "open_questions": []
+}

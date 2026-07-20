@@ -1,0 +1,44 @@
+{
+  "architecture_and_boundaries": {
+    "module": "Frontend - Finanzas",
+    "file_impact": [
+      "src/app/admin/finanzas/components/FinanzasCharts.tsx"
+    ],
+    "description": "Toda la lógica de procesamiento de datos y renderizado de los nuevos gráficos se encapsulará en FinanzasCharts.tsx para mantener la cohesión del módulo. Se procesarán los datos brutos recibidos del backend en memoria usando hooks de React."
+  },
+  "data_and_state": {
+    "input": "Array de MovimientoFinanciero proveído por las props del componente.",
+    "processing": "Se utilizará `useMemo` múltiple veces para derivar el estado de cada gráfico evitando re-renderizados pesados y cálculos innecesarios cada vez que React pinte el componente.",
+    "derived_states": [
+      "flujoNetoData: Array<{ date: string, netoAcumulado: number }>",
+      "diaSemanaData: Array<{ name: string, ingresos: number, egresos: number }>",
+      "rankingCajerosData: Array<{ name: string, value: number }>",
+      "volumenData: Array<{ date: string, montoTotal: number, cantidad: number }>",
+      "ticketPromedioData: Array<{ date: string, promedio: number }>",
+      "egresosPorMetodoData: Array<{ name: string, value: number }>"
+    ]
+  },
+  "dependencies": {
+    "library": "recharts",
+    "rationale": "Es la librería estándar actual del proyecto. Se usarán los componentes <AreaChart>, <BarChart>, <ComposedChart>, y <PieChart>."
+  },
+  "edge_cases": {
+    "empty_data": "Si los arrays derivados resultan vacíos (ej. no hay egresos registrados), se mostrará un div contenedor con un mensaje 'No hay datos' o 'Sin registros' de igual altura que el gráfico para evitar saltos en el layout.",
+    "missing_fields": "Se manejarán fallbacks (ej. `m.metodoPago || 'Desconocido'`, `m.registradoPor || 'Sistema'`) para evitar errores en agrupaciones.",
+    "responsive_resizing": "Se usará <ResponsiveContainer width='100%' height='100%'> para garantizar la adaptación a la grilla definida por CSS grid."
+  },
+  "implementation_plan": [
+    {
+      "phase": 1,
+      "task": "Crear los useMemo con los reducers para los 6 conjuntos de datos nuevos dentro de FinanzasCharts.tsx."
+    },
+    {
+      "phase": 2,
+      "task": "Rediseñar la estructura de grillas CSS (`grid-cols-1 lg:grid-cols-2 xl:grid-cols-3` si amerita, o distribuir lógicamente) para albergar 8 gráficos en total (2 existentes + 6 nuevos)."
+    },
+    {
+      "phase": 3,
+      "task": "Implementar los componentes de Recharts correspondientes a cada conjunto de datos con sus Tooltips y leyendas personalizadas."
+    }
+  ]
+}

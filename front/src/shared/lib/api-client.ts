@@ -33,9 +33,13 @@ export const apiClient = {
     }
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    // Solo añadir application/json si no es un FormData
+    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -46,9 +50,19 @@ export const apiClient = {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 401 && !endpoint.includes('/auth/login')) {
+          if (typeof window !== 'undefined') {
+            try {
+              // Import dinámico del store para evitar ciclos de dependencia o usar localStorage
+              localStorage.removeItem('auth-storage');
+              window.location.href = '/login?expired=true';
+            } catch (e) {}
+          }
+        }
+        
         throw new ApiError(
           response.status,
-          data?.message || response.statusText || 'Error en la petición',
+          data?.detalle || data?.error || data?.message || response.statusText || 'Error en la petición',
           data
         );
       }
@@ -76,11 +90,27 @@ export const apiClient = {
     });
   },
 
+  postForm<T>(endpoint: string, body: FormData, options?: Omit<RequestInit, 'method' | 'body'>) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: body,
+    });
+  },
+
   put<T>(endpoint: string, body: any, options?: Omit<RequestInit, 'method' | 'body'>) {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: JSON.stringify(body),
+    });
+  },
+
+  putForm<T>(endpoint: string, body: FormData, options?: Omit<RequestInit, 'method' | 'body'>) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body,
     });
   },
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -42,6 +42,16 @@ export default function LoginPage() {
   const setProcessing = useUIStore((state) => state.setProcessing);
   const [isLoading, setIsLoading] = useState(false);
   
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('expired') === 'true') {
+        toast.error("Sesión expirada", { description: "Tu sesión ha caducado. Por favor, vuelve a iniciar sesión." });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
+  
   const {
     register,
     handleSubmit,
@@ -68,7 +78,7 @@ export default function LoginPage() {
         }
       }
     } catch (error: any) {
-      const errorMsg = error.data?.error || error.data?.message || error.message;
+      const errorMsg = error.message;
       
       // Si el backend dice que no está verificado, redirigir
       if (errorMsg?.includes("verificar tu email") || errorMsg?.includes("verificado")) {

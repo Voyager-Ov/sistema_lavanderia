@@ -1,0 +1,97 @@
+{
+  "feature": "Pantalla de Clientes & Cuentas Corrientes - Todos / Plan de Acción",
+  "execution_batches": [
+    {
+      "batch_id": 1,
+      "description": "Base de datos y Endpoints Básicos",
+      "tasks": ["T1", "T2"]
+    },
+    {
+      "batch_id": 2,
+      "description": "Lógica de Cuenta Corriente y Transacciones",
+      "tasks": ["T3", "T4"]
+    },
+    {
+      "batch_id": 3,
+      "description": "UI: Páginas Principales (Lista y Creación)",
+      "tasks": ["T5", "T6"]
+    },
+    {
+      "batch_id": 4,
+      "description": "UI: Modales y Animaciones",
+      "tasks": ["T7"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Migraciones y Modelos BD",
+      "owner_role": "Backend Engineer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["Migración de tabla MovimientosCuentaCorriente", "Modificación del Modelo Cliente (+ saldoCuentaCorriente)"],
+      "exit_criteria": "Base de datos sincronizada y modelos de Sequelize correctamente relacionados."
+    },
+    {
+      "id": "T2",
+      "title": "Endpoints CRUD Base de Clientes",
+      "owner_role": "Backend Engineer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["T1"],
+      "outputs": ["Actualización de GET, POST, PUT, PATCH en cliente.service.js"],
+      "exit_criteria": "Endpoints responden correctamente, filtran bajas lógicas e incluyen validaciones de unicidad de teléfono."
+    },
+    {
+      "id": "T3",
+      "title": "Endpoints de Pagos y Recálculo",
+      "owner_role": "Backend Engineer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": ["Endpoint POST /pagos", "Endpoint POST /recalcular"],
+      "exit_criteria": "Pagos descuentan del saldo y generan el movimiento. Recálculo funciona comparando deudas contra pagos."
+    },
+    {
+      "id": "T4",
+      "title": "Integración Pedidos -> Cuenta Corriente",
+      "owner_role": "Backend Engineer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": ["Actualización en pedido.service.js al crear/completar pedidos sin pago."],
+      "exit_criteria": "Si un pedido no se cobra en el momento, genera una deuda automáticamente en el cliente asociado."
+    },
+    {
+      "id": "T5",
+      "title": "Hook de Estado y Pantalla Principal",
+      "owner_role": "Frontend Engineer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": ["useClientesData.ts", "admin/clientes/page.tsx", "ClientesHeader", "ClientesKPIs"],
+      "exit_criteria": "Lista renderiza, busca, compagina, e invoca animaciones GSAP."
+    },
+    {
+      "id": "T6",
+      "title": "Página de Creación",
+      "owner_role": "Frontend Engineer",
+      "status": "TODO",
+      "parallelizable": true,
+      "depends_on": ["T2"],
+      "outputs": ["admin/clientes/nuevo/page.tsx"],
+      "exit_criteria": "El formulario envía datos sin ancho fijo y gestiona errores del servidor (ej. duplicados)."
+    },
+    {
+      "id": "T7",
+      "title": "Sidesheets de Edición y Cuentas Corrientes",
+      "owner_role": "Frontend Engineer",
+      "status": "TODO",
+      "parallelizable": false,
+      "depends_on": ["T3", "T5"],
+      "outputs": ["ClienteEditSidesheet.tsx", "ClienteDetailSidesheet.tsx"],
+      "exit_criteria": "Permite registrar pagos, recalcular saldo y ver historial de movimientos/pedidos."
+    }
+  ]
+}

@@ -72,7 +72,7 @@ const defaultMainMenu: NavItem[] = [
 
 const defaultAccountMenu: NavItem[] = [
   { title: "Mi Perfil", icon: User, href: "/perfil" },
-  { title: "Configuración", icon: Settings, href: "/configuracion" },
+  { title: "Configuración", icon: Settings, href: "/admin/configuraciones" },
 ]
 
 export function AppSidebar({
@@ -274,7 +274,7 @@ export function AppSidebar({
             e.preventDefault();
             onLogout();
           } else {
-            handleNavClick(e);
+            handleNavClick();
           }
         }} className={`h-12 rounded-xl flex items-center px-3 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
           <a href="#">

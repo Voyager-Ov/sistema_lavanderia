@@ -54,7 +54,8 @@ describe('Pruebas del Módulo de Pedidos', () => {
             items: [
                 { productoId: producto1Id, cantidad: 2 }, // 2 * 1000 = 2000
                 { productoId: producto2Id, cantidad: 1 }  // 1 * 2000 = 2000
-            ]
+            ],
+            fechaEntregaEstimada: "2026-07-20T14:30:00Z"
         });
         
         if (response.status !== 201) {
@@ -65,6 +66,7 @@ describe('Pruebas del Módulo de Pedidos', () => {
         expect(response.body.data.estado).toBe('PENDIENTE');
         expect(response.body.data.total).toBe(4000); // 2000 + 2000
         expect(response.body.data).toHaveProperty('codigoSeguimiento');
+        expect(new Date(response.body.data.fechaEntregaEstimada).toISOString()).toBe(new Date("2026-07-20T14:30:00Z").toISOString());
         
         pedidoId = response.body.data.id;
     });
@@ -103,7 +105,9 @@ describe('Pruebas del Módulo de Pedidos', () => {
     it('Un Admin SI debe poder CANCELAR un pedido ENTREGADO (200)', async () => {
         const response = await request(app).patch(`/api/pedidos/${pedidoId}/estado`).set('Authorization', `Bearer ${adminToken}`).send({
             estado: 'CANCELADO',
-            comentario: 'Fraude detectado, anulando.'
+            comentario: 'Fraude detectado, anulando.',
+            motivoCancelacion: 'Fraude',
+            descripcionCancelacion: 'Se detectó fraude en el pedido.'
         });
         expect(response.status).toBe(200);
         expect(response.body.data.estado).toBe('CANCELADO');
