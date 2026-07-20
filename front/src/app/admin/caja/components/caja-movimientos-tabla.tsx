@@ -16,6 +16,7 @@ interface Movimiento {
   referenciaId?: number; // Para navegar al pedido
   metodoPago: string;
   monto: number;
+  montoAFavorGenerado?: number;
 }
 
 interface CajaMovimientosTablaProps {
@@ -45,7 +46,8 @@ export function CajaMovimientosTabla({ pagos = [], gastos = [] }: CajaMovimiento
       descripcion: `Cobro Pedido #${p.pedidoId}`,
       referenciaId: p.pedidoId,
       metodoPago: p.metodoPago?.nombre || 'Desconocido',
-      monto: Number(p.monto)
+      monto: Number(p.monto),
+      montoAFavorGenerado: p.montoAFavorGenerado ? Number(p.montoAFavorGenerado) : undefined
     })),
     ...gastos.map((g: any) => ({
       id: `gasto-${g.id}`,
@@ -96,6 +98,11 @@ export function CajaMovimientosTabla({ pagos = [], gastos = [] }: CajaMovimiento
                     {mov.referenciaId && (
                       <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors shrink-0" />
                     )}
+                    {mov.montoAFavorGenerado && mov.montoAFavorGenerado > 0 ? (
+                      <span className="ml-2 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full w-fit">
+                        + Generó ${mov.montoAFavorGenerado.toLocaleString('es-AR')} a favor
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-6 py-4">
                     <Badge variant="secondary">

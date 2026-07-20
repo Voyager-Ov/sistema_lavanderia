@@ -132,6 +132,20 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                 <CheckCircle2 className="w-3 h-3" /> COBRADO
               </span>
               <span className="text-[10px] font-medium text-gray-500 uppercase">{metodo}</span>
+              {pedido.pago && (
+                <>
+                  {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded w-fit">
+                      Con Saldo a Favor
+                    </span>
+                  )}
+                  {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded w-fit">
+                      + Saldo a Favor
+                    </span>
+                  ) : null}
+                </>
+              )}
             </>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded w-fit">

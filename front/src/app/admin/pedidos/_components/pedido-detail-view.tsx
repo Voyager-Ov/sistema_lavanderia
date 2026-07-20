@@ -374,9 +374,29 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
               </div>
               
               {pedido.pago && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Método de pago</span>
-                  <span className="font-bold text-gray-900 uppercase">{pedido.pago.metodoPago?.nombre || 'Otro'}</span>
+                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Método de pago</span>
+                    <span className="font-bold text-gray-900 uppercase">{pedido.pago.metodoPago?.nombre || 'Otro'}</span>
+                  </div>
+                  {parseFloat(pedido.pago.monto.toString()) > 0 && parseFloat(pedido.pago.monto.toString()) !== parseFloat(pedido.total.toString()) && (
+                    <div className="flex justify-between items-center text-gray-600">
+                      <span className="text-gray-500">Monto abonado en caja</span>
+                      <span className="font-medium">{formatCurrency(pedido.pago.monto)}</span>
+                    </div>
+                  )}
+                  {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
+                    <div className="flex justify-between items-center text-brand-blue bg-blue-50 p-2 rounded-lg mt-1 border border-blue-100">
+                      <span className="font-medium">Pagado con Saldo a Favor</span>
+                      <span className="font-bold">{formatCurrency(parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()))}</span>
+                    </div>
+                  )}
+                  {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
+                    <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 p-2 rounded-lg mt-1 border border-emerald-100">
+                      <span className="font-medium">Generó Saldo a Favor</span>
+                      <span className="font-bold">+{formatCurrency(pedido.pago.montoAFavorGenerado)}</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

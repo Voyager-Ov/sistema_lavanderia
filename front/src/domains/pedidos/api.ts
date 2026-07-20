@@ -44,6 +44,8 @@ export interface PedidoPago {
     nombre: string
   }
   monto: number
+  montoAFavorGenerado?: number
+  saldoAFavorDisponible?: number
   comprobanteUrl: string | null
   createdAt: string
 }
