@@ -328,6 +328,7 @@ export default function ClienteDetailPage() {
                     <tr className="text-left">
                       <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Código</th>
                       <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Estado</th>
+                      <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Pago</th>
                       <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Total</th>
                       <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha</th>
                     </tr>
@@ -335,7 +336,7 @@ export default function ClienteDetailPage() {
                   <tbody className="divide-y divide-gray-50">
                     {(cliente.pedidos || []).length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-12 text-center text-gray-400">
+                        <td colSpan={5} className="py-12 text-center text-gray-400">
                           <ShoppingBag className="w-8 h-8 text-gray-200 mx-auto mb-2" />
                           <p className="text-sm font-medium">Sin pedidos registrados</p>
                         </td>
@@ -360,6 +361,21 @@ export default function ClienteDetailPage() {
                                 <EstadoIcon className="w-3 h-3" />
                                 {estadoInfo.label}
                               </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex flex-col gap-1">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border w-fit ${p.cobrado ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                                  {p.cobrado ? "Cobrado" : "Pendiente"}
+                                </span>
+                                {p.pago && (
+                                  <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                                    {p.pago.metodoPago?.nombre || "Efectivo"}
+                                    {parseFloat(p.pago.montoAFavorGenerado || "0") > 0 && (
+                                      <span className="ml-1 text-emerald-600 font-bold">(+${parseFloat(p.pago.montoAFavorGenerado).toLocaleString("es-AR")} a favor)</span>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-5 py-3.5 font-bold text-gray-800">
                               ${parseFloat(p.total || "0").toLocaleString("es-AR")}

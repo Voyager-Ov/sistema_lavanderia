@@ -41,7 +41,21 @@ export const obtenerClientePorId = async (negocioId, clienteId) => {
                 model: models.Pedido, 
                 as: "pedidos",
                 required: false, // LEFT JOIN
-                attributes: ["id", "estado", "total", "codigoSeguimiento", "createdAt", "cobrado", "facturado"]
+                attributes: ["id", "estado", "total", "codigoSeguimiento", "createdAt", "cobrado", "facturado"],
+                include: [
+                    {
+                        model: models.Pago,
+                        as: "pago",
+                        required: false,
+                        include: [
+                            {
+                                model: models.MetodoPago,
+                                as: "metodoPago",
+                                attributes: ["nombre"]
+                            }
+                        ]
+                    }
+                ]
             },
             {
                 model: models.MovimientoCuentaCorriente,
