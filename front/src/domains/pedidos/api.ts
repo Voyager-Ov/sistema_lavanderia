@@ -9,6 +9,7 @@ export interface Cliente {
   id: number
   nombre: string
   telefono?: string
+  saldoCuentaCorriente?: number
 }
 
 export interface PedidoItemDetail {

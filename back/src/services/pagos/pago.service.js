@@ -120,8 +120,10 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
         const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
         if (cliente) {
             // El saldo bajó por el total del pedido
+            // El saldo global del cliente baja solo por el total del pedido pagado,
+            // ya que los saldos a favor (vouchers) se manejan en una contabilidad separada (Pago.saldoAFavorDisponible)
             const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-            const nuevoSaldo = saldoAnterior - totalPedido - montoAFavorGenerado;
+            const nuevoSaldo = saldoAnterior - totalPedido;
             await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
         }
 
@@ -318,14 +320,14 @@ export const obtenerSaldosAFavor = async (negocioId, clienteId) => {
             where: { clienteId, negocioId },
             attributes: ['id', 'codigoSeguimiento', 'createdAt']
         }],
-        order: [['fechaPago', 'ASC']]
+        order: [['createdAt', 'ASC']]
     });
 
     return pagos.map(p => ({
         pagoId: p.id,
         pedidoId: p.pedido.id,
         codigoSeguimiento: p.pedido.codigoSeguimiento,
-        fechaOriginal: p.fechaPago,
+        fechaOriginal: p.createdAt,
         montoDisponible: parseFloat(p.saldoAFavorDisponible)
     }));
 };

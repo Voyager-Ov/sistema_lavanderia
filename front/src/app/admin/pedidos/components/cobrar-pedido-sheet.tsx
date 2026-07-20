@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Pedido } from "@/domains/pedidos/api"
 import { MetodoPago, obtenerMetodosPago, registrarPago, obtenerSaldosAFavorCliente, SaldoAFavor } from "@/domains/pagos/api"
+import { getClienteById, Cliente as ClienteFull } from "@/domains/clientes/api"
 import { generarTicketsAPI } from "@/domains/pedidos/api"
 import { FormSheet } from "@/shared/ui/composite/form-sheet"
 import { Button } from "@/shared/ui/forms/button"
@@ -46,6 +47,9 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
   const [saldosDisponibles, setSaldosDisponibles] = useState<SaldoAFavor[]>([])
   const [saldosSeleccionados, setSaldosSeleccionados] = useState<number[]>([]) // array of pagoId
   const [dejarVueltoAFavor, setDejarVueltoAFavor] = useState(false)
+  
+  // Cliente global detail
+  const [clienteDetail, setClienteDetail] = useState<ClienteFull | null>(null)
 
   // Cargar métodos de pago y saldos a favor
   useEffect(() => {
@@ -65,6 +69,10 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
         obtenerSaldosAFavorCliente(pedido.clienteId)
           .then(data => setSaldosDisponibles(data))
           .catch(() => toast.error("No se pudieron cargar los saldos a favor"))
+          
+        getClienteById(pedido.clienteId)
+          .then(data => setClienteDetail(data))
+          .catch(e => console.error("No se pudo cargar el cliente global", e))
       }
     } else {
       // Reset on close
@@ -73,6 +81,7 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
       setSaldosDisponibles([])
       setSaldosSeleccionados([])
       setDejarVueltoAFavor(false)
+      setClienteDetail(null)
     }
   }, [open, pedido])
 
@@ -174,7 +183,15 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col gap-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Cliente</span>
-              <span className="font-semibold text-gray-900">{pedido.cliente?.nombre || "Consumidor Final"}</span>
+              <div className="flex flex-col items-end">
+                <span className="font-semibold text-gray-900">{pedido.cliente?.nombre || "Consumidor Final"}</span>
+                {clienteDetail && parseFloat(clienteDetail.saldoCuentaCorriente.toString()) !== 0 && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${parseFloat(clienteDetail.saldoCuentaCorriente.toString()) > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {parseFloat(clienteDetail.saldoCuentaCorriente.toString()) > 0 ? 'Deuda Global: ' : 'Saldo Global a Favor: '}
+                    ${Math.abs(parseFloat(clienteDetail.saldoCuentaCorriente.toString())).toLocaleString("es-AR")}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-gray-200">
               <span className="text-gray-600 font-medium">Total Pedido</span>
