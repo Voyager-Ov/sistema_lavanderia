@@ -66,13 +66,25 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
         .catch(() => toast.error("Error al cargar los métodos de pago"))
         
       if (pedido && pedido.clienteId) {
-        obtenerSaldosAFavorCliente(pedido.clienteId)
-          .then(data => setSaldosDisponibles(data))
-          .catch(() => toast.error("No se pudieron cargar los saldos a favor"))
+        Promise.all([
+          obtenerSaldosAFavorCliente(pedido.clienteId).catch(() => []),
+          getClienteById(pedido.clienteId).catch(() => null)
+        ]).then(([saldos, cliente]) => {
+          setClienteDetail(cliente)
           
-        getClienteById(pedido.clienteId)
-          .then(data => setClienteDetail(data))
-          .catch(e => console.error("No se pudo cargar el cliente global", e))
+          let saldosList = Array.isArray(saldos) ? [...saldos] : []
+          if (cliente && parseFloat(String(cliente.saldoCuentaCorriente)) < 0) {
+            // Inyectar saldo global heredado como si fuera un voucher
+            saldosList.unshift({
+              pagoId: -1,
+              pedidoId: 0,
+              codigoSeguimiento: "SALDO_GLOBAL",
+              fechaOriginal: new Date().toISOString(),
+              montoDisponible: Math.abs(parseFloat(String(cliente.saldoCuentaCorriente)))
+            })
+          }
+          setSaldosDisponibles(saldosList as SaldoAFavor[])
+        })
       }
     } else {
       // Reset on close
@@ -143,12 +155,16 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
 
     setLoading(true)
     try {
+      const usarSaldoGlobal = saldosCalculados.some(s => s.pagoId === -1)
+      const saldosFiltrados = saldosCalculados.filter(s => s.pagoId !== -1)
+
       await registrarPago({
         pedidoId: pedido.id,
         metodoPagoId: parseInt(selectedMetodo),
         monto: montoNum,
         dejarVueltoAFavor: esEfectivo ? dejarVueltoAFavor : false,
-        saldosAplicados: saldosCalculados
+        saldosAplicados: saldosFiltrados,
+        usarSaldoGlobal
       })
       toast.success("Pago registrado exitosamente.")
       onSuccess()
@@ -217,8 +233,12 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
                       <div className="flex items-center gap-3">
                         <Checkbox checked={isSelected} />
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">Pedido #{saldo.codigoSeguimiento}</p>
-                          <p className="text-xs text-gray-500">{format(new Date(saldo.fechaOriginal), "d MMM yyyy", { locale: es })}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {saldo.pagoId === -1 ? "Saldo Global de la Cuenta" : `Pedido #${saldo.codigoSeguimiento}`}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {saldo.pagoId === -1 ? "Balance histórico a favor" : format(new Date(saldo.fechaOriginal), "d MMM yyyy", { locale: es })}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">

@@ -14,6 +14,7 @@ export interface RegistrarPagoParams {
   monto: number
   dejarVueltoAFavor?: boolean
   saldosAplicados?: { pagoId: number; monto: number }[]
+  usarSaldoGlobal?: boolean
 }
 
 export interface SaldoAFavor {

@@ -5,7 +5,7 @@ import { generarFacturaPedido } from "../integraciones/afip.service.js";
 import { connectionManager } from "../../models/connectionManager.js";
 
 export const registrarPago = async (negocioId, usuarioId, data) => {
-    let { pedidoId, metodoPagoId, monto, dejarVueltoAFavor = false, saldosAplicados = [] } = data;
+    let { pedidoId, metodoPagoId, monto, dejarVueltoAFavor = false, saldosAplicados = [], usarSaldoGlobal = false } = data;
     const t = await sequelize.transaction();
 
     try {
@@ -62,6 +62,35 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
         }
 
         const totalPedido = parseFloat(pedido.total);
+        let montoAUsarGlobal = 0;
+
+        if (usarSaldoGlobal) {
+            const clienteParaSaldo = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
+            if (clienteParaSaldo) {
+                const saldoGlobalActual = parseFloat(clienteParaSaldo.saldoCuentaCorriente || 0);
+                if (saldoGlobalActual < 0) {
+                    const saldoGlobalFavor = Math.abs(saldoGlobalActual);
+                    const faltaPagar = totalPedido - totalSaldosAplicados;
+                    
+                    if (faltaPagar > 0) {
+                        montoAUsarGlobal = Math.min(saldoGlobalFavor, faltaPagar);
+                        totalSaldosAplicados += montoAUsarGlobal;
+
+                        // Registrar movimiento del uso del saldo global
+                        await models.MovimientoCuentaCorriente.create({
+                            clienteId: pedido.clienteId,
+                            negocioId,
+                            pedidoId: pedido.id,
+                            tipoMovimiento: "CREDITO",
+                            monto: montoAUsarGlobal,
+                            saldoResultante: 0, 
+                            comentario: `Saldo global a favor aplicado al Pedido #${pedido.codigoSeguimiento}`
+                        }, { transaction: t });
+                    }
+                }
+            }
+        }
+
         const montoIngresado = parseFloat(monto) || 0;
         const totalAbonado = montoIngresado + totalSaldosAplicados;
 
@@ -119,11 +148,11 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
         // Aunque la fuente de la verdad ahora son los pedidos impagos
         const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
         if (cliente) {
-            // El saldo bajó por el total del pedido
-            // El saldo global del cliente baja solo por el total del pedido pagado,
-            // ya que los saldos a favor (vouchers) se manejan en una contabilidad separada (Pago.saldoAFavorDisponible)
+            // El saldo bajó por el total del pedido pagado,
+            // ya que los saldos a favor (vouchers) se manejan en una contabilidad separada (Pago.saldoAFavorDisponible).
+            // NOTA: Si se usó el saldo global, esa porción NO debe reducir el saldo (porque consumir saldo global = mover saldo a 0).
             const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-            const nuevoSaldo = saldoAnterior - totalPedido;
+            const nuevoSaldo = saldoAnterior - (totalPedido - montoAUsarGlobal);
             await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
         }
 
