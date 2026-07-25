@@ -3,6 +3,7 @@ import { models, sequelize } from "../../models/index.js";
 import { emitToTenant } from "../../socket/socket.js";
 import { generarFacturaPedido } from "../integraciones/afip.service.js";
 import { connectionManager } from "../../models/connectionManager.js";
+import { Op } from "sequelize";
 
 export const registrarPago = async (negocioId, usuarioId, data) => {
     let { pedidoId, metodoPagoId, monto, dejarVueltoAFavor = false, saldosAplicados = [], usarSaldoGlobal = false } = data;
@@ -10,7 +11,7 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
 
     try {
         if (!metodoPagoId) {
-            const efectivo = await models.MetodoPago.findOne({ where: { negocioId, nombre: { [sequelize.Op.iLike]: "%efectivo%" }, activo: true }, transaction: t });
+            const efectivo = await models.MetodoPago.findOne({ where: { negocioId, nombre: { [Op.iLike]: "%efectivo%" }, activo: true }, transaction: t });
             if (!efectivo) throw new AppError("Debe especificar un método de pago o habilitar 'Efectivo'.", 400);
             metodoPagoId = efectivo.id;
         }
@@ -267,7 +268,7 @@ export const anularPago = async (negocioId, usuarioId, pagoId) => {
 export const obtenerSaldosAFavor = async (negocioId, clienteId) => {
     const pagos = await models.Pago.findAll({
         where: {
-            saldoAFavorDisponible: { [sequelize.Op.gt]: 0 },
+            saldoAFavorDisponible: { [Op.gt]: 0 },
             estado: 'COMPLETADO'
         },
         include: [{

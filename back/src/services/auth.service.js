@@ -55,8 +55,9 @@ export const registerAdmin = async (data) => {
             activo: true
         });
 
-        // Enviar correo de verificación de forma asíncrona (no bloqueante)
-        emailService.enviarCodigoVerificacion(admin.email, admin.nombre, admin.verificationCode).catch(console.error);
+        // Enviar correo de verificación de forma asincrónica, pero hacer AWAIT 
+        // para que Vercel Serverless no mate el proceso antes de enviarlo.
+        await emailService.enviarCodigoVerificacion(admin.email, admin.nombre, admin.verificationCode).catch(console.error);
 
         return { 
             mensaje: "Registro exitoso. Revisa tu correo para verificar tu cuenta.",
@@ -73,9 +74,15 @@ export const registerAdmin = async (data) => {
 };
 
 export const login = async (email, password) => {
-    const usuario = await models.Usuario.findOne({ where: { email } });
+    const usuario = await models.Usuario.findOne({ 
+        where: { email },
+        include: [{ model: models.Negocio, as: "negocio" }]
+    });
     if (!usuario) throw new AppError("INVALID_CREDENTIALS", 403);
     if (!usuario.activo) throw new AppError("USER_DISABLED", 401);
+    if (usuario.negocio && !usuario.negocio.activo) {
+        throw new AppError("El servicio para este negocio ha sido suspendido. Por favor, contacte al soporte.", 403);
+    }
 
     if (!usuario.emailVerificado) {
         throw new AppError("Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada.", 403);
@@ -130,9 +137,9 @@ export const reenviarCodigoVerificacion = async (email) => {
     usuario.verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
     await usuario.save();
 
-    // Enviar correo de forma asíncrona
-    emailService.enviarCodigoVerificacion(usuario.email, usuario.nombre, nuevoCodigo).catch(err => {
-        console.error("❌ Error al reenviar correo de verificación (segundo plano):", err);
+    // Enviar correo y esperar a que termine para que Vercel no aborte
+    await emailService.enviarCodigoVerificacion(usuario.email, usuario.nombre, nuevoCodigo).catch(err => {
+        console.error("❌ Error al reenviar correo de verificación:", err);
     });
 
     return { mensaje: "Código reenviado exitosamente. Revisa tu bandeja de entrada." };
@@ -150,9 +157,9 @@ export const solicitarRecuperacionPassword = async (email) => {
     usuario.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
     await usuario.save();
 
-    // Enviamos el correo de forma asíncrona para no bloquear la respuesta
-    emailService.enviarEnlaceRecuperacion(usuario.email, usuario.nombre, resetToken).catch(err => {
-        console.error("❌ Error al enviar correo de recuperación (segundo plano):", err);
+    // Enviamos el correo y esperamos a que termine
+    await emailService.enviarEnlaceRecuperacion(usuario.email, usuario.nombre, resetToken).catch(err => {
+        console.error("❌ Error al enviar correo de recuperación:", err);
     });
 
     return { mensaje: "Si el correo está registrado, recibirás un enlace de recuperación." };

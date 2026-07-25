@@ -100,9 +100,15 @@ export function useClientesData() {
   // Debounce internally for searching
   useEffect(() => {
     if (!isRestored) return
+
+    // Solo buscar si está vacío o si tiene al menos 3 caracteres
+    if (searchTerm.length > 0 && searchTerm.length < 3) {
+      return
+    }
+
     const handler = setTimeout(() => {
       fetchClients()
-    }, 300)
+    }, 800)
     return () => clearTimeout(handler)
   }, [pagination.pageIndex, pagination.pageSize, sorting, searchTerm, isRestored])
 

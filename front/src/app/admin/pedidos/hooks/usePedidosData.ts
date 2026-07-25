@@ -113,9 +113,14 @@ export function usePedidosData() {
   // Used debounce internally for searching
   useEffect(() => {
     if (!isRestored) return
+
+    if (searchTerm.length > 0 && searchTerm.length < 3) {
+      return
+    }
+
     const handler = setTimeout(() => {
       fetchOrders()
-    }, 300)
+    }, 800)
     return () => clearTimeout(handler)
   }, [activeFilter, fechaInicio, fechaFin, pagination.pageIndex, pagination.pageSize, sorting, searchTerm, isRestored])
 

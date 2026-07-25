@@ -15,6 +15,12 @@ export const resolverTenantDB = async (req, res, next) => {
 
         const negocioId = req.user.negocioId;
         
+        // Verificar que el negocio esté activo
+        const negocio = await connectionManager.centralModels.Negocio.findByPk(negocioId);
+        if (negocio && !negocio.activo) {
+            return res.status(403).json({ error: "El servicio para este negocio ha sido suspendido. Por favor, contacte al soporte." });
+        }
+
         // Obtener conexión cacheadas (o crearla si es la primera petición de este negocio)
         const dbContext = await connectionManager.getTenantDb(negocioId);
         

@@ -19,6 +19,7 @@ import TicketModel from "./Ticket.js";
 import MovimientoCuentaCorrienteModel from "./MovimientoCuentaCorriente.js";
 import HistorialPrecioProductoModel from "./HistorialPrecioProducto.js";
 import CategoriaGastoModel from "./CategoriaGasto.js";
+import SuperAdminModel from "./SuperAdmin.js";
 
 class ConnectionManager {
     constructor() {
@@ -140,6 +141,7 @@ class ConnectionManager {
             MovimientoCuentaCorriente: MovimientoCuentaCorrienteModel(sequelizeInstance, DataTypes),
             HistorialPrecioProducto: HistorialPrecioProductoModel(sequelizeInstance, DataTypes),
             CategoriaGasto: CategoriaGastoModel(sequelizeInstance, DataTypes),
+            SuperAdmin: SuperAdminModel(sequelizeInstance, DataTypes),
         };
 
         // En Postgres, debemos indicar a cada modelo a qué esquema pertenece ANTES de asociar
@@ -147,7 +149,7 @@ class ConnectionManager {
             Object.keys(models).forEach(modelName => {
                 const model = models[modelName];
                 // Estos modelos siempre viven en el esquema central (public)
-                if (['Usuario', 'Negocio', 'MicroFrontend', 'ConfiguracionNegocio'].includes(model.name)) {
+                if (['Usuario', 'Negocio', 'MicroFrontend', 'ConfiguracionNegocio', 'SuperAdmin'].includes(model.name)) {
                     models[modelName] = model.schema('public');
                 } else {
                     models[modelName] = model.schema(schemaName);

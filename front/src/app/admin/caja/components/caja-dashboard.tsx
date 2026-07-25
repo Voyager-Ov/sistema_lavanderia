@@ -90,7 +90,7 @@ export function CajaDashboard({ caja, onRefresh, isHistoricalView = false }: Caj
         montoInicial={Number(caja.montoInicial || 0)}
         totalIngresosEfectivo={Number(caja.totalIngresosEfectivo || 0)}
         totalIngresosDigitales={Number(caja.totalIngresosDigitales || 0)}
-        efectivoEsperado={Number(caja.efectivoEsperadoEnVivo || 0)}
+        efectivoEsperado={Number(caja.efectivoEsperadoEnVivo ?? caja.efectivoEsperado ?? 0)}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 data-section">

@@ -10,6 +10,9 @@ export const obtenerClientes = async (negocioId, queryParams = {}) => {
     const where = { negocioId, activo: true };
 
     if (search) {
+        if (search.length < 3) {
+            throw new AppError("El término de búsqueda debe tener al menos 3 caracteres.", 400);
+        }
         where[Op.or] = [
             { nombre: { [Op.iLike]: `%${search}%` } },
             { telefono: { [Op.iLike]: `%${search}%` } },

@@ -133,9 +133,14 @@ export function useFinanzasData() {
   // Effect to load when filters, date, pagination, sorting changes
   useEffect(() => {
     if (!isRestored) return
+
+    if (searchTerm.length > 0 && searchTerm.length < 3) {
+      return
+    }
+
     const handler = setTimeout(() => {
       fetchMovimientos()
-    }, 300)
+    }, 800)
     return () => clearTimeout(handler)
   }, [fechaInicio, fechaFin, pagination.pageIndex, pagination.pageSize, sorting, searchTerm, isRestored, fetchMovimientos])
 

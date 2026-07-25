@@ -9,6 +9,9 @@ export const obtenerProductos = async (negocioId, rol, queryParams = {}) => {
 
     let where = { negocioId, activo: true };
     if (search) {
+        if (search.length < 3) {
+            throw new AppError("El término de búsqueda debe tener al menos 3 caracteres.", 400);
+        }
         where.nombre = { [Op.iLike]: `%${search}%` };
     }
     if (categoriaId) {

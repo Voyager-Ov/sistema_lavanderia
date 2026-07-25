@@ -46,6 +46,7 @@ export interface CajaActual {
   totalIngresosDigitales?: number;
   totalEgresosEfectivo?: number;
   totalEgresosDigitales?: number;
+  efectivoEsperado?: number;
   efectivoEsperadoEnVivo: number;
   efectivoReal?: number | null;
   totalesPorMetodo?: {

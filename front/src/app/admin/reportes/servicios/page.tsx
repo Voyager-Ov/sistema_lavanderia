@@ -19,6 +19,7 @@ export default function ServiciosReportPage() {
   const {
     data,
     isLoading,
+    error,
     fechaInicio,
     setFechaInicio,
     fechaFin,
@@ -44,6 +45,15 @@ export default function ServiciosReportPage() {
     }
   }, { scope: containerRef, dependencies: [isLoading, data] })
 
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col h-[80vh] items-center justify-center">
+        <div className="text-red-500 font-medium mb-4">Error: {error}</div>
+        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-brand-blue text-white rounded-md">Reintentar</button>
+      </div>
+    )
+  }
+
   if (isLoading || !data) {
     return (
       <div className="flex-1 flex flex-col h-[80vh] items-center justify-center">
@@ -67,7 +77,7 @@ export default function ServiciosReportPage() {
       />
 
       {/* Row 1: The Bold KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <ServiceReportKpi 
           className="stagger-block opacity-0"
           title="Ingresos Totales" 
@@ -75,6 +85,28 @@ export default function ServiciosReportPage() {
           trendValue="12.5" 
           isPositive={true}
           backMessage="Dinero total generado por todos los servicios procesados en el período seleccionado."
+        />
+        <ServiceReportKpi 
+          className="stagger-block opacity-0"
+          title="Margen Bruto Est." 
+          value={`$${data.kpis.margenBruto.toLocaleString()}`} 
+          trendPrefix=""
+          trendValue="" 
+          trendSuffix=""
+          isPositive={true}
+          subtitle="Ingresos vs Costos"
+          backMessage="Ganancia estimada tras restar el costo base de los insumos."
+        />
+        <ServiceReportKpi 
+          className="stagger-block opacity-0"
+          title="Horas Operativas" 
+          value={data.kpis.horasOperativas} 
+          trendPrefix=""
+          trendValue="" 
+          trendSuffix="h"
+          isPositive={true}
+          subtitle="Tiempo empleado"
+          backMessage="Cantidad estimada de horas requeridas para cumplir los servicios vendidos."
         />
         <ServiceReportKpi 
           className="stagger-block opacity-0"
@@ -89,10 +121,10 @@ export default function ServiciosReportPage() {
         />
         <RadialSegmentedGauge
           className="stagger-block opacity-0"
-          title="Capacidad"
-          subtitle="Uso de Maquinaria"
-          value={data.kpis.capacidad}
-          accentColor="#3b82f6"
+          title="Efectividad"
+          subtitle="Pedidos Completados"
+          value={data.kpis.efectividad}
+          accentColor="#10b981"
         />
         <ServiceReportKpi 
           className="stagger-block opacity-0"

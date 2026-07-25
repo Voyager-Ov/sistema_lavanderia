@@ -141,6 +141,9 @@ export const obtenerPedidos = async (negocioId, queryParams = {}) => {
     ];
 
     if (search) {
+        if (search.length < 3) {
+            throw new AppError("El término de búsqueda debe tener al menos 3 caracteres.", 400);
+        }
         // Buscamos primero los IDs de los clientes que coincidan
         const clientesCoincidentes = await models.Cliente.findAll({
             where: {

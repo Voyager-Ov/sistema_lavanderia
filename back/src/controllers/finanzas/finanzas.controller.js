@@ -1,6 +1,7 @@
 import { models } from "../../models/index.js";
 import { successResponse, errorResponse } from "../../utils/response.util.js";
 import { Op } from "sequelize";
+import { AppError } from "../../utils/errors.js";
 
 // Helper para construir el filtro de fechas
 const buildDateFilter = (fechaDesde, fechaHasta, dateField = 'fecha') => {
@@ -88,6 +89,10 @@ export const getMovimientos = async (req, res, next) => {
     try {
         const { negocioId } = req.user;
         const { fechaDesde, fechaHasta, page = 1, limit = 50, search = '' } = req.query;
+
+        if (search && search.length < 3) {
+            throw new AppError("El término de búsqueda debe tener al menos 3 caracteres.", 400);
+        }
 
         const pageNum = parseInt(page, 10);
         const limitNum = parseInt(limit, 10);

@@ -60,6 +60,10 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
 
   // Debounced search on term change
   useEffect(() => {
+    if (searchTerm.length > 0 && searchTerm.length < 3) {
+      return
+    }
+
     const timer = setTimeout(async () => {
       setIsSearching(true)
       try {
@@ -71,7 +75,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
       } finally {
         setIsSearching(false)
       }
-    }, 350)
+    }, 800)
 
     return () => clearTimeout(timer)
   }, [searchTerm])

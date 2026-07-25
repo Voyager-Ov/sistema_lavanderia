@@ -41,7 +41,7 @@ export function CerrarCajaModal({ open, onOpenChange, caja, onSuccess }: CerrarC
     }
   }
 
-  const esperado = Number(caja.efectivoEsperadoEnVivo)
+  const esperado = Number(caja.efectivoEsperadoEnVivo ?? caja.efectivoEsperado ?? 0)
   const real = Number(efectivoReal || 0)
   const diferencia = real - esperado
   const hasDiferencia = Boolean(efectivoReal) && diferencia !== 0

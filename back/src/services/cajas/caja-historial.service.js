@@ -116,6 +116,7 @@ export const obtenerCajaPorId = async (negocioId, usuarioId, rol, cajaId) => {
     json.totalIngresosDigitales = totalIngresosDigitales;
     json.totalEgresosEfectivo = totalEgresosEfectivo;
     json.totalEgresosDigitales = totalEgresosDigitales;
+    json.efectivoEsperadoEnVivo = json.efectivoEsperado ?? (parseFloat(caja.montoInicial || 0) + totalIngresosEfectivo - totalEgresosEfectivo);
     json.totalesPorMetodo = totalesPorMetodo;
     json.actividadTurno = actividadTurno;
 

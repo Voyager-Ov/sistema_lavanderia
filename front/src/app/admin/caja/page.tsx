@@ -121,7 +121,7 @@ export default function CajaPage() {
                   <div onClick={() => ultimaCaja && router.push(`/admin/caja/${ultimaCaja.id}`)}>
                     <KpiCard
                       title="Último Cierre"
-                      value={ultimaCaja ? formatCurrency(ultimaCaja.efectivoReal ?? ultimaCaja.efectivoEsperadoEnVivo ?? 0) : "—"}
+                      value={ultimaCaja ? formatCurrency(ultimaCaja.efectivoReal ?? ultimaCaja.efectivoEsperadoEnVivo ?? ultimaCaja.efectivoEsperado ?? 0) : "—"}
                       description="Efectivo en caja"
                       backMessage="Este es el efectivo físico reportado o esperado al cerrar el último turno. Haz clic aquí para ver más detalles del turno."
                       colorVariant="blue"

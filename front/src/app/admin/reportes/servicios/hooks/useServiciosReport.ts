@@ -5,12 +5,15 @@ export interface ServiciosReportData {
   kpis: {
     ingresos: number;
     ticket: number;
-    capacidad: number;
+    efectividad: number;
     cancelados: number;
+    margenBruto: number;
+    horasOperativas: number;
   };
   trend: any[];
   categoriesMetaData: { key: string; name: string; color: string }[];
   donut: { name: string; value: number; color: string }[];
+  chartEmpleados: any[];
   servicesList: { id: number; label: string; value: number; displayValue: string }[];
   table: { id: string; nombre: string; categoria: string; cantidad: number; ingresos: number; porcentajeVentas: number; tendencia: string }[];
 }
@@ -62,7 +65,7 @@ export function useServiciosReport() {
       }
 
       const response = await apiClient.get<any>(`/reportes/servicios?${params.toString()}`);
-      setData(response.data.data);
+      setData(response.data);
     } catch (err: any) {
       setError(err.message || "Error al cargar el reporte");
       console.error(err);

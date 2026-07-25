@@ -3,6 +3,7 @@ import { connectionManager } from "./models/connectionManager.js";
 import { initSocket } from "./socket/socket.js";
 import { checkEnvVariables } from "./utils/envChecker.util.js";
 import { setupGracefulShutdown } from "./utils/shutdown.util.js";
+import { startMonitoring, stopMonitoring } from "./services/monitor.service.js";
 
 // 1. Fail-Fast: Validar variables de entorno críticas ANTES de arrancar
 checkEnvVariables();
@@ -24,6 +25,9 @@ async function start() {
 
 		// Inicializamos WebSockets usando el mismo servidor HTTP
 		initSocket(server);
+		
+		// Iniciar servicio de monitoreo
+		startMonitoring();
 
 		// 2. Configurar el apagado seguro (Graceful Shutdown) para atrapar caídas o reinicios
 		setupGracefulShutdown(server);
