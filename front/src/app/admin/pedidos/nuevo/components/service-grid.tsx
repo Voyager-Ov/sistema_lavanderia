@@ -71,7 +71,7 @@ export function ServiceGrid({
       <button
         key={producto.id}
         onClick={() => addToCart(producto)}
-        className="product-card group text-left bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all duration-300 flex flex-col relative"
+        className="product-card group text-left bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-brand-blue/30 transition-all duration-300 flex flex-col relative"
       >
         {cartItem && (
           <div className="absolute top-2 right-2 bg-brand-blue text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
@@ -80,7 +80,7 @@ export function ServiceGrid({
         )}
 
         {imageUrl ? (
-          <div className="h-28 w-full overflow-hidden flex items-center justify-center bg-gray-50 border-b border-gray-100">
+          <div className="h-28 w-full overflow-hidden flex items-center justify-center bg-muted/30 border-b border-border transition-colors">
             <img 
               src={imageUrl} 
               alt={producto.nombre}
@@ -92,18 +92,18 @@ export function ServiceGrid({
             />
           </div>
         ) : (
-          <div className="h-28 w-full bg-gray-50 border-b border-gray-100 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
-            <Package className="w-10 h-10 text-gray-300" />
+          <div className="h-28 w-full bg-muted/30 border-b border-border flex items-center justify-center transition-all duration-500 group-hover:scale-105">
+            <Package className="w-10 h-10 text-muted-foreground/40 transition-colors" />
           </div>
         )}
         
-        <div className="p-4 flex-1 flex flex-col relative bg-white z-10">
-          <h3 className="font-bold text-gray-900 leading-tight mb-1 group-hover:text-brand-blue transition-colors line-clamp-2">
+        <div className="p-4 flex-1 flex flex-col relative bg-card z-10 transition-colors">
+          <h3 className="font-bold text-foreground leading-tight mb-1 group-hover:text-brand-blue transition-colors line-clamp-2">
             {producto.nombre}
           </h3>
           
           {producto.tiempoEstimadoMinutos ? (
-            <div className="flex items-center gap-1 text-xs text-gray-500 mt-auto mb-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-auto mb-3 transition-colors">
               <Clock className="w-3 h-3" />
               <span>{producto.tiempoEstimadoMinutos} min</span>
             </div>
@@ -112,10 +112,10 @@ export function ServiceGrid({
           )}
 
           <div className="flex items-center justify-between">
-            <span className="text-lg font-black text-gray-900 tracking-tight">
+            <span className="text-lg font-black text-foreground tracking-tight transition-colors">
               ${Number(producto.precioActual).toLocaleString('es-AR')}
             </span>
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 group-hover:bg-brand-blue group-hover:text-white transition-colors">
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-brand-blue group-hover:text-white transition-colors">
               <span className="font-bold text-lg leading-none">+</span>
             </div>
           </div>

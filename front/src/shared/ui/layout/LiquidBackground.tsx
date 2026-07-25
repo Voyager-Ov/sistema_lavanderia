@@ -54,13 +54,13 @@ export function LiquidBackground() {
   }, [isProcessing]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 opacity-60 mix-blend-multiply pointer-events-none overflow-hidden flex items-center justify-center">
+    <div ref={containerRef} className="absolute inset-0 opacity-60 dark:opacity-80 mix-blend-multiply dark:mix-blend-screen pointer-events-none overflow-hidden flex items-center justify-center transition-opacity duration-1000">
       {/* Contenedor que agrupa los 4 colores para girarlos en conjunto */}
       <div className="gsap-blob-container relative w-full h-full max-w-lg max-h-[500px]">
-        <div className="gsap-blob absolute top-0 left-0 w-72 h-72 bg-red-400 mix-blend-multiply filter blur-[80px] opacity-70 rounded-full" />
-        <div className="gsap-blob absolute top-0 right-0 w-72 h-72 bg-blue-400 mix-blend-multiply filter blur-[80px] opacity-70 rounded-full" />
-        <div className="gsap-blob absolute bottom-0 left-0 w-72 h-72 bg-yellow-400 mix-blend-multiply filter blur-[80px] opacity-70 rounded-full" />
-        <div className="gsap-blob absolute bottom-0 right-0 w-72 h-72 bg-green-400 mix-blend-multiply filter blur-[80px] opacity-70 rounded-full" />
+        <div className="gsap-blob absolute top-0 left-0 w-72 h-72 bg-red-400 dark:bg-red-500/80 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 rounded-full" />
+        <div className="gsap-blob absolute top-0 right-0 w-72 h-72 bg-blue-400 dark:bg-blue-500/80 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 rounded-full" />
+        <div className="gsap-blob absolute bottom-0 left-0 w-72 h-72 bg-yellow-400 dark:bg-yellow-500/80 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 rounded-full" />
+        <div className="gsap-blob absolute bottom-0 right-0 w-72 h-72 bg-green-400 dark:bg-green-500/80 mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-70 rounded-full" />
       </div>
     </div>
   );

@@ -42,37 +42,37 @@ export function PedidosHeader({
   return (
     <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-1">Pedidos</h1>
-        <p className="text-gray-500 font-medium text-sm">Gestiona y haz seguimiento de todos los tickets activos.</p>
+        <h1 className="text-3xl font-black tracking-tight text-foreground mb-1 transition-colors">Pedidos</h1>
+        <p className="text-muted-foreground font-medium text-sm transition-colors">Gestiona y haz seguimiento de todos los tickets activos.</p>
       </div>
       
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={`rounded-full h-12 font-bold text-gray-700 bg-white border-2 border-gray-100 shadow-sm gap-2 ${hasFilter ? 'pr-3' : ''}`}>
+            <Button variant="outline" className={`rounded-full h-12 font-bold text-foreground bg-card border-2 border-border shadow-sm transition-colors gap-2 ${hasFilter ? 'pr-3' : ''}`}>
               <CalendarIcon className="h-4 w-4" />
               {filterText}
               {hasFilter && (
                 <div 
                   role="button"
                   tabIndex={0}
-                  className="ml-1 hover:bg-gray-100 p-1 rounded-full flex items-center justify-center transition-colors"
+                  className="ml-1 hover:bg-muted p-1 rounded-full flex items-center justify-center transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     onClearFilters();
                   }}
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4 rounded-2xl" align="end">
             <div className="space-y-4">
-              <h4 className="font-bold text-gray-900">Rango de fechas</h4>
+              <h4 className="font-bold text-foreground transition-colors">Rango de fechas</h4>
               
-              <div className="flex flex-wrap gap-2 pb-2 border-b border-gray-100">
+              <div className="flex flex-wrap gap-2 pb-2 border-b border-border transition-colors">
                 <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("hoy")}>Hoy</Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("semana")}>Esta sem.</Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("mes")}>Este mes</Button>
@@ -81,11 +81,11 @@ export function PedidosHeader({
 
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500">Desde</label>
+                  <label className="text-xs font-bold text-muted-foreground transition-colors">Desde</label>
                   <Input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="h-10 text-xs" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500">Hasta</label>
+                  <label className="text-xs font-bold text-muted-foreground transition-colors">Hasta</label>
                   <Input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="h-10 text-xs" />
                 </div>
               </div>

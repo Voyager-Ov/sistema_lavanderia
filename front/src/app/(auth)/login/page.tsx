@@ -146,7 +146,7 @@ export default function LoginPage() {
           <Separator />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-3 text-gray-400 font-medium tracking-wider">o continúa con</span>
+          <span className="bg-white dark:bg-neutral-900 px-3 text-gray-400 dark:text-neutral-500 font-medium tracking-wider transition-colors">o continúa con</span>
         </div>
       </div>
 
@@ -154,9 +154,9 @@ export default function LoginPage() {
         <GoogleAuthButton disabled={isLoading} />
       </div>
 
-      <div className="form-element mt-8 text-center text-sm text-gray-500">
+      <div className="form-element mt-8 text-center text-sm text-gray-500 dark:text-neutral-400 transition-colors">
         ¿Aún no tienes una cuenta?{" "}
-        <Link href="/register" className="text-blue-600 font-medium hover:underline transition-colors">
+        <Link href="/register" className="text-blue-600 dark:text-blue-400 font-medium hover:underline transition-colors">
           Regístrate
         </Link>
       </div>

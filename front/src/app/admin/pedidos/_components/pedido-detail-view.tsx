@@ -18,13 +18,13 @@ import { toast } from "sonner"
 
 interface PedidoDetailViewProps {
   id: number
-  onPrintTicket?: (id: number) => void
+  onPrintComprobante?: (id: number) => void
   onCobrar?: (pedido: Pedido) => void
   onGenerateFactura?: (id: number) => void
   hideActions?: boolean
 }
 
-export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactura, hideActions }: PedidoDetailViewProps) {
+export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateFactura, hideActions }: PedidoDetailViewProps) {
   const [pedido, setPedido] = useState<Pedido | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -138,12 +138,12 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
       <div className="detail-fade-up flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">#{pedido.codigoSeguimiento}</h1>
+            <h1 className="text-3xl font-black text-foreground tracking-tight transition-colors">#{pedido.codigoSeguimiento}</h1>
             <Badge variant={getStatusBadgeVariant(pedido.estado) as any} className="uppercase tracking-wider">
               {pedido.estado?.replace(/_/g, ' ') || 'Desconocido'}
             </Badge>
           </div>
-          <p className="text-sm text-gray-500 font-medium">
+          <p className="text-sm text-muted-foreground font-medium transition-colors">
             Registrado el {format(new Date(pedido.createdAt), "PPP 'a las' p", { locale: es })}
           </p>
         </div>
@@ -161,6 +161,18 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
             </Button>
           )}
           
+          {!hideActions && onPrintComprobante && pedido.estado !== "CANCELADO" && (
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => onPrintComprobante(pedido.id)}
+              className="rounded-full shadow-sm"
+            >
+              <ReceiptText className="w-4 h-4 mr-2" />
+              Comprobante
+            </Button>
+          )}
+          
           {!hideActions && pedido.estado !== "CANCELADO" && (tickets.length === 0 ? (
             <Button 
               variant="outline"
@@ -169,7 +181,7 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
               className="rounded-full shadow-sm bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white border-transparent"
             >
               <Ticket className="w-4 h-4 mr-2" />
-              Imprimir Ticket
+              Imprimir Bulto
             </Button>
           ) : (
             <Button 
@@ -179,7 +191,7 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
               className="rounded-full shadow-sm"
             >
               <Printer className="w-4 h-4 mr-2" />
-              Imprimir {tickets.length} Tickets
+              Re-imprimir Bultos ({tickets.length})
             </Button>
           ))}
 
@@ -203,10 +215,10 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
         <div className="lg:col-span-5 flex flex-col gap-6">
           
           {/* Client Card */}
-          <Card className="detail-fade-up border-none shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50/50">
+          <Card className="detail-fade-up shadow-sm relative overflow-hidden group hover:shadow-md transition-all bg-card border border-border">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-blue/5 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none"></div>
             <CardHeader className="pb-4">
-              <CardTitle className="text-xs uppercase tracking-widest text-gray-400 font-bold flex items-center gap-2">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2 transition-colors">
                 <User className="w-4 h-4" /> Cliente
               </CardTitle>
             </CardHeader>
@@ -216,51 +228,51 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
                   {pedido.cliente?.nombre?.charAt(0).toUpperCase() || 'C'}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900 text-lg leading-tight">{pedido.cliente?.nombre || 'Consumidor Final'}</p>
+                  <p className="font-bold text-foreground text-lg leading-tight transition-colors">{pedido.cliente?.nombre || 'Consumidor Final'}</p>
                   {pedido.cliente?.telefono && (
-                    <p className="text-sm text-gray-500 font-medium mt-1">{pedido.cliente.telefono}</p>
+                    <p className="text-sm text-muted-foreground font-medium mt-1 transition-colors">{pedido.cliente.telefono}</p>
                   )}
                 </div>
               </div>
 
               {pedido.notas && (
-                <div className="mt-6 pt-6 border-t border-gray-100 relative z-10">
-                  <h4 className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-2">Notas del Pedido</h4>
-                  <p className="text-sm text-gray-700 bg-white border border-gray-100 p-4 rounded-xl italic shadow-sm">&quot;{pedido.notas}&quot;</p>
+                <div className="mt-6 pt-6 border-t border-border relative z-10 transition-colors">
+                  <h4 className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-2 transition-colors">Notas del Pedido</h4>
+                  <p className="text-sm text-foreground bg-muted/50 border border-border p-4 rounded-xl italic shadow-sm transition-colors">&quot;{pedido.notas}&quot;</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Aditional Order Info (Dates, Cancellation) */}
-          <Card className="detail-fade-up border-none shadow-sm relative overflow-hidden group hover:shadow-md transition-shadow">
+          <Card className="detail-fade-up shadow-sm relative overflow-hidden group hover:shadow-md transition-all bg-card border border-border">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xs uppercase tracking-widest text-gray-400 font-bold flex items-center gap-2">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2 transition-colors">
                 <FileText className="w-4 h-4" /> Datos del Pedido
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-3">
-                <span className="text-gray-500 font-medium">Recepción</span>
-                <span className="font-bold text-gray-900">
+              <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
+                <span className="text-muted-foreground font-medium transition-colors">Recepción</span>
+                <span className="font-bold text-foreground transition-colors">
                   {pedido.fechaRecepcion ? format(new Date(pedido.fechaRecepcion), "dd/MM/yyyy HH:mm") : format(new Date(pedido.createdAt), "dd/MM/yyyy HH:mm")}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-3">
-                <span className="text-gray-500 font-medium">Entrega Estimada</span>
-                <span className="font-bold text-gray-900">
+              <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
+                <span className="text-muted-foreground font-medium transition-colors">Entrega Estimada</span>
+                <span className="font-bold text-foreground transition-colors">
                   {pedido.fechaEntregaEstimada ? format(new Date(pedido.fechaEntregaEstimada), "dd/MM/yyyy") : 'No especificada'}
                 </span>
               </div>
               
               {pedido.estado === "CANCELADO" && (
-                <div className="mt-4 bg-red-50 p-4 rounded-xl border border-red-100 animate-in fade-in slide-in-from-bottom-2">
-                  <h4 className="text-xs uppercase tracking-widest text-red-800 font-bold mb-2 flex items-center gap-1.5">
+                <div className="mt-4 bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30 animate-in fade-in slide-in-from-bottom-2 transition-colors">
+                  <h4 className="text-xs uppercase tracking-widest text-red-800 dark:text-red-400 font-bold mb-2 flex items-center gap-1.5 transition-colors">
                     <XCircle className="w-3.5 h-3.5" /> Motivo de Cancelación
                   </h4>
-                  <p className="text-sm font-bold text-red-900">{pedido.motivoCancelacion || 'Cancelado'}</p>
+                  <p className="text-sm font-bold text-red-900 dark:text-red-300 transition-colors">{pedido.motivoCancelacion || 'Cancelado'}</p>
                   {pedido.descripcionCancelacion && (
-                    <p className="text-xs text-red-700 mt-1.5 italic bg-red-100/50 p-2 rounded-lg">
+                    <p className="text-xs text-red-700 dark:text-red-400 mt-1.5 italic bg-red-100/50 dark:bg-red-900/20 p-2 rounded-lg transition-colors">
                       &quot;{pedido.descripcionCancelacion}&quot;
                     </p>
                   )}
@@ -270,27 +282,27 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
           </Card>
 
           {/* Timeline Card */}
-          <Card className="detail-fade-up border-none shadow-sm">
+          <Card className="detail-fade-up shadow-sm bg-card border border-border transition-colors">
             <CardHeader className="pb-6">
-              <CardTitle className="text-xs uppercase tracking-widest text-gray-400 font-bold flex items-center gap-2">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2 transition-colors">
                 <Clock className="w-4 h-4" /> Historial de Estados
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="relative pl-4 space-y-6">
                 {/* Vertical line */}
-                <div className="absolute left-6 top-2 bottom-2 w-px bg-gray-100"></div>
+                <div className="absolute left-6 top-2 bottom-2 w-px bg-border transition-colors"></div>
 
                 {pedido.historial?.map((hist, i) => (
                   <div key={hist.id} className="timeline-item relative flex gap-4 z-10">
                     <div className="flex flex-col items-center mt-1">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${i === 0 ? 'bg-brand-blue shadow-[0_0_10px_rgba(0,0,0,0.1)] ring-4 ring-white' : 'bg-gray-100 border-2 border-white'}`}>
-                        {i === 0 ? <Check className="w-3 h-3 text-white" /> : <div className="w-2 h-2 rounded-full bg-gray-300" />}
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${i === 0 ? 'bg-brand-blue shadow-[0_0_10px_rgba(0,0,0,0.1)] ring-4 ring-card' : 'bg-muted border-2 border-card'}`}>
+                        {i === 0 ? <Check className="w-3 h-3 text-white" /> : <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900">{hist.estadoNuevo?.replace(/_/g, ' ') || 'Desconocido'}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                      <p className="text-sm font-bold text-foreground transition-colors">{hist.estadoNuevo?.replace(/_/g, ' ') || 'Desconocido'}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 transition-colors">
                         {format(new Date(hist.createdAt), "dd MMM, HH:mm", { locale: es })}
                         {hist.usuario && (
                           <>
@@ -300,7 +312,7 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
                         )}
                       </div>
                       {hist.comentario && (
-                        <p className="text-xs text-gray-600 mt-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded-lg border border-border transition-colors">
                           {hist.comentario}
                         </p>
                       )}
@@ -316,18 +328,18 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
         {/* Right Column: Digital Ticket & Payment */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           
-          <Card className="detail-fade-up border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden bg-[#FDFDFD]">
+          <Card className="detail-fade-up border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden bg-card transition-colors">
             {/* Minimalist receipt styling */}
             <div className="absolute -top-3 left-8 right-8 h-6 flex justify-between px-2 overflow-hidden pointer-events-none opacity-20">
                {Array.from({length: 15}).map((_, i) => (
-                 <div key={i} className="w-4 h-6 rounded-full bg-white border border-gray-300"></div>
+                 <div key={i} className="w-4 h-6 rounded-full bg-card border border-border transition-colors"></div>
                ))}
             </div>
 
-            <CardHeader className="border-b border-dashed border-gray-300 pb-6 pt-8 mb-6 mx-6 px-0">
+            <CardHeader className="border-b border-dashed border-border pb-6 pt-8 mb-6 mx-6 px-0 transition-colors">
               <div className="flex justify-between items-end">
                 <div>
-                  <CardTitle className="text-2xl font-black tracking-tight text-gray-900 mb-1">Ticket de Servicios</CardTitle>
+                  <CardTitle className="text-2xl font-black tracking-tight text-foreground mb-1 transition-colors">Ticket de Servicios</CardTitle>
                   <CardDescription className="text-sm font-medium">{pedido.items?.length || 0} ítems</CardDescription>
                 </div>
                 
@@ -347,17 +359,17 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
 
             <CardContent className="px-6 space-y-4 mb-2 min-h-[150px]">
               {pedido.items?.map((item, i) => (
-                <div key={i} className="group flex justify-between items-center p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                <div key={i} className="group flex justify-between items-center p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
                   <div className="flex items-center gap-4">
-                    <Badge variant="secondary" className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-600 font-bold text-sm">
+                    <Badge variant="secondary" className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground font-bold text-sm transition-colors">
                       {item.cantidad}x
                     </Badge>
                     <div>
-                      <p className="font-bold text-gray-900">{item.producto?.nombre || 'Item'}</p>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">{formatCurrency(item.precioUnitario)} c/u</p>
+                      <p className="font-bold text-foreground transition-colors">{item.producto?.nombre || 'Item'}</p>
+                      <p className="text-xs text-muted-foreground font-medium mt-0.5 transition-colors">{formatCurrency(item.precioUnitario)} c/u</p>
                     </div>
                   </div>
-                  <div className="font-black text-gray-900">
+                  <div className="font-black text-foreground transition-colors">
                     {formatCurrency(item.subtotal)}
                   </div>
                 </div>
@@ -367,32 +379,32 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
             <div className="mx-6 mb-6">
               <Separator className="border-dashed mb-6" />
               <div className="flex justify-between items-center">
-                <span className="text-gray-500 font-bold uppercase tracking-widest text-sm">Total</span>
-                <span className="text-4xl font-black tracking-tighter text-gray-900">
+                <span className="text-muted-foreground font-bold uppercase tracking-widest text-sm transition-colors">Total</span>
+                <span className="text-4xl font-black tracking-tighter text-foreground transition-colors">
                   {formatCurrency(pedido.total)}
                 </span>
               </div>
               
               {pedido.pago && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2 text-sm">
+                <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2 text-sm transition-colors">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Método de pago</span>
-                    <span className="font-bold text-gray-900 uppercase">{pedido.pago.metodoPago?.nombre || 'Otro'}</span>
+                    <span className="text-muted-foreground transition-colors">Método de pago</span>
+                    <span className="font-bold text-foreground uppercase transition-colors">{pedido.pago.metodoPago?.nombre || 'Otro'}</span>
                   </div>
                   {parseFloat(pedido.pago.monto.toString()) > 0 && parseFloat(pedido.pago.monto.toString()) !== parseFloat(pedido.total.toString()) && (
-                    <div className="flex justify-between items-center text-gray-600">
-                      <span className="text-gray-500">Monto abonado en caja</span>
+                    <div className="flex justify-between items-center text-muted-foreground transition-colors">
+                      <span className="text-muted-foreground transition-colors">Monto abonado en caja</span>
                       <span className="font-medium">{formatCurrency(pedido.pago.monto)}</span>
                     </div>
                   )}
                   {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
-                    <div className="flex justify-between items-center text-brand-blue bg-blue-50 p-2 rounded-lg mt-1 border border-blue-100">
+                    <div className="flex justify-between items-center text-brand-blue bg-brand-blue/10 p-2 rounded-lg mt-1 border border-brand-blue/20 transition-colors">
                       <span className="font-medium">Pagado con Saldo a Favor</span>
                       <span className="font-bold">{formatCurrency(parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()))}</span>
                     </div>
                   )}
                   {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
-                    <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 p-2 rounded-lg mt-1 border border-emerald-100">
+                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 p-2 rounded-lg mt-1 border border-emerald-100 dark:border-emerald-900/20 transition-colors">
                       <span className="font-medium">Generó Saldo a Favor</span>
                       <span className="font-bold">+{formatCurrency(pedido.pago.montoAFavorGenerado)}</span>
                     </div>
@@ -405,9 +417,9 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
 
           {/* Ticket History Card */}
           {tickets.length > 0 && (
-            <Card className="detail-fade-up border-none shadow-sm mt-2">
+            <Card className="detail-fade-up shadow-sm bg-card border border-border mt-2 transition-colors">
               <CardHeader className="pb-4">
-                <CardTitle className="text-xs uppercase tracking-widest text-gray-400 font-bold flex items-center gap-2">
+                <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2 transition-colors">
                   <Printer className="w-4 h-4" /> Historial de Tickets ({tickets.length})
                 </CardTitle>
               </CardHeader>
@@ -416,26 +428,26 @@ export function PedidoDetailView({ id, onPrintTicket, onCobrar, onGenerateFactur
                   {tickets.map((ticket, index) => (
                     <div 
                       key={ticket.id} 
-                      className="group flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white hover:border-brand-blue/30 hover:shadow-sm transition-all hover:-translate-y-0.5 cursor-pointer"
+                      className="group flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:bg-muted/50 hover:border-brand-blue/30 hover:shadow-sm transition-all hover:-translate-y-0.5 cursor-pointer"
                       onClick={() => {
                         // Open thermal ticket view or re-print this specific ticket
                         toast.info(`Ticket ${ticket.codigo} seleccionado. (Re-impresión individual en desarrollo)`)
                       }}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors">
                           <Ticket className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">#{ticket.codigo}</p>
-                          <p className="text-[10px] text-gray-500 font-medium">Bulto {index + 1}</p>
+                          <p className="font-bold text-foreground text-sm transition-colors">#{ticket.codigo}</p>
+                          <p className="text-[10px] text-muted-foreground font-medium transition-colors">Bulto {index + 1}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-gray-400 font-medium mb-1">
+                        <p className="text-[10px] text-muted-foreground font-medium mb-1 transition-colors">
                           {format(new Date(ticket.createdAt), "dd MMM HH:mm", { locale: es })}
                         </p>
-                        <Printer className="w-3.5 h-3.5 text-gray-300 group-hover:text-brand-blue transition-colors ml-auto" />
+                        <Printer className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-brand-blue transition-colors ml-auto" />
                       </div>
                     </div>
                   ))}

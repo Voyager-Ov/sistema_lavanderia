@@ -13,11 +13,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shar
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/overlays/dropdown-menu"
 
 const ESTADOS: StatusOption[] = [
-  { value: "PENDIENTE", label: "Pendiente", colorClass: "bg-blue-100 text-blue-800" },
-  { value: "EN_PROCESO", label: "En Proceso", colorClass: "bg-orange-100 text-orange-800" },
-  { value: "LISTO_PARA_RETIRAR", label: "Listo", colorClass: "bg-green-100 text-green-800" },
-  { value: "ENTREGADO", label: "Entregado", colorClass: "bg-gray-100 text-gray-800" },
-  { value: "CANCELADO", label: "Cancelado", colorClass: "bg-red-100 text-red-800" },
+  { value: "PENDIENTE", label: "Pendiente", colorClass: "bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400 transition-colors" },
+  { value: "EN_PROCESO", label: "En Proceso", colorClass: "bg-orange-100 dark:bg-orange-500/20 text-orange-800 dark:text-orange-400 transition-colors" },
+  { value: "LISTO_PARA_RETIRAR", label: "Listo", colorClass: "bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400 transition-colors" },
+  { value: "ENTREGADO", label: "Entregado", colorClass: "bg-gray-100 dark:bg-neutral-800 text-gray-800 dark:text-neutral-300 transition-colors" },
+  { value: "CANCELADO", label: "Cancelado", colorClass: "bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400 transition-colors" },
 ]
 
 export interface PedidoColumnsActions {
@@ -58,7 +58,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     accessorKey: "codigoSeguimiento",
     header: "Ticket",
     cell: ({ row }) => (
-      <div className="font-bold text-gray-900">{row.original.codigoSeguimiento}</div>
+      <div className="font-bold text-gray-900 dark:text-neutral-50 transition-colors">{row.original.codigoSeguimiento}</div>
     ),
   },
   {
@@ -68,9 +68,9 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
       const cliente = row.original.cliente
       return (
         <div className="flex flex-col">
-          <span className="font-bold text-gray-900">{cliente?.nombre || "Consumidor Final"}</span>
+          <span className="font-bold text-gray-900 dark:text-neutral-50 transition-colors">{cliente?.nombre || "Consumidor Final"}</span>
           {cliente?.telefono && (
-            <span className="text-xs text-gray-500">{cliente.telefono}</span>
+            <span className="text-xs text-gray-500 dark:text-neutral-400 transition-colors">{cliente.telefono}</span>
           )}
         </div>
       )
@@ -80,7 +80,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     accessorKey: "createdAt",
     header: "Fecha",
     cell: ({ row }) => (
-      <div className="text-gray-600 font-medium">
+      <div className="text-gray-600 dark:text-neutral-400 font-medium transition-colors">
         {format(new Date(row.original.createdAt), "dd MMM HH:mm", { locale: es })}
       </div>
     ),
@@ -96,13 +96,13 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
           {items.map((item, index) => (
             <span 
               key={index} 
-              className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200"
+              className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 transition-colors"
             >
               <span className="font-bold mr-1">{item.cantidad}x</span>
               {item.producto?.nombre}
             </span>
           ))}
-          {items.length === 0 && <span className="text-gray-400 text-xs italic">-</span>}
+          {items.length === 0 && <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">-</span>}
         </div>
       )
     },
@@ -128,19 +128,19 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
         <div className="flex flex-col gap-1">
           {cobrado ? (
             <>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded w-fit">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-500/20 px-2 py-0.5 rounded w-fit transition-colors">
                 <CheckCircle2 className="w-3 h-3" /> COBRADO
               </span>
-              <span className="text-[10px] font-medium text-gray-500 uppercase">{metodo}</span>
+              <span className="text-[10px] font-medium text-gray-500 dark:text-neutral-400 uppercase transition-colors">{metodo}</span>
               {pedido.pago && (
                 <>
                   {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded w-fit">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
                       Con Saldo a Favor
                     </span>
                   )}
                   {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded w-fit">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
                       + Saldo a Favor
                     </span>
                   ) : null}
@@ -148,7 +148,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
               )}
             </>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded w-fit">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-2 py-0.5 rounded w-fit transition-colors">
               <XCircle className="w-3 h-3" /> IMPAGO
             </span>
           )}
@@ -163,7 +163,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="hover:bg-gray-100/50 -ml-4"
+          className="hover:bg-gray-100/50 dark:hover:bg-neutral-800/50 -ml-4 transition-colors"
         >
           Entrega Est.
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -172,7 +172,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     },
     cell: ({ row }) => {
       if (!row.original.fechaEntregaEstimada) {
-        return <span className="text-gray-400 text-xs italic">No def.</span>
+        return <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">No def.</span>
       }
 
       const fechaEst = new Date(row.original.fechaEntregaEstimada)
@@ -187,16 +187,16 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
 
       return (
         <div className="flex flex-col gap-1">
-          <span className="text-gray-900 font-medium whitespace-nowrap">
+          <span className="text-gray-900 dark:text-neutral-50 font-medium whitespace-nowrap transition-colors">
             {format(fechaEst, "dd MMM HH:mm", { locale: es })}
           </span>
           {isOverdue && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded w-fit">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
               <AlertTriangle className="w-3 h-3" /> VENCIDO
             </span>
           )}
           {isUrgent && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded w-fit">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
               <AlertTriangle className="w-3 h-3" /> PRIORIDAD
             </span>
           )}
@@ -219,19 +219,19 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
         </div>
         
         {row.original.cobrado ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400 border border-green-200 dark:border-green-500/30 transition-colors">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Cobrado
           </span>
         ) : row.original.estado === "CANCELADO" ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border border-gray-200 dark:border-neutral-700 transition-colors">
             Cancelado
           </span>
         ) : (
           <Button
             size="sm"
             variant="outline"
-            className="h-7 px-3 text-xs font-bold rounded-full bg-white text-green-700 border-green-200 hover:bg-green-50 hover:text-green-800 shadow-sm transition-all hover:scale-105"
+            className="h-7 px-3 text-xs font-bold rounded-full bg-white dark:bg-transparent text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-500/20 hover:text-green-800 dark:hover:text-green-300 shadow-sm transition-all hover:scale-105"
             onClick={() => actions.onCobrar(row.original)}
           >
             <Banknote className="h-3.5 w-3.5 mr-1.5" />
@@ -275,13 +275,13 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded-full transition-transform hover:scale-110"
+                    className="h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-brand-blue dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-transform hover:scale-110"
                     onClick={() => actions.onView(pedido)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="bg-white text-brand-blue border-blue-200 font-semibold shadow-md">Ver Detalle</TooltipContent>
+                <TooltipContent className="bg-white dark:bg-neutral-900 text-brand-blue dark:text-blue-400 border-blue-200 dark:border-blue-900 font-semibold shadow-md">Ver Detalle</TooltipContent>
               </Tooltip>
 
               {telefono && (
@@ -290,13 +290,13 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-full transition-transform hover:scale-110"
+                      className="h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-full transition-transform hover:scale-110"
                       onClick={handleWhatsApp}
                     >
                       <MessageCircle className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-white text-green-600 border-green-200 font-semibold shadow-md">Enviar WhatsApp</TooltipContent>
+                  <TooltipContent className="bg-white dark:bg-neutral-900 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900 font-semibold shadow-md">Enviar WhatsApp</TooltipContent>
                 </Tooltip>
               )}
 
@@ -307,8 +307,8 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     size="icon"
                     className={
                       pedido.estado === "CANCELADO"
-                        ? "h-8 w-8 text-gray-400 cursor-not-allowed rounded-full"
-                        : "h-8 w-8 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-transform hover:scale-110"
+                        ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full"
+                        : "h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-full transition-transform hover:scale-110"
                     }
                     onClick={() => {
                       if (pedido.estado !== "CANCELADO") {
@@ -320,7 +320,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     <Printer className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="bg-white text-indigo-600 border-indigo-200 font-semibold shadow-md">Imprimir Ticket</TooltipContent>
+                <TooltipContent className="bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 font-semibold shadow-md">Imprimir Ticket</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -330,12 +330,12 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     size="icon"
                     className={
                       pedido.estado === "CANCELADO"
-                        ? "h-8 w-8 text-gray-400 cursor-not-allowed rounded-full"
+                        ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full"
                         : pedido.facturado
-                          ? "h-8 w-8 text-teal-600 bg-teal-50 rounded-full cursor-default"
+                          ? "h-8 w-8 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 rounded-full cursor-default"
                           : (!pedido.cobrado 
-                              ? "h-8 w-8 text-gray-400 cursor-not-allowed rounded-full" 
-                              : "h-8 w-8 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-full transition-transform hover:scale-110"
+                              ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full" 
+                              : "h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-500/10 rounded-full transition-transform hover:scale-110"
                             )
                     }
                     onClick={() => {
@@ -351,8 +351,8 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                 <TooltipContent 
                   className={
                     !pedido.cobrado && !pedido.facturado
-                      ? "bg-white text-gray-400 border-gray-200 font-semibold shadow-md"
-                      : "bg-white text-teal-600 border-teal-200 font-semibold shadow-md"
+                      ? "bg-white dark:bg-neutral-900 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 font-semibold shadow-md"
+                      : "bg-white dark:bg-neutral-900 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-900 font-semibold shadow-md"
                   }
                 >
                   {pedido.facturado ? "Facturado" : (!pedido.cobrado ? "Cobrar para facturar" : "Generar Factura AFIP")}
@@ -366,8 +366,8 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     size="icon"
                     className={
                       pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"
-                        ? "h-8 w-8 text-gray-400 cursor-not-allowed rounded-full"
-                        : "h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-transform hover:scale-110"
+                        ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full"
+                        : "h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-transform hover:scale-110"
                     }
                     onClick={() => actions.onCancel(pedido)}
                     disabled={pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"}
@@ -378,8 +378,8 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                 <TooltipContent 
                   className={
                     pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"
-                      ? "bg-white text-gray-400 border-gray-200 font-semibold shadow-md"
-                      : "bg-white text-red-600 border-red-200 font-semibold shadow-md"
+                      ? "bg-white dark:bg-neutral-900 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 font-semibold shadow-md"
+                      : "bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 font-semibold shadow-md"
                   }
                 >
                   Cancelar Pedido

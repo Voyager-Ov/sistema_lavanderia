@@ -35,6 +35,9 @@ export function PrintQueueManager({ pedidos, onComplete }: PrintQueueManagerProp
     let active = true
 
     const processQueue = async () => {
+      // Clear the results array to prevent duplicates in React Strict Mode
+      htmlResults.current = []
+
       for (let i = 0; i < total; i++) {
         if (!active || isCancelled) {
           toast.error("Impresión masiva cancelada.")
@@ -46,11 +49,11 @@ export function PrintQueueManager({ pedidos, onComplete }: PrintQueueManagerProp
         setCurrentIndex(i + 1)
         
         try {
-          // Generar el ticket en base de datos primero (1 ticket por pedido)
-          await generarTicketsAPI(pedido.id, 1)
-          
-          // Luego obtener el HTML
+          // Solo necesitamos obtener el HTML del comprobante, no generar tickets físicos extra
           const html = await getTicketHTML(pedido.id)
+          
+          if (!active || isCancelled) return;
+          
           htmlResults.current.push(html)
           
           // Small delay for UI updates
@@ -64,12 +67,40 @@ export function PrintQueueManager({ pedidos, onComplete }: PrintQueueManagerProp
 
       if (active && !isCancelled && htmlResults.current.length > 0) {
         toast.success("Tickets generados con éxito.")
-        const fullHtml = htmlResults.current.join('<div style="page-break-after: always;"></div>')
+        
+        // Extract body content from each backend HTML to avoid duplicate window.print() calls and nested html tags
+        const fullHtml = htmlResults.current.map(html => {
+          const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+          return bodyMatch ? bodyMatch[1] : html;
+        }).join('<div style="page-break-after: always;"></div>');
+
         const printWindow = window.open('', '_blank', 'width=400,height=600')
         if (printWindow) {
           printWindow.document.write(`
-            <html>
-              <head><title>Impresión Masiva</title></head>
+            <!DOCTYPE html>
+            <html lang="es">
+              <head>
+                <meta charset="UTF-8">
+                <title>Impresión Masiva</title>
+                <style>
+                  body {
+                      font-family: 'Courier New', Courier, monospace;
+                      font-size: 12px;
+                      width: 300px;
+                      margin: 0 auto;
+                      padding: 10px;
+                      color: #000;
+                  }
+                  .text-center { text-align: center; }
+                  .text-right { text-align: right; }
+                  .font-bold { font-weight: bold; }
+                  .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+                  table { width: 100%; border-collapse: collapse; }
+                  @media print {
+                      body { margin: 0; padding: 0; width: 100%; }
+                  }
+                </style>
+              </head>
               <body onload="setTimeout(() => window.print(), 500)">
                 ${fullHtml}
               </body>

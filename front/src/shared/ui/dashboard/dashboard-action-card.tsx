@@ -37,13 +37,13 @@ export function DashboardActionCard({
   const colors = getColors()
 
   return (
-    <div className={cn("bg-white rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between border border-gray-100 shadow-sm transition-shadow hover:shadow-md", className)}>
+    <div className={cn("bg-white dark:bg-neutral-800 rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between border border-gray-100 dark:border-neutral-700/50 shadow-sm transition-all hover:shadow-md", className)}>
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-4">{title}</h3>
-        <p className="text-2xl font-bold leading-tight mb-2 text-gray-900">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-neutral-50 mb-4 transition-colors">{title}</h3>
+        <p className="text-2xl font-bold leading-tight mb-2 text-gray-900 dark:text-neutral-50 transition-colors">
           {mainText}
         </p>
-        <p className="text-sm text-gray-500 font-medium">
+        <p className="text-sm text-gray-500 dark:text-neutral-400 font-medium transition-colors">
           {subText}
         </p>
       </div>

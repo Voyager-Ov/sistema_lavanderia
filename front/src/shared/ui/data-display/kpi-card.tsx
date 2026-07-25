@@ -123,7 +123,7 @@ export function KpiCard({
       {/* FRONT CARD */}
       <div
         className={cn(
-          "kpi-front absolute inset-0 rounded-3xl p-6 shadow-sm border-2 bg-card flex flex-col justify-between transition-shadow hover:shadow-md",
+          "kpi-front absolute inset-0 rounded-3xl p-6 shadow-sm border-2 bg-white dark:bg-neutral-800 flex flex-col justify-between transition-all hover:shadow-md",
           borders[colorVariant]
         )}
       >

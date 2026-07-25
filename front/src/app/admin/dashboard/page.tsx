@@ -164,10 +164,10 @@ export default function AdminDashboardPage() {
       {/* Header & Global Actions */}
       <div className="fade-up flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-[2.5rem] font-bold text-gray-900 tracking-tight leading-none mb-2">
+          <h1 className="text-[2.5rem] font-bold text-gray-900 dark:text-neutral-50 tracking-tight leading-none mb-2 transition-colors">
             Dashboard
           </h1>
-          <p className="text-sm font-medium text-gray-500">Planifica, prioriza y cumple tus tareas con facilidad.</p>
+          <p className="text-sm font-medium text-gray-500 dark:text-neutral-400 transition-colors">Planifica, prioriza y cumple tus tareas con facilidad.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -178,7 +178,7 @@ export default function AdminDashboardPage() {
             <Plus className="w-4 h-4" />
             Crear Pedido
           </button>
-          <button className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+          <button className="bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-800 px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
             <Download className="w-4 h-4" />
             Exportar Info
           </button>

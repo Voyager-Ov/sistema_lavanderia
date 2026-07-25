@@ -56,7 +56,7 @@ export function GoogleAuthButton({ disabled }: GoogleAuthButtonProps) {
     <Button 
       type="button" 
       variant="outline" 
-      className="w-full h-11 bg-white hover:bg-gray-50 text-gray-700 border-gray-300 transition-colors shadow-sm font-medium" 
+      className="w-full h-11 bg-white dark:bg-neutral-900 hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-700 dark:text-neutral-200 border-gray-300 dark:border-neutral-700 transition-colors shadow-sm font-medium" 
       onClick={() => loginWithGoogle()}
       disabled={disabled || isGoogleLoading}
     >

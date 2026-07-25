@@ -81,12 +81,12 @@ export default function PedidosPage() {
       label: "Cambiar Estado",
       type: "dropdown",
       icon: Clock,
-      colorClass: "bg-white/60 text-gray-700 hover:text-gray-900 hover:bg-white border border-white shadow-sm",
+      colorClass: "bg-white/60 dark:bg-neutral-800/60 text-gray-700 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-50 hover:bg-white dark:hover:bg-neutral-800 border border-white dark:border-neutral-700 shadow-sm transition-colors",
       options: [
         {
           label: "Marcar como Pendientes",
           icon: Clock,
-          colorClass: "text-blue-600 hover:bg-blue-50 data-[highlighted]:bg-blue-50 data-[highlighted]:text-blue-700",
+          colorClass: "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 data-[highlighted]:bg-blue-50 dark:data-[highlighted]:bg-blue-500/10 data-[highlighted]:text-blue-700 dark:data-[highlighted]:text-blue-300 transition-colors",
           onClick: async (selectedRows: any, clearSelection: any) => {
             await processBulkStatusChange(selectedRows, "PENDIENTE", "Pendiente", clearSelection)
           }
@@ -94,7 +94,7 @@ export default function PedidosPage() {
         {
           label: "Marcar como En Proceso",
           icon: Clock,
-          colorClass: "text-orange-600 hover:bg-orange-50 data-[highlighted]:bg-orange-50 data-[highlighted]:text-orange-700",
+          colorClass: "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 data-[highlighted]:bg-orange-50 dark:data-[highlighted]:bg-orange-500/10 data-[highlighted]:text-orange-700 dark:data-[highlighted]:text-orange-300 transition-colors",
           onClick: async (selectedRows: any, clearSelection: any) => {
             await processBulkStatusChange(selectedRows, "EN_PROCESO", "En Proceso", clearSelection)
           }
@@ -102,7 +102,7 @@ export default function PedidosPage() {
         {
           label: "Marcar como Listos",
           icon: CheckCircle2,
-          colorClass: "text-green-600 hover:bg-green-50 data-[highlighted]:bg-green-50 data-[highlighted]:text-green-700",
+          colorClass: "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10 data-[highlighted]:bg-green-50 dark:data-[highlighted]:bg-green-500/10 data-[highlighted]:text-green-700 dark:data-[highlighted]:text-green-300 transition-colors",
           onClick: async (selectedRows: any, clearSelection: any) => {
             await processBulkStatusChange(selectedRows, "LISTO_PARA_RETIRAR", "Listo para retirar", clearSelection)
           }
@@ -112,7 +112,7 @@ export default function PedidosPage() {
     {
       label: "Imprimir Tickets",
       icon: Printer,
-      colorClass: "bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100/90 border-indigo-100 hover:shadow-md backdrop-blur-md",
+      colorClass: "bg-indigo-50/80 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100/90 dark:hover:bg-indigo-500/20 border-indigo-100 dark:border-indigo-500/20 hover:shadow-md backdrop-blur-md transition-colors",
       onClick: async (selectedRows: any, clearSelection: any) => {
         modalsProps.setPedidosToBulkPrint(selectedRows)
         modalsProps.setIsBulkPrintActive(true)
@@ -122,7 +122,7 @@ export default function PedidosPage() {
     {
       label: "Cobrar Masivamente",
       icon: Clock,
-      colorClass: "bg-green-50/80 text-green-700 hover:bg-green-100/90 border-green-100 hover:shadow-md backdrop-blur-md",
+      colorClass: "bg-green-50/80 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100/90 dark:hover:bg-green-500/20 border-green-100 dark:border-green-500/20 hover:shadow-md backdrop-blur-md transition-colors",
       onClick: (selectedRows: any, clearSelection: any) => {
         modalsProps.setPedidosToBulkCharge(selectedRows)
         modalsProps.setIsBulkChargeOpen(true)

@@ -34,9 +34,9 @@ export function DataTableBulkActions<TData>({
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-      <div className="flex items-center gap-4 rounded-full bg-white/70 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-gray-800 px-6 py-3">
-        <div className="flex items-center gap-2 border-r border-gray-200/60 pr-4">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-blue/10 text-xs font-bold text-brand-blue ring-1 ring-brand-blue/20">
+      <div className="flex items-center gap-4 rounded-full bg-white/70 dark:bg-neutral-900/80 backdrop-blur-xl border border-white dark:border-neutral-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] text-gray-800 dark:text-neutral-200 px-6 py-3 transition-colors">
+        <div className="flex items-center gap-2 border-r border-gray-200/60 dark:border-neutral-700/60 pr-4 transition-colors">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-blue/10 dark:bg-blue-500/20 text-xs font-bold text-brand-blue dark:text-blue-400 ring-1 ring-brand-blue/20 dark:ring-blue-500/30 transition-colors">
             {selectedRows.length}
           </span>
           <span className="text-sm font-semibold tracking-tight whitespace-nowrap">
@@ -56,7 +56,7 @@ export function DataTableBulkActions<TData>({
                       size="sm"
                       className={cn(
                         "h-8 rounded-full text-xs font-bold tracking-wide transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
-                        action.colorClass || (!action.variant && "bg-white/60 text-brand-blue hover:bg-white border border-white shadow-sm backdrop-blur-md hover:shadow-md")
+                        action.colorClass || (!action.variant && "bg-white/60 dark:bg-neutral-800/60 text-brand-blue dark:text-blue-400 hover:bg-white dark:hover:bg-neutral-800 border border-white dark:border-neutral-700 shadow-sm backdrop-blur-md hover:shadow-md transition-colors")
                       )}
                     >
                       {MainIcon && <MainIcon className="mr-2 h-3.5 w-3.5" />}
@@ -64,7 +64,7 @@ export function DataTableBulkActions<TData>({
                       <ChevronDown className="ml-1.5 h-3 w-3 opacity-70" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="rounded-xl p-1.5 shadow-xl border-gray-100 min-w-[180px]">
+                  <DropdownMenuContent align="start" className="rounded-xl p-1.5 shadow-xl border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 min-w-[180px] transition-colors">
                     {action.options.map((opt, i) => {
                       const OptIcon = opt.icon
                       return (
@@ -92,8 +92,8 @@ export function DataTableBulkActions<TData>({
                 className={cn(
                   "h-8 rounded-full text-xs font-bold tracking-wide transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
                   action.colorClass,
-                  !action.colorClass && !action.variant && "bg-white/60 text-brand-blue hover:bg-white border border-white shadow-sm backdrop-blur-md hover:shadow-md",
-                  action.variant === "destructive" && "bg-red-50/80 text-red-600 hover:bg-red-100/90 border border-red-100 hover:shadow-md backdrop-blur-md"
+                  !action.colorClass && !action.variant && "bg-white/60 dark:bg-neutral-800/60 text-brand-blue dark:text-blue-400 hover:bg-white dark:hover:bg-neutral-800 border border-white dark:border-neutral-700 shadow-sm backdrop-blur-md hover:shadow-md transition-colors",
+                  action.variant === "destructive" && "bg-red-50/80 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100/90 dark:hover:bg-red-500/20 border border-red-100 dark:border-red-500/20 hover:shadow-md backdrop-blur-md transition-colors"
                 )}
                 onClick={() => action.onClick && action.onClick(selectedRows, onClearSelection)}
               >
@@ -106,7 +106,7 @@ export function DataTableBulkActions<TData>({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500 ml-2 transition-colors duration-200"
+            className="h-8 w-8 rounded-full text-gray-400 dark:text-neutral-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 ml-2 transition-colors duration-200"
             onClick={onClearSelection}
           >
             <X className="h-4 w-4" strokeWidth={2.5} />

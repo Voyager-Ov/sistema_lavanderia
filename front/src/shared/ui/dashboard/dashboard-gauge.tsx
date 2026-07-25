@@ -53,8 +53,8 @@ export function DashboardGauge({
     if (active && payload && payload.length) {
       const isCompletado = payload[0].payload.name === "Completado"
       return (
-        <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-xl flex flex-col gap-2 min-w-[160px]">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+        <div className="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 p-4 rounded-xl shadow-xl flex flex-col gap-2 min-w-[160px] transition-colors">
+          <p className="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider transition-colors">
             {isCompletado ? "Progreso Actual" : "Por Completar"}
           </p>
           <div className="flex items-center justify-between gap-4 mt-1">
@@ -63,9 +63,9 @@ export function DashboardGauge({
                 className="w-3 h-3 rounded-sm shadow-sm" 
                 style={{ background: isCompletado ? getCssColor() : "repeating-linear-gradient(45deg, transparent, transparent 2px, #d1d5db 2px, #d1d5db 4px)" }} 
               />
-              <span className="text-sm text-gray-700 font-medium">{payload[0].name}</span>
+              <span className="text-sm text-gray-700 dark:text-neutral-300 font-medium transition-colors">{payload[0].name}</span>
             </div>
-            <span className="text-base font-black text-gray-900">{payload[0].value}</span>
+            <span className="text-base font-black text-gray-900 dark:text-neutral-50 transition-colors">{payload[0].value}</span>
           </div>
         </div>
       )
@@ -74,15 +74,15 @@ export function DashboardGauge({
   }
 
   return (
-    <div className={cn("bg-white rounded-[2rem] p-6 lg:p-8 flex flex-col items-center justify-between border border-gray-100 shadow-sm relative", className)}>
-      <h3 className="text-lg font-semibold text-gray-900 w-full text-left mb-4">{title}</h3>
+    <div className={cn("bg-white dark:bg-neutral-800 rounded-[2rem] p-6 lg:p-8 flex flex-col items-center justify-center border border-gray-100 dark:border-neutral-700/50 shadow-sm transition-colors", className)}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-neutral-50 w-full text-left mb-4 transition-colors">{title}</h3>
       
       <div className="relative w-full h-[180px] flex items-end justify-center overflow-hidden mt-4">
         <ResponsiveContainer width="100%" height="200%">
           <PieChart>
             <defs>
               <pattern id="stripe-pattern" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
-                <line x1="0" y="0" x2="0" y2="8" stroke="#e5e7eb" strokeWidth="2" strokeOpacity="1" />
+                <line x1="0" y="0" x2="0" y2="8" strokeWidth="2" strokeOpacity="1" className="stroke-gray-200 dark:stroke-neutral-800 transition-colors" />
               </pattern>
             </defs>
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
@@ -108,22 +108,22 @@ export function DashboardGauge({
         
         {/* Absolute positioned text in the middle of the semi-circle */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center pb-2">
-          <span className="text-5xl font-bold text-gray-900 tracking-tighter">{percentage}%</span>
-          {subtitle && <span className="text-xs font-medium text-gray-500 mt-1">{subtitle}</span>}
-          <span className="text-[10px] font-semibold text-gray-400 mt-1 uppercase tracking-widest">{currentValue} / {targetValue} META</span>
+          <span className="text-5xl font-bold text-gray-900 dark:text-neutral-50 tracking-tighter transition-colors">{percentage}%</span>
+          {subtitle && <span className="text-xs font-medium text-gray-500 dark:text-neutral-400 mt-1 transition-colors">{subtitle}</span>}
+          <span className="text-[10px] font-semibold text-gray-400 dark:text-neutral-500 mt-1 uppercase tracking-widest transition-colors">{currentValue} / {targetValue} META</span>
         </div>
       </div>
 
       <div className="w-full flex justify-center gap-6 mt-8">
         <div className="flex items-center gap-2">
           <div className={cn("w-3 h-3 rounded-full", getBgColorClass())}></div>
-          <span className="text-xs font-medium text-gray-500">Completado</span>
+          <span className="text-xs font-medium text-gray-500 dark:text-neutral-400 transition-colors">Completado</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+          <div className="w-3 h-3 rounded-full bg-gray-100 dark:bg-neutral-800 transition-colors flex items-center justify-center overflow-hidden">
              <div className="w-full h-full" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, #d1d5db 2px, #d1d5db 4px)' }}></div>
           </div>
-          <span className="text-xs font-medium text-gray-500">Pendiente</span>
+          <span className="text-xs font-medium text-gray-500 dark:text-neutral-400 transition-colors">Pendiente</span>
         </div>
       </div>
     </div>

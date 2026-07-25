@@ -27,17 +27,17 @@ export function DashboardBarChart({
     if (active && payload && payload.length) {
       const data = payload[0]
       return (
-        <div className="bg-white border border-gray-100 p-3 rounded-xl shadow-lg flex flex-col gap-2 min-w-[140px]">
-          <p className="text-sm font-semibold text-gray-900 mb-1">{data.payload[dataKeyX]}</p>
+        <div className="bg-white dark:bg-neutral-900 border border-gray-100 dark:border-neutral-800 p-3 rounded-xl shadow-lg flex flex-col gap-2 min-w-[140px] transition-colors">
+          <p className="text-sm font-semibold text-gray-900 dark:text-neutral-50 mb-1 transition-colors">{data.payload[dataKeyX]}</p>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div 
                 className="w-3 h-3 rounded-sm" 
                 style={{ background: data.payload.isSolid ? (data.payload.color || "var(--color-brand-blue)") : "url(#diagonal-stripe)" }} 
               />
-              <span className="text-sm text-gray-500 font-medium capitalize">{dataKeyY}</span>
+              <span className="text-sm text-gray-500 dark:text-neutral-400 font-medium capitalize transition-colors">{dataKeyY}</span>
             </div>
-            <span className="text-sm font-bold text-gray-900">{data.value} {unit}</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-neutral-50 transition-colors">{data.value} {unit}</span>
           </div>
         </div>
       )
@@ -46,8 +46,8 @@ export function DashboardBarChart({
   }
 
   return (
-    <div className={cn("bg-white rounded-[2rem] p-6 lg:p-8 flex flex-col border border-gray-100 shadow-sm", className)}>
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">{title}</h3>
+    <div className={cn("bg-white dark:bg-neutral-800 rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between shadow-sm border border-gray-100 dark:border-neutral-700/50 transition-colors", className)}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-neutral-50 mb-6 transition-colors">{title}</h3>
       
       <div className="w-full flex-1 min-h-[220px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -62,7 +62,7 @@ export function DashboardBarChart({
                 <line x1="0" y="0" x2="0" y2="10" stroke="#9ca3af" strokeWidth="3" strokeOpacity="0.4" />
               </pattern>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-100 dark:stroke-neutral-800/50 transition-colors" />
             <XAxis 
               dataKey={dataKeyX}
               axisLine={false} 
@@ -78,7 +78,7 @@ export function DashboardBarChart({
               dx={-10}
               width={60}
             />
-            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 30 }} content={<CustomTooltip />} />
+            <Tooltip cursor={{ fill: 'rgba(128,128,128,0.1)', radius: 30 }} content={<CustomTooltip />} />
             
             <Bar 
               dataKey={dataKeyY} 

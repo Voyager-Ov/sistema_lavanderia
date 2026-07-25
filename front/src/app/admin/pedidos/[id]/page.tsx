@@ -44,22 +44,22 @@ export default function PedidoDetailPage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-white md:bg-gray-50 p-4 md:p-8 pt-2">
+    <div className="w-full min-h-screen bg-gray-50 dark:bg-neutral-900 p-4 md:p-8 pt-2 transition-colors">
       
       <div className="max-w-5xl mx-auto mb-6 flex items-center">
         <button 
           onClick={() => router.push('/admin/pedidos')}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-medium transition-colors bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm hover:shadow-md"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-medium transition-colors bg-white dark:bg-neutral-800 px-4 py-2 rounded-full border border-gray-200 dark:border-neutral-700/50 shadow-sm hover:shadow-md"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver a Pedidos
         </button>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] md:shadow-sm md:border border-gray-100 p-2 md:p-8">
+      <div className="bg-white dark:bg-neutral-800 rounded-[2.5rem] md:shadow-sm md:border border-gray-200 dark:border-neutral-700/50 p-2 md:p-8 transition-colors">
         <PedidoDetailView 
           id={id} 
-          onPrintTicket={handlePrintTicket}
+          onPrintComprobante={handlePrintTicket}
           onGenerateFactura={handleGenerateFactura}
           onCobrar={(pedido) => {
             setPedidoToCobrar(pedido)

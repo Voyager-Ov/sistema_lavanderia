@@ -192,7 +192,7 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4 md:space-y-6 relative">
       {/* Controles de Tabla (Búsqueda y Filtros) */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-2xl md:rounded-full border bg-card p-2 md:p-1.5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-2xl md:rounded-full border border-gray-200 dark:border-neutral-700/50 bg-white dark:bg-neutral-800 p-2 md:p-1.5 shadow-sm transition-colors">
         {/* Búsqueda Global */}
         <div className="relative flex-1 w-full md:max-w-2xl md:ml-2">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -218,9 +218,9 @@ export function DataTable<TData, TValue>({
           <div className="flex items-center gap-2">
             {filters.map((filter) => (
               <div key={filter.key} className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500 hidden sm:inline-block">{filter.label}:</span>
+                <span className="text-xs font-bold text-gray-500 dark:text-neutral-400 hidden sm:inline-block transition-colors">{filter.label}:</span>
                 <Select value={filter.value} onValueChange={filter.onChange}>
-                  <SelectTrigger className="w-[140px] sm:w-[160px] md:w-[180px] h-9 text-xs rounded-full bg-white shadow-sm font-bold border-gray-200">
+                  <SelectTrigger className="w-[140px] sm:w-[160px] md:w-[180px] h-9 text-xs rounded-full bg-white dark:bg-neutral-900 shadow-sm font-bold border-gray-200 dark:border-neutral-800 transition-colors">
                     <SelectValue placeholder={filter.label} />
                   </SelectTrigger>
                   <SelectContent>
@@ -236,7 +236,7 @@ export function DataTable<TData, TValue>({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 text-xs flex items-center gap-1 px-3 text-brand-red hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full font-semibold transition-colors"
+                className="h-9 text-xs flex items-center gap-1 px-3 text-brand-red dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-full font-semibold transition-colors"
                 onClick={() => {
                   table.setSorting([])
                   table.setColumnFilters([])
@@ -301,14 +301,14 @@ export function DataTable<TData, TValue>({
               )
             })
           ) : (
-            <div className="h-32 flex items-center justify-center text-center text-muted-foreground border rounded-xl bg-card">
+            <div className="h-32 flex items-center justify-center text-center text-muted-foreground border border-gray-200 dark:border-neutral-700/50 rounded-xl bg-white dark:bg-neutral-800 transition-colors">
               No se encontraron resultados para tu búsqueda.
             </div>
           )}
         </div>
       ) : (
         // Vista de Tabla Clásica
-        <div className="rounded-2xl md:rounded-3xl border bg-card overflow-hidden shadow-sm">
+        <div className="rounded-2xl md:rounded-3xl border border-gray-200 dark:border-neutral-700/50 bg-white dark:bg-neutral-800 overflow-hidden shadow-sm transition-colors">
           <div className="overflow-x-auto max-w-[100vw] md:max-w-none">
             <Table className="min-w-[600px] md:min-w-full">
               <TableHeader className="bg-transparent border-b">

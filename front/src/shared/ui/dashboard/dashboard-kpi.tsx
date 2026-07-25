@@ -49,18 +49,18 @@ export function DashboardKpi({
 
   // Determine trend direction and colors
   let trendIcon = <Minus className="w-3 h-3" />
-  let trendColor = "text-gray-500"
-  let trendBg = "bg-gray-100"
+  let trendColor = "text-gray-500 dark:text-neutral-400 transition-colors"
+  let trendBg = "bg-gray-100 dark:bg-neutral-800 transition-colors"
   let parsedTrend = typeof trendValue === 'string' ? parseFloat(trendValue) : trendValue;
 
   if (parsedTrend && parsedTrend > 0) {
     trendIcon = <ArrowUpRight className="w-3 h-3" />
-    trendColor = isActive ? "text-blue-100" : "text-green-600"
-    trendBg = isActive ? "bg-white/20" : "bg-green-100/50"
+    trendColor = isActive ? "text-blue-100" : "text-green-600 dark:text-green-400 transition-colors"
+    trendBg = isActive ? "bg-white/20" : "bg-green-100/50 dark:bg-green-500/20 transition-colors"
   } else if (parsedTrend && parsedTrend < 0) {
     trendIcon = <ArrowDownRight className="w-3 h-3" />
-    trendColor = isActive ? "text-red-100" : "text-red-600"
-    trendBg = isActive ? "bg-white/20" : "bg-red-100/50"
+    trendColor = isActive ? "text-red-100" : "text-red-600 dark:text-red-400 transition-colors"
+    trendBg = isActive ? "bg-white/20" : "bg-red-100/50 dark:bg-red-500/20 transition-colors"
   }
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -77,7 +77,7 @@ export function DashboardKpi({
       "w-10 h-10 rounded-full flex items-center justify-center border transition-transform hover:scale-110 active:scale-95",
       isActive 
         ? "bg-white text-brand-blue border-transparent shadow-sm" 
-        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+        : "bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
     )
 
     if (href) {
@@ -111,13 +111,13 @@ export function DashboardKpi({
             "absolute inset-0 [backface-visibility:hidden] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between overflow-hidden",
             isActive 
               ? "bg-brand-blue text-white shadow-brand-blue/20" 
-              : "bg-white text-gray-900 border border-gray-100"
+              : "bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-50 border border-gray-100 dark:border-neutral-700/50 transition-colors"
           )}
         >
           <div className="flex justify-between items-start mb-6">
             <h3 className={cn(
-              "text-base font-medium",
-              isActive ? "text-blue-50" : "text-gray-900"
+              "text-base font-medium transition-colors",
+              isActive ? "text-blue-50" : "text-gray-900 dark:text-neutral-100"
             )}>
               {title}
             </h3>
@@ -127,8 +127,8 @@ export function DashboardKpi({
 
           <div>
             <p className={cn(
-              "text-5xl lg:text-6xl font-semibold tracking-tight mb-4",
-              isActive ? "text-white" : "text-gray-900"
+              "text-5xl lg:text-6xl font-semibold tracking-tight mb-4 transition-colors",
+              isActive ? "text-white" : "text-gray-900 dark:text-neutral-50"
             )}>
               {value}
             </p>
@@ -142,8 +142,8 @@ export function DashboardKpi({
               )}
               {subtitle && (
                 <span className={cn(
-                  "text-xs font-medium",
-                  isActive ? "text-blue-100/80" : "text-gray-400"
+                  "text-xs font-medium transition-colors",
+                  isActive ? "text-blue-100/80" : "text-gray-400 dark:text-neutral-500"
                 )}>
                   {subtitle}
                 </span>
@@ -158,13 +158,13 @@ export function DashboardKpi({
             "absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-center items-center text-center border",
             isActive 
               ? "bg-blue-800 text-white border-blue-700" 
-              : "bg-gray-50 text-gray-900 border-gray-200"
+              : "bg-gray-50 dark:bg-neutral-900 text-gray-900 dark:text-neutral-50 border-gray-200 dark:border-neutral-800 transition-colors"
           )}
         >
-          <h4 className={cn("text-lg font-bold mb-2", isActive ? "text-white" : "text-brand-blue")}>
+          <h4 className={cn("text-lg font-bold mb-2 transition-colors", isActive ? "text-white" : "text-brand-blue dark:text-blue-400")}>
             ¿Qué significa?
           </h4>
-          <p className={cn("text-sm font-medium", isActive ? "text-blue-100" : "text-gray-600")}>
+          <p className={cn("text-sm font-medium transition-colors", isActive ? "text-blue-100" : "text-gray-600 dark:text-neutral-400")}>
             {backMessage}
           </p>
         </div>

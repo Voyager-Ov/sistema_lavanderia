@@ -91,19 +91,19 @@ export default function CrearPedidoPage() {
   }
 
   return (
-    <div className="lg:h-[calc(100vh-220px)] min-h-screen bg-gray-50/50 -mx-4 -mt-4 p-4 sm:p-6 lg:p-6 flex flex-col lg:overflow-hidden">
+    <div className="lg:h-[calc(100vh-220px)] min-h-screen bg-gray-50/50 dark:bg-background -mx-4 -mt-4 p-4 sm:p-6 lg:p-6 flex flex-col lg:overflow-hidden transition-colors">
       {/* Header */}
       <div className="fade-up-element flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.back()}
-            className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-900"
+            className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Crear Pedido</h1>
-            <p className="text-sm text-gray-500 hidden sm:block">Selecciona un cliente y agrega los servicios requeridos.</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight transition-colors">Crear Pedido</h1>
+            <p className="text-sm text-muted-foreground hidden sm:block transition-colors">Selecciona un cliente y agrega los servicios requeridos.</p>
           </div>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function CrearPedidoPage() {
         {/* Left Pane (Catalog & Client) */}
         <div className="flex-1 flex flex-col gap-4 lg:overflow-hidden">
           {/* Client Search & Category Tabs Section */}
-          <div className="fade-up-element bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0 relative z-20 flex flex-col lg:flex-row gap-6">
+          <div className="fade-up-element bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700/50 p-5 rounded-2xl shadow-sm border flex-shrink-0 relative z-20 flex flex-col lg:flex-row gap-6 transition-colors">
             <div className="w-full lg:w-2/5">
               <ClientSearch 
                 selectedClient={selectedClient}
@@ -122,7 +122,7 @@ export default function CrearPedidoPage() {
               />
             </div>
             <div className="w-full lg:w-3/5 flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">Categoría</label>
+              <label className="text-sm font-semibold text-muted-foreground transition-colors">Categoría</label>
               <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] h-[56px]">
                 <Button
                   onClick={() => setActiveCategoryId("ALL")}
@@ -158,7 +158,7 @@ export default function CrearPedidoPage() {
           </div>
 
           {/* Catalog Section */}
-          <div className="fade-up-element bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1 lg:overflow-hidden flex flex-col relative z-10 min-h-[400px] lg:min-h-0">
+          <div className="fade-up-element bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700/50 p-5 rounded-2xl shadow-sm border flex-1 lg:overflow-hidden flex flex-col relative z-10 min-h-[400px] lg:min-h-0 transition-colors">
             <ServiceGrid 
               categorias={categorias}
               productos={productos}
@@ -172,7 +172,7 @@ export default function CrearPedidoPage() {
         </div>
 
         {/* Right Pane (Cart) */}
-        <div className="w-full lg:w-[400px] xl:w-[450px] fade-up-element bg-white p-0 rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:overflow-hidden relative z-10 flex-shrink-0 min-h-[400px] lg:min-h-0 pb-8 lg:pb-0">
+        <div className="w-full lg:w-[400px] xl:w-[450px] fade-up-element bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700/50 p-0 rounded-2xl shadow-sm border flex flex-col lg:overflow-hidden relative z-10 flex-shrink-0 min-h-[400px] lg:min-h-0 pb-8 lg:pb-0 transition-colors">
           <OrderCart 
             cart={cart}
             setCart={setCart}

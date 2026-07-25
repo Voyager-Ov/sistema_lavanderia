@@ -19,6 +19,7 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.INTEGER,
 				allowNull: true,
 			},
+			
 			tipoMovimiento: {
 				type: DataTypes.ENUM("DEBITO", "CREDITO"),
 				allowNull: false,

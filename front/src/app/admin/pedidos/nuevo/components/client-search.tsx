@@ -105,15 +105,15 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
   if (selectedClient) {
     return (
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold text-gray-700">Cliente Seleccionado</label>
-        <div className="flex items-center justify-between bg-blue-50/50 border border-brand-blue/20 py-3 px-5 rounded-full">
+        <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300 transition-colors">Cliente Seleccionado</label>
+        <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/20 border border-brand-blue/20 py-3 px-5 rounded-full transition-colors">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue">
               <User className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">{selectedClient.nombre}</p>
-              {selectedClient.telefono && <p className="text-sm text-gray-500">{selectedClient.telefono}</p>}
+              <p className="font-semibold text-gray-900 dark:text-neutral-100 transition-colors">{selectedClient.nombre}</p>
+              {selectedClient.telefono && <p className="text-sm text-gray-500 dark:text-neutral-400 transition-colors">{selectedClient.telefono}</p>}
             </div>
           </div>
           <button 
@@ -121,7 +121,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
               onSelectClient(null)
               setSearchTerm("")
             }}
-            className="text-sm font-medium text-brand-blue hover:text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+            className="text-sm font-medium text-brand-blue hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-full transition-colors"
           >
             Cambiar
           </button>
@@ -132,7 +132,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
 
   return (
     <div className="flex flex-col gap-2 relative" ref={dropdownRef}>
-      <label className="text-sm font-semibold text-gray-700">Buscar Cliente</label>
+      <label className="text-sm font-semibold text-gray-700 dark:text-neutral-300 transition-colors">Buscar Cliente</label>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
           {isSearching ? (
@@ -149,7 +149,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
           autoCapitalize="off"
           spellCheck={false}
           data-form-type="other"
-          className="pl-11 pr-10 h-11 w-full rounded-full bg-gray-100 border-2 border-transparent hover:bg-gray-200/80 focus:bg-white focus:border-brand-blue/50 focus:ring-4 focus:ring-brand-blue/10 shadow-none transition-all text-sm font-medium outline-none text-gray-900 placeholder:text-gray-500"
+          className="pl-11 pr-10 h-11 w-full rounded-full bg-muted border-2 border-transparent dark:border-input/50 hover:bg-muted/80 focus:bg-background focus:border-brand-blue/50 focus:ring-4 focus:ring-brand-blue/10 shadow-none transition-all text-sm font-medium outline-none text-foreground placeholder:text-muted-foreground"
           placeholder="Nombre, teléfono o email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -167,7 +167,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
       </div>
 
       {isDropdownOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden z-50 max-h-[400px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 rounded-3xl shadow-xl border border-gray-100 dark:border-neutral-800 overflow-hidden z-50 max-h-[400px] overflow-y-auto transition-colors">
           {results.length > 0 ? (
             <ul ref={resultsRef} className="p-2 flex flex-col gap-1">
               {results.map((cliente) => (
@@ -177,14 +177,14 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
                       onSelectClient(cliente)
                       setIsDropdownOpen(false)
                     }}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors text-left group"
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-neutral-800/50 rounded-xl transition-colors text-left group"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-gray-500 dark:text-neutral-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors">
                       <User className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900 group-hover:text-brand-blue transition-colors">{cliente.nombre}</p>
-                      <p className="text-sm text-gray-500">{cliente.telefono || "Sin teléfono"}</p>
+                      <p className="font-semibold text-gray-900 dark:text-neutral-100 group-hover:text-brand-blue transition-colors">{cliente.nombre}</p>
+                      <p className="text-sm text-gray-500 dark:text-neutral-400 transition-colors">{cliente.telefono || "Sin teléfono"}</p>
                     </div>
                     <Check className="w-5 h-5 text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
@@ -192,8 +192,8 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
               ))}
             </ul>
           ) : (
-            <div className="p-8 text-center text-gray-500">
-              <Search className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+            <div className="p-8 text-center text-gray-500 dark:text-neutral-400 transition-colors">
+              <Search className="w-8 h-8 mx-auto mb-3 text-gray-300 dark:text-neutral-600 transition-colors" />
               <p className="font-medium">No se encontraron clientes.</p>
               <p className="text-sm mt-1">Prueba con otra búsqueda.</p>
             </div>

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useConfigStore } from '../../_store/useConfigStore';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
 
 import { SettingItem } from '../SettingItem';
 
@@ -18,6 +19,7 @@ type AppearanceFormValues = z.infer<typeof appearanceSchema>;
 
 export default function AppearanceForm() {
   const { appearanceConfig, setAppearanceConfig, setIsDirty } = useConfigStore();
+  const { setTheme } = useTheme();
   const formRef = useRef<HTMLFormElement>(null);
 
   const {
@@ -45,6 +47,7 @@ export default function AppearanceForm() {
         loading: 'Guardando configuración visual...',
         success: () => {
           setAppearanceConfig(data);
+          setTheme(data.theme);
           reset(data);
           return 'Apariencia actualizada';
         },

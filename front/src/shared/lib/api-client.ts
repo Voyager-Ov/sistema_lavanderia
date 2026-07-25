@@ -45,9 +45,19 @@ export const apiClient = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const { responseType, ...fetchOptions } = options as any;
+
     try {
-      const response = await fetch(url, { ...options, headers });
-      const data = await response.json().catch(() => null);
+      const response = await fetch(url, { ...fetchOptions, headers });
+      
+      let data;
+      if (responseType === 'text') {
+        data = await response.text();
+      } else if (responseType === 'blob') {
+        data = await response.blob();
+      } else {
+        data = await response.json().catch(() => null);
+      }
 
       if (!response.ok) {
         if (response.status === 401 && !endpoint.includes('/auth/login')) {

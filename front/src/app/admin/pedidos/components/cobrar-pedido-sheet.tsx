@@ -196,22 +196,22 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
       {pedido && (
         <div className="flex-1 space-y-6">
           {/* Resumen */}
-          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex flex-col gap-2">
+          <div className="bg-muted rounded-xl p-4 border border-border flex flex-col gap-2 transition-colors">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500">Cliente</span>
+              <span className="text-muted-foreground transition-colors">Cliente</span>
               <div className="flex flex-col items-end">
-                <span className="font-semibold text-gray-900">{pedido.cliente?.nombre || "Consumidor Final"}</span>
+                <span className="font-semibold text-foreground transition-colors">{pedido.cliente?.nombre || "Consumidor Final"}</span>
                 {clienteDetail && parseFloat(clienteDetail.saldoCuentaCorriente.toString()) !== 0 && (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${parseFloat(clienteDetail.saldoCuentaCorriente.toString()) > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${parseFloat(clienteDetail.saldoCuentaCorriente.toString()) > 0 ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
                     {parseFloat(clienteDetail.saldoCuentaCorriente.toString()) > 0 ? 'Deuda Global: ' : 'Saldo Global a Favor: '}
                     ${Math.abs(parseFloat(clienteDetail.saldoCuentaCorriente.toString())).toLocaleString("es-AR")}
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-gray-200">
-              <span className="text-gray-600 font-medium">Total Pedido</span>
-              <span className="font-bold text-gray-900">${totalPedido.toLocaleString("es-AR")}</span>
+            <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-border transition-colors">
+              <span className="text-muted-foreground font-medium transition-colors">Total Pedido</span>
+              <span className="font-bold text-foreground transition-colors">${totalPedido.toLocaleString("es-AR")}</span>
             </div>
           </div>
 
@@ -227,16 +227,16 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
                   return (
                     <div 
                       key={saldo.pagoId} 
-                      className={`flex items-center justify-between p-3 border rounded-xl transition-colors cursor-pointer ${isSelected ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
+                      className={`flex items-center justify-between p-3 border rounded-xl transition-colors cursor-pointer ${isSelected ? 'bg-brand-blue/10 border-brand-blue/30' : 'bg-card border-border'}`}
                       onClick={() => handleToggleSaldo(saldo.pagoId)}
                     >
                       <div className="flex items-center gap-3">
                         <Checkbox checked={isSelected} />
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-semibold text-foreground transition-colors">
                             {saldo.pagoId === -1 ? "Saldo Global de la Cuenta" : `Pedido #${saldo.codigoSeguimiento}`}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground transition-colors">
                             {saldo.pagoId === -1 ? "Balance histórico a favor" : format(new Date(saldo.fechaOriginal), "d MMM yyyy", { locale: es })}
                           </p>
                         </div>
@@ -277,13 +277,13 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
                         className={`
                           cursor-pointer flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200
                           ${isSelected 
-                            ? 'border-brand-blue bg-brand-blue/5 shadow-md shadow-brand-blue/10 scale-[1.02]' 
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            ? 'border-brand-blue bg-brand-blue/10 shadow-md shadow-brand-blue/10 scale-[1.02]' 
+                            : 'border-border bg-card hover:border-border/80 hover:bg-muted/50'
                           }
                         `}
                       >
-                        <Icon className={`w-8 h-8 mb-2 ${isSelected ? 'text-brand-blue' : 'text-gray-500'}`} />
-                        <span className={`text-sm font-semibold text-center ${isSelected ? 'text-brand-blue' : 'text-gray-700'}`}>
+                        <Icon className={`w-8 h-8 mb-2 transition-colors ${isSelected ? 'text-brand-blue' : 'text-muted-foreground'}`} />
+                        <span className={`text-sm font-semibold text-center transition-colors ${isSelected ? 'text-brand-blue' : 'text-foreground'}`}>
                           {metodo.nombre}
                         </span>
                       </div>
@@ -295,7 +295,7 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
               <div className="space-y-2">
                 <Label>Monto Entregado (Con cuánto paga)</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium transition-colors">$</span>
                   <Input 
                     type="number" 
                     min={totalRestante}
@@ -305,18 +305,18 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
                     className="pl-7 h-11 text-lg font-semibold"
                   />
                 </div>
-                {!esEfectivo && <p className="text-xs text-gray-500 mt-1">El monto debe ser exacto para este método de pago.</p>}
+                {!esEfectivo && <p className="text-xs text-muted-foreground mt-1 transition-colors">El monto debe ser exacto para este método de pago.</p>}
               </div>
 
               {vuelto > 0 && esEfectivo && (
-                <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex justify-between items-center text-green-800">
+                <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/20 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 transition-colors">
+                  <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-300 transition-colors">
                     <span className="font-medium">Vuelto a entregar:</span>
                     <span className="font-bold text-xl">${vuelto.toLocaleString("es-AR")}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-3 border-t border-green-200/50">
-                    <Label htmlFor="dejar-vuelto" className="text-green-800 cursor-pointer">Dejar vuelto a favor del cliente</Label>
+                  <div className="flex items-center justify-between pt-3 border-t border-emerald-200/50 dark:border-emerald-900/30 transition-colors">
+                    <Label htmlFor="dejar-vuelto" className="text-emerald-800 dark:text-emerald-300 cursor-pointer transition-colors">Dejar vuelto a favor del cliente</Label>
                     <Switch 
                       id="dejar-vuelto" 
                       checked={dejarVueltoAFavor} 
@@ -327,7 +327,7 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
               )}
             </div>
           ) : (
-             <div className="bg-green-50 text-green-800 p-4 rounded-xl border border-green-200 text-center font-semibold">
+             <div className="bg-emerald-50 dark:bg-emerald-900/10 text-emerald-800 dark:text-emerald-300 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/20 text-center font-semibold transition-colors">
                 El total del pedido está cubierto por los saldos a favor.
              </div>
           )}

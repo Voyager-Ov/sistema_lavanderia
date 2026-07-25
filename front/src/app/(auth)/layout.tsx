@@ -64,7 +64,7 @@ export default function AuthLayout({
   return (
     <div 
       ref={containerRef}
-      className="min-h-[100dvh] w-full flex flex-col md:flex-row md:items-center md:justify-center bg-gray-50 md:p-6 lg:p-8 relative overflow-hidden"
+      className="min-h-[100dvh] w-full flex flex-col md:flex-row md:items-center md:justify-center bg-gray-50 dark:bg-neutral-950 transition-colors duration-500 md:p-6 lg:p-8 relative overflow-hidden"
     >
       {/* 
         ========================
@@ -72,49 +72,49 @@ export default function AuthLayout({
         ========================
         Este contenedor sólo se ve en mobile y ocupa la mitad superior de la pantalla.
       */}
-      <div className="auth-left-panel-mobile absolute top-0 left-0 w-full h-[50vh] flex md:hidden flex-col justify-center items-center z-0 p-6 overflow-hidden bg-gray-50">
+      <div className="auth-left-panel-mobile absolute top-0 left-0 w-full h-[50vh] flex md:hidden flex-col justify-center items-center z-0 p-6 overflow-hidden bg-gray-50 dark:bg-neutral-950 transition-colors duration-500">
         <LiquidBackground />
         
         <div className="relative z-10 flex flex-col items-center text-center mt-[-10vh]">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center shadow-lg">L</div>
+          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900 dark:text-neutral-50 mb-2 transition-colors">
+            <div className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-lg transition-colors">L</div>
             Lavandería
           </div>
-          <p className="text-gray-800 font-medium tracking-wide uppercase text-xs opacity-80">
+          <p className="text-gray-800 dark:text-neutral-400 font-medium tracking-wide uppercase text-xs opacity-80 transition-colors">
             Tu centro de operaciones
           </p>
         </div>
       </div>
 
-      <div className="w-full h-[100dvh] md:h-auto max-w-6xl md:bg-white md:rounded-[2rem] md:shadow-[0_8px_40px_rgb(0,0,0,0.08)] md:overflow-hidden flex flex-col justify-end md:flex-row md:min-h-[700px] md:border md:border-gray-100 z-10 pointer-events-none">
+      <div className="w-full h-[100dvh] md:h-auto max-w-6xl md:bg-white md:dark:bg-neutral-900/50 md:rounded-[2rem] md:shadow-[0_8px_40px_rgb(0,0,0,0.08)] md:dark:shadow-[0_8px_40px_rgba(0,0,0,0.4)] md:overflow-hidden flex flex-col justify-end md:flex-row md:min-h-[700px] md:border md:border-gray-100 md:dark:border-neutral-800 z-10 pointer-events-none transition-colors duration-500">
         
         {/* Columna Izquierda: Desktop */}
-        <div className="auth-left-panel relative hidden md:flex md:w-1/2 bg-gray-50 p-8 lg:p-12 flex-col justify-between pointer-events-auto">
+        <div className="auth-left-panel relative hidden md:flex md:w-1/2 bg-gray-50 dark:bg-neutral-950/50 p-8 lg:p-12 flex-col justify-between pointer-events-auto transition-colors duration-500">
           
           <LiquidBackground />
 
           <div className="relative z-10">
-            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900">
-              <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center">L</div>
+            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900 dark:text-neutral-50 transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center transition-colors">L</div>
               Lavandería
             </div>
           </div>
 
           <div className="relative z-10 mb-8">
-            <p className="text-gray-600 font-medium mb-4 tracking-wide uppercase text-sm">
+            <p className="text-gray-600 dark:text-neutral-400 font-medium mb-4 tracking-wide uppercase text-sm transition-colors">
               Tu centro de operaciones
             </p>
-            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.1]">
+            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-neutral-50 leading-[1.1] transition-colors">
               Accede a tu plataforma central para claridad y control.
             </h1>
           </div>
         </div>
 
         {/* Columna Derecha: Formularios (Actúa como Bottom Sheet en Mobile) */}
-        <div className="auth-right-panel w-full md:w-1/2 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col bg-white relative z-20 rounded-t-[2.5rem] md:rounded-none shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-none min-h-[60vh] md:min-h-0 pt-8 pointer-events-auto md:justify-center">
+        <div className="auth-right-panel w-full md:w-1/2 p-6 sm:p-10 md:p-12 lg:p-16 flex flex-col bg-white dark:bg-neutral-900 relative z-20 rounded-t-[2.5rem] md:rounded-none shadow-[0_-8px_30px_rgb(0,0,0,0.08)] md:shadow-none min-h-[60vh] md:min-h-0 pt-8 pointer-events-auto md:justify-center transition-colors duration-500">
           
           {/* Pill / handle (Solo visible en mobile) */}
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 rounded-full md:hidden" />
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-gray-200 dark:bg-neutral-800 rounded-full md:hidden transition-colors" />
           
           <div className="w-full flex-grow flex flex-col justify-center">
             <GuestGuard>

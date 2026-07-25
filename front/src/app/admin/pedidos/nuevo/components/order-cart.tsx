@@ -68,16 +68,16 @@ export function OrderCart({
   }, [cart.length]) // only trigger when length changes
 
   return (
-    <div className="h-full flex flex-col bg-gray-50/50 min-h-0">
+    <div className="h-full flex flex-col bg-gray-50/50 dark:bg-background min-h-0 transition-colors">
       {/* Cart Header */}
-      <div className="p-5 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm z-10 flex-shrink-0">
+      <div className="p-5 bg-card border-b border-border flex items-center justify-between shadow-sm z-10 flex-shrink-0 transition-colors">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue">
             <ShoppingBag className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">Resumen del Pedido</h2>
-            <p className="text-sm text-gray-500">{itemsCount} {itemsCount === 1 ? 'ítem' : 'ítems'}</p>
+            <h2 className="font-bold text-foreground transition-colors">Resumen del Pedido</h2>
+            <p className="text-sm text-muted-foreground transition-colors">{itemsCount} {itemsCount === 1 ? 'ítem' : 'ítems'}</p>
           </div>
         </div>
         {cart.length > 0 && (
@@ -91,10 +91,10 @@ export function OrderCart({
       </div>
 
       {/* Cart Action Area (Checkout) */}
-      <div className="p-5 bg-white border-b border-gray-100 shadow-sm z-10 flex-shrink-0 relative flex flex-col gap-4">
+      <div className="p-5 bg-card border-b border-border shadow-sm z-10 flex-shrink-0 relative flex flex-col gap-4 transition-colors">
         
         <div className="flex flex-col gap-3">
-          <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+          <label className="text-sm font-semibold text-foreground flex items-center gap-1.5 transition-colors">
             <Calendar className="w-4 h-4 text-brand-blue" />
             Entrega Estimada (Opcional)
           </label>
@@ -115,13 +115,13 @@ export function OrderCart({
                 d.setHours(d.getHours() + 48)
                 setFechaEntregaEstimada(d)
               }}
-              className="flex-1 py-1.5 px-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="flex-1 py-1.5 px-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
               <Clock className="w-3.5 h-3.5" /> 48 hs
             </button>
             <button
               onClick={() => setFechaEntregaEstimada(undefined)}
-              className="py-1.5 px-3 bg-gray-50 hover:bg-red-50 hover:text-red-600 text-gray-500 border border-gray-200 rounded-xl text-xs font-medium transition-colors"
+              className="py-1.5 px-3 bg-muted hover:bg-red-500/10 hover:text-red-500 text-muted-foreground border border-border rounded-xl text-xs font-medium transition-colors"
             >
               Limpiar
             </button>
@@ -137,12 +137,12 @@ export function OrderCart({
         </div>
 
         <div className="flex justify-between items-center mt-2">
-          <span className="text-gray-500 font-medium">Total a cobrar</span>
-          <span className="text-2xl font-black text-gray-900 tracking-tight">${total.toLocaleString('es-AR')}</span>
+          <span className="text-muted-foreground font-medium transition-colors">Total a cobrar</span>
+          <span className="text-2xl font-black text-foreground tracking-tight transition-colors">${total.toLocaleString('es-AR')}</span>
         </div>
 
         {!selectedClient && cart.length > 0 && (
-          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm font-medium">
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-500 rounded-lg text-sm font-medium transition-colors">
             Por favor, busca y selecciona un cliente primero.
           </div>
         )}
@@ -150,7 +150,7 @@ export function OrderCart({
         <button
           onClick={onCheckout}
           disabled={cart.length === 0 || !selectedClient || isSubmitting}
-          className="w-full bg-brand-blue hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-xl active:scale-[0.98]"
+          className="w-full bg-brand-blue hover:bg-blue-700 disabled:bg-muted disabled:text-muted-foreground text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-xl active:scale-[0.98]"
         >
           {isSubmitting ? (
             <>
@@ -170,16 +170,16 @@ export function OrderCart({
       <div className="flex-1 overflow-y-auto p-5 min-h-0">
         {cart.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400">
-            <ShoppingBag className="w-16 h-16 mb-4 text-gray-200" />
-            <p className="font-medium text-gray-500 text-lg">El carrito está vacío</p>
+            <ShoppingBag className="w-16 h-16 mb-4 text-muted-foreground/30 transition-colors" />
+            <p className="font-medium text-muted-foreground text-lg transition-colors">El carrito está vacío</p>
             <p className="text-sm mt-1">Selecciona servicios del catálogo</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             {cart.map(item => (
-              <div key={item.producto.id} className="cart-item bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-3 group">
+              <div key={item.producto.id} className="cart-item bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col gap-3 group transition-colors">
                 <div className="flex justify-between items-start gap-2">
-                  <h4 className="font-semibold text-gray-900 leading-tight">{item.producto.nombre}</h4>
+                  <h4 className="font-semibold text-foreground leading-tight transition-colors">{item.producto.nombre}</h4>
                   <button 
                     onClick={() => removeItem(item.producto.id)}
                     className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
@@ -189,10 +189,10 @@ export function OrderCart({
                 </div>
                 
                 <div className="flex items-center justify-between mt-auto">
-                  <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 p-1">
+                  <div className="flex items-center bg-muted rounded-lg border border-border p-1 transition-colors">
                     <button 
                       onClick={() => item.cantidad > 1 ? updateQuantity(item.producto.id, -1) : removeItem(item.producto.id)}
-                      className="w-7 h-7 flex items-center justify-center text-gray-500 hover:bg-white hover:shadow-sm rounded-md transition-all"
+                      className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
@@ -207,17 +207,17 @@ export function OrderCart({
                         if (val > 10000) val = 10000;
                         updateQuantity(item.producto.id, val - item.cantidad);
                       }}
-                      className="w-12 text-center font-semibold text-sm text-gray-900 bg-transparent border-none focus:ring-0 p-0 appearance-none m-0 [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-12 text-center font-semibold text-sm text-foreground bg-transparent border-none focus:ring-0 p-0 appearance-none m-0 [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button 
                       onClick={() => updateQuantity(item.producto.id, 1)}
-                      className="w-7 h-7 flex items-center justify-center text-gray-500 hover:bg-white hover:shadow-sm rounded-md transition-all"
+                      className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
                   
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-foreground transition-colors">
                     ${item.subtotal.toLocaleString('es-AR')}
                   </span>
                 </div>

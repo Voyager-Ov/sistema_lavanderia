@@ -1,6 +1,6 @@
 import React from "react"
 import { toast } from "sonner"
-import { cambiarEstadoPedido } from "@/domains/pedidos/api"
+import { cambiarEstadoPedido, getTicketHTML } from "@/domains/pedidos/api"
 import { ResponsiveSheet, ResponsiveSheetContent } from "@/shared/ui/overlays/responsive-sheet"
 import { CancelOrderSheet } from "../components/cancel-order-sheet"
 import { PedidoDetailView } from "../_components/pedido-detail-view"
@@ -60,7 +60,18 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura }:
           {pedidoToView && (
             <PedidoDetailView 
               id={pedidoToView.id} 
-              onPrintTicket={handlePrintTicket}
+              onPrintComprobante={async (id) => {
+                try {
+                  const html = await getTicketHTML(id)
+                  const printWindow = window.open('', '_blank', 'width=400,height=600')
+                  if (printWindow) {
+                    printWindow.document.write(html)
+                    printWindow.document.close()
+                  }
+                } catch (e) {
+                  toast.error("Error al generar comprobante")
+                }
+              }}
               onGenerateFactura={handleGenerateFactura}
               onCobrar={(p) => {
                 setIsViewSheetOpen(false)

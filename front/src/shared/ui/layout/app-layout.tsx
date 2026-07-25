@@ -23,13 +23,13 @@ export function AppLayout({
   onLogout
 }: AppLayoutProps) {
   return (
-    <SidebarProvider className="bg-white p-4 gap-4">
+    <SidebarProvider className="bg-white dark:bg-neutral-900 p-4 gap-4 transition-colors duration-300">
       <AppSidebar 
         mainMenu={mainMenu}
         accountMenu={accountMenu}
         onLogout={onLogout}
       />
-      <main className="flex-1 h-[calc(100vh-2rem)] my-auto bg-[#FAFAFA] rounded-[2rem] shadow-xl border border-gray-200 overflow-y-auto flex flex-col relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <main className="flex-1 h-[calc(100vh-2rem)] my-auto bg-[#FAFAFA] dark:bg-neutral-900 rounded-[2rem] shadow-xl dark:shadow-none border border-gray-200 dark:border-neutral-800 overflow-y-auto flex flex-col relative transition-colors duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* Header */}
             <AppHeader breadcrumbs={breadcrumbs} title={title} />
             

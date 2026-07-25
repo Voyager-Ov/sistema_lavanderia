@@ -106,14 +106,14 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
   const initials = getInitials(userName);
 
   return (
-    <header ref={headerRef} className="h-20 w-full flex items-center justify-between px-8 border-b border-gray-200/80 shrink-0 bg-white/95 backdrop-blur-xl shadow-sm sticky top-0 z-40 transition-all">
+    <header ref={headerRef} className="h-20 w-full flex items-center justify-between px-8 border-b border-gray-200/80 dark:border-neutral-800/80 shrink-0 bg-white/95 dark:bg-neutral-900/80 backdrop-blur-xl shadow-sm dark:shadow-none sticky top-0 z-40 transition-colors duration-300">
       
       {/* Left side: Breadcrumbs or Title */}
       <div className="flex items-center gap-2 text-sm">
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <Breadcrumbs items={breadcrumbs} />
         ) : (
-          <h1 className="gsap-header-item text-xl font-bold text-gray-900 tracking-tight">{title}</h1>
+          <h1 className="gsap-header-item text-xl font-bold text-gray-900 dark:text-neutral-50 tracking-tight transition-colors">{title}</h1>
         )}
       </div>
 
@@ -126,7 +126,7 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
         </div>
 
         {/* Date Display */}
-        <div className="gsap-header-item hidden lg:flex items-center text-sm font-medium text-gray-400 capitalize px-2 border-r border-gray-200 pr-5">
+        <div className="gsap-header-item hidden lg:flex items-center text-sm font-medium text-gray-400 dark:text-neutral-500 capitalize px-2 border-r border-gray-200 dark:border-neutral-800 pr-5 transition-colors">
           {currentDate}
         </div>
 
@@ -141,25 +141,25 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-red rounded-full border-2 border-white"></span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 rounded-2xl shadow-xl p-2 border-gray-100">
-            <DropdownMenuLabel className="font-bold text-gray-900">Notificaciones</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-80 rounded-2xl shadow-xl dark:shadow-2xl p-2 border-gray-100 dark:border-neutral-800 dark:bg-neutral-900/95 dark:backdrop-blur-xl transition-colors">
+            <DropdownMenuLabel className="font-bold text-gray-900 dark:text-neutral-100">Notificaciones</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-[300px] overflow-y-auto">
               <div className="flex flex-col gap-1">
                 <div className="p-3 hover:bg-brand-blue/5 rounded-xl transition-colors cursor-pointer flex gap-3 items-start">
                   <div className="w-2 h-2 rounded-full bg-brand-blue mt-1.5 shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Nuevo cliente registrado</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Juan Pérez se ha registrado en el sistema.</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Hace 5 min</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-neutral-200 transition-colors">Nuevo cliente registrado</p>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 transition-colors">Juan Pérez se ha registrado en el sistema.</p>
+                    <p className="text-[10px] text-gray-400 dark:text-neutral-500 mt-1 transition-colors">Hace 5 min</p>
                   </div>
                 </div>
                 <div className="p-3 hover:bg-brand-blue/5 rounded-xl transition-colors cursor-pointer flex gap-3 items-start opacity-70">
                   <div className="w-2 h-2 rounded-full bg-transparent mt-1.5 shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Actualización del sistema</p>
-                    <p className="text-xs text-gray-500 mt-0.5">La versión 2.4 ya está disponible.</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Hace 2 horas</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-neutral-200 transition-colors">Actualización del sistema</p>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 transition-colors">La versión 2.4 ya está disponible.</p>
+                    <p className="text-[10px] text-gray-400 dark:text-neutral-500 mt-1 transition-colors">Hace 2 horas</p>
                   </div>
                 </div>
               </div>
@@ -180,8 +180,8 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
               className="gsap-header-item flex items-center gap-3 cursor-pointer group focus:outline-none"
             >
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-gray-900 leading-none group-hover:text-brand-blue transition-colors truncate max-w-[120px]">{userName}</p>
-                <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-1">{userRole}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-none group-hover:text-brand-blue transition-colors truncate max-w-[120px]">{userName}</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-neutral-500 mt-1 transition-colors">{userRole}</p>
               </div>
               <div className="relative">
                 <div className="avatar-circle w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold shadow-sm">
@@ -191,11 +191,11 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
               </div>
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-xl p-2 border-gray-100">
+          <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-xl dark:shadow-2xl p-2 border-gray-100 dark:border-neutral-800 dark:bg-neutral-900/95 dark:backdrop-blur-xl transition-colors">
             <DropdownMenuLabel>
               <div className="flex flex-col">
-                <span className="font-bold text-gray-900">{userName}</span>
-                <span className="text-xs font-normal text-gray-500 truncate">{userEmail}</span>
+                <span className="font-bold text-gray-900 dark:text-neutral-100">{userName}</span>
+                <span className="text-xs font-normal text-gray-500 dark:text-neutral-400 truncate">{userEmail}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
