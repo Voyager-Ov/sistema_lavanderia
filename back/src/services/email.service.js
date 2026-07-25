@@ -21,7 +21,7 @@ const getTransporter = () => {
 /**
  * Función genérica para enviar correos electrónicos
  */
-const enviarEmail = async (to, subject, html) => {
+export const enviarEmail = async (to, subject, html) => {
     // Si no están configuradas las credenciales, simplemente imprimimos el correo en consola para desarrollo
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         console.log("-----------------------------------------------------");
