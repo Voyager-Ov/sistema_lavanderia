@@ -16,6 +16,7 @@ router.use(verificarToken, verificarSuscripcionActiva);
 
 router.get("/", usuarioController.getUsuarios);
 router.get("/:id", usuarioController.getUsuarioById);
+router.get("/:id/metricas", verificarRol(["ADMIN", "SUPERADMIN"]), usuarioController.getMetricasUsuario);
 router.post("/", verificarRol(["ADMIN"]), crearUsuarioValidator, validarCampos, usuarioController.crearUsuario);
 router.put("/:id", verificarRol(["ADMIN"]), editarUsuarioValidator, validarCampos, usuarioController.actualizarUsuario);
 router.patch("/:id/estado", verificarRol(["ADMIN"]), usuarioController.desactivarUsuario); // Sin validador duro de motivo para usuario por ahora

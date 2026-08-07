@@ -1,5 +1,5 @@
 import React from "react"
-import { DesactivarClienteModal } from "../_components/desactivar-cliente-modal"
+import { DesactivarClienteModal } from "./desactivar-cliente-modal"
 
 interface ClientesModalsProps {
   props: any

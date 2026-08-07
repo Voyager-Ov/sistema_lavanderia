@@ -6,11 +6,9 @@ export interface Cliente {
   telefono?: string
   email?: string
   activo: boolean
-  saldoCuentaCorriente: string | number
   createdAt: string
   updatedAt: string
   pedidos?: any[]
-  movimientosCuentaCorriente?: any[]
 }
 
 export interface ClientesResponse {
@@ -58,14 +56,3 @@ export const desactivarCliente = async (id: number, motivoBaja: string) => {
   const response = await apiClient.patch<{ success: boolean, data: any }>(`/clientes/${id}/estado`, { motivoBaja })
   return response.data
 }
-
-export const registrarPagoCuentaCorriente = async (id: number, data: { monto: number; metodoPago: string; comentario?: string }) => {
-  const response = await apiClient.post<{ success: boolean, data: any }>(`/clientes/${id}/cuenta-corriente/pagos`, data)
-  return response.data
-}
-
-export const recalcularSaldoCuentaCorriente = async (id: number) => {
-  const response = await apiClient.post<{ success: boolean, data: { saldoCorregido: number } }>(`/clientes/${id}/cuenta-corriente/recalcular`, {})
-  return response.data
-}
-

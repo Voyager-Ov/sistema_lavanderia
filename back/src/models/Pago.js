@@ -10,7 +10,7 @@ export default (sequelize, DataTypes) => {
 			pedidoId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,
-				unique: true, // 1 pedido = 1 pago por simplicidad inicial
+				unique: true, // 1 pedido = 1 pago
 			},
 			registradoPorId: {
 				type: DataTypes.INTEGER,
@@ -18,16 +18,26 @@ export default (sequelize, DataTypes) => {
 			},
 			metodoPagoId: {
 				type: DataTypes.INTEGER,
-				allowNull: false,
+				allowNull: true, // Nullable si se pagó 100% con saldo a favor
 			},
 			monto: {
 				type: DataTypes.DECIMAL(10, 2),
+				allowNull: false, // Total cubierto del pedido
+			},
+			montoEfectivoTarjeta: {
+				type: DataTypes.DECIMAL(10, 2),
 				allowNull: false,
+				defaultValue: 0, // Dinero real físico/bancario ingresado a Caja
+			},
+			montoCreditoAplicado: {
+				type: DataTypes.DECIMAL(10, 2),
+				allowNull: false,
+				defaultValue: 0, // Porción cubierta con saldos a favor del cliente
 			},
 			montoAFavorGenerado: {
 				type: DataTypes.DECIMAL(10, 2),
 				allowNull: false,
-				defaultValue: 0,
+				defaultValue: 0, // Vuelto dejado a favor
 			},
 			saldoAFavorDisponible: {
 				type: DataTypes.DECIMAL(10, 2),
@@ -36,7 +46,7 @@ export default (sequelize, DataTypes) => {
 			},
 			cajaId: {
 				type: DataTypes.INTEGER,
-				allowNull: false, // Todo cobro entra en la caja actual del usuario
+				allowNull: false, // Turno de caja donde se procesó
 			},
 			estado: {
 				type: DataTypes.ENUM("COMPLETADO", "ANULADO"),
@@ -71,7 +81,7 @@ export default (sequelize, DataTypes) => {
 			timestamps: true,
 			indexes: [
 				{ fields: ["cajaId"] },
-				{ fields: ["pedidoId"] }
+				{ fields: ["pedidoId"] },
 			]
 		}
 	);
@@ -81,6 +91,7 @@ export default (sequelize, DataTypes) => {
 		Pago.belongsTo(models.Usuario, { foreignKey: "registradoPorId", as: "registradoPor", constraints: false });
 		Pago.belongsTo(models.MetodoPago, { foreignKey: "metodoPagoId", as: "metodoPago" });
 		Pago.belongsTo(models.Caja, { foreignKey: "cajaId", as: "caja" });
+		Pago.hasMany(models.AplicacionCredito, { foreignKey: "pagoDestinoId", as: "aplicacionesCredito" });
 	};
 
 	return Pago;

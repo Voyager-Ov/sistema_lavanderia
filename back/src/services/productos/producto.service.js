@@ -69,12 +69,15 @@ export const crearProducto = async (data, negocioId) => {
         if (!cat) throw new AppError("Categoría inválida o no encontrada.", 404);
     }
 
+    const parsedCosto = (costoEstimado !== undefined && costoEstimado !== "" && costoEstimado !== null) ? parseFloat(costoEstimado) : 0;
+    const parsedTiempo = (tiempoEstimadoMinutos !== undefined && tiempoEstimadoMinutos !== "" && tiempoEstimadoMinutos !== null) ? parseInt(tiempoEstimadoMinutos, 10) : 0;
+
     return await models.Producto.create({ 
         categoriaId, 
         nombre, 
         precioActual, 
-        costoEstimado,
-        tiempoEstimadoMinutos,
+        costoEstimado: parsedCosto,
+        tiempoEstimadoMinutos: parsedTiempo,
         imagenUrl,
         negocioId 
     });
@@ -103,7 +106,13 @@ export const actualizarProducto = async (id, data, negocioId) => {
             }, { transaction: t });
         }
 
-        const updates = { categoriaId, nombre, precioActual, costoEstimado, tiempoEstimadoMinutos };
+        const updates = { 
+            ...(categoriaId !== undefined && { categoriaId }), 
+            ...(nombre !== undefined && { nombre }), 
+            ...(precioActual !== undefined && { precioActual }), 
+            ...(costoEstimado !== undefined && { costoEstimado: (costoEstimado !== "" && costoEstimado !== null) ? parseFloat(costoEstimado) : 0 }), 
+            ...(tiempoEstimadoMinutos !== undefined && { tiempoEstimadoMinutos: (tiempoEstimadoMinutos !== "" && tiempoEstimadoMinutos !== null) ? parseInt(tiempoEstimadoMinutos, 10) : 0 })
+        };
         if (imagenUrl !== undefined) {
             updates.imagenUrl = imagenUrl;
         }

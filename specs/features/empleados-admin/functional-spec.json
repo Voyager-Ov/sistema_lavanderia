@@ -1,0 +1,78 @@
+{
+  "feature": "Admin Portal - Employees View",
+  "productScope": {
+    "inBoundaries": [
+      "View list of employees (users with role EMPLEADO) belonging to the current business (negocio)",
+      "Create new employees specifying their email and an initial password for portal access",
+      "Edit existing employee details via a sheet overlay",
+      "Deactivate/Activate employees (change status)",
+      "View detailed employee profile on a dedicated page (empleados/:id) including financial metrics and operational history",
+      "View history of cash registers (cajas) operated by the employee",
+      "View summary of income (pagos/pedidos) and expenses (gastos) registered by the employee"
+    ],
+    "outBoundaries": [
+      "Employee self-service features (like employees editing their own profile from the employee portal)",
+      "Advanced payroll calculations",
+      "Detailed shift planning and rostering"
+    ]
+  },
+  "userJourneys": [
+    {
+      "scenario": "Admin views all employees",
+      "description": "The admin navigates to the 'Empleados' section in the sidebar. They see a table or list showing all registered employees for their business, with filters for active/inactive status and a search bar for names or emails."
+    },
+    {
+      "scenario": "Admin creates a new employee",
+      "description": "The admin clicks 'Nuevo Empleado', a responsive sheet opens. The admin fills in name, email, password (so the employee can log in), base salary, and target weekly hours, then saves. The new employee is created and can log into the employee portal."
+    },
+    {
+      "scenario": "Admin edits an employee",
+      "description": "The admin clicks the 'Edit' action for an employee. A responsive sheet opens with the details pre-filled (excluding password). The admin updates the salary, hours, or name, and saves."
+    },
+    {
+      "scenario": "Admin views employee details and financial metrics",
+      "description": "The admin clicks on an employee's name or a 'Ver detalles' action. They are navigated to a new subview route `empleados/:id`. This dedicated page displays the employee's operational metrics (e.g., total orders created, total income processed, and total expenses registered), and a section detailing the cash registers (cajas) they have opened and closed."
+    },
+    {
+      "scenario": "Admin deactivates an employee",
+      "description": "The admin clicks 'Desactivar' on an active employee. After confirmation, the employee's status changes to inactive and they can no longer log in."
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "scenario": "Viewing employee list",
+      "given": "The admin is logged in and navigates to /admin/empleados",
+      "when": "The page loads",
+      "then": "A list of users with role 'EMPLEADO' for the current business is displayed."
+    },
+    {
+      "scenario": "Creating an employee - Success",
+      "given": "The admin is on the employees view",
+      "when": "The admin submits the new employee form with valid data including a password",
+      "then": "A new employee is created in the system and appears in the list."
+    },
+    {
+      "scenario": "Viewing Employee Details & Metrics",
+      "given": "The admin navigates to /admin/empleados/:id",
+      "when": "The page loads",
+      "then": "It displays the employee's operational metrics and a list of their past 'Cajas'."
+    },
+    {
+      "scenario": "Editing an employee",
+      "given": "The admin clicks 'Edit' for an employee",
+      "when": "The admin changes details in the sheet and saves",
+      "then": "The employee data is updated successfully."
+    }
+  ],
+  "uxBehavior": {
+    "layout": "Standard admin layout for the list view (/admin/empleados). A dedicated sub-page for details (/admin/empleados/:id). Uses 'ResponsiveSheet' strictly for creation and editing actions.",
+    "interactions": "Navigational click to see details. Sheet opens for create/edit. Confirmations for destructive actions like deactivating an employee.",
+    "aesthetics": "Clean, professional, aligning with the existing UI, using modern typography, charts/cards for metrics, and clear data tables for cash register (cajas) history."
+  },
+  "businessRules": [
+    "An admin can only see and manage employees belonging to their own 'negocioId'.",
+    "Employee emails must be unique across the entire system.",
+    "New employees must have a password provided by the admin upon creation.",
+    "Financial metrics shown must strictly belong to actions performed by the employee (e.g., Cajas where usuarioId matches the employee, Pagos where registradoPorId matches)."
+  ]
+}

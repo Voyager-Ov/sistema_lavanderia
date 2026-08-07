@@ -45,3 +45,13 @@ export const desactivarUsuario = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getMetricasUsuario = async (req, res, next) => {
+    try {
+        const metricas = await usuarioService.obtenerMetricasUsuario(req.user.negocioId, req.params.id);
+        return successResponse(res, 200, null, metricas);
+    } catch (error) {
+        next(error);
+    }
+};
+

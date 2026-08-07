@@ -18,6 +18,7 @@ import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 
 import { useAuthStore } from "@/shared/store/useAuthStore"
+import { useRouter } from "next/navigation"
 
 export type { BreadcrumbItem }
 
@@ -29,6 +30,7 @@ interface AppHeaderProps {
 export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
   const headerRef = useRef<HTMLHeadingElement>(null)
   const { user, logout } = useAuthStore()
+  const router = useRouter()
   
   gsap.registerPlugin(useGSAP)
 
@@ -200,11 +202,17 @@ export function AppHeader({ title, breadcrumbs }: AppHeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem className="cursor-pointer rounded-xl hover:bg-brand-blue/5 focus:bg-brand-blue/5 focus:text-brand-blue transition-colors">
+              <DropdownMenuItem 
+                onClick={() => router.push('/admin/perfil')}
+                className="cursor-pointer rounded-xl hover:bg-brand-blue/5 focus:bg-brand-blue/5 focus:text-brand-blue transition-colors"
+              >
                 <User className="mr-2 h-4 w-4" />
                 <span>Mi Perfil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer rounded-xl hover:bg-brand-blue/5 focus:bg-brand-blue/5 focus:text-brand-blue transition-colors">
+              <DropdownMenuItem 
+                onClick={() => router.push('/admin/configuraciones')}
+                className="cursor-pointer rounded-xl hover:bg-brand-blue/5 focus:bg-brand-blue/5 focus:text-brand-blue transition-colors"
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Configuración</span>
               </DropdownMenuItem>

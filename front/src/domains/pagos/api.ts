@@ -10,25 +10,23 @@ export interface MetodoPago {
 
 export interface RegistrarPagoParams {
   pedidoId: number
-  metodoPagoId: number
-  monto: number
+  metodoPagoId?: number
+  monto?: number
+  montoRecibido?: number
+  aplicarSaldoAFavor?: boolean
+  montoSaldoAFavor?: number
   dejarVueltoAFavor?: boolean
-  saldosAplicados?: { pagoId: number; monto: number }[]
-  usarSaldoGlobal?: boolean
-}
-
-export interface SaldoAFavor {
-  pagoId: number
-  pedidoId: number
-  codigoSeguimiento: string
-  fechaOriginal: string
-  montoDisponible: number
+  facturarAfip?: boolean
 }
 
 export interface PagoRespuesta {
   id: number
   pedidoId: number
   monto: number
+  montoEfectivoTarjeta?: number
+  montoCreditoAplicado?: number
+  montoAFavorGenerado?: number
+  vueltoEntregado?: number
   estado: string
 }
 
@@ -56,8 +54,7 @@ export const registrarPago = async (params: RegistrarPagoParams): Promise<PagoRe
   return res.data
 }
 
-export const obtenerSaldosAFavorCliente = async (clienteId: number): Promise<SaldoAFavor[]> => {
-  const res = await apiClient.get<{ success: boolean; data: SaldoAFavor[] }>(`/pagos/saldos-a-favor/${clienteId}`)
+export const obtenerSaldosAFavorCliente = async (clienteId: number): Promise<any[]> => {
+  const res = await apiClient.get<{ success: boolean; data: any[] }>(`/pagos/saldos-a-favor/${clienteId}`)
   return res.data
 }
-

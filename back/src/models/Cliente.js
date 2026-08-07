@@ -43,11 +43,6 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.TEXT,
 				allowNull: true,
 			},
-			saldoCuentaCorriente: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: false,
-				defaultValue: 0,
-			}
 		},
 		{
 			tableName: "clientes",
@@ -63,7 +58,7 @@ export default (sequelize, DataTypes) => {
 	Cliente.associate = (models) => {
 		Cliente.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
 		Cliente.hasMany(models.Pedido, { foreignKey: "clienteId", as: "pedidos" });
-		Cliente.hasMany(models.MovimientoCuentaCorriente, { foreignKey: "clienteId", as: "movimientosCuentaCorriente" });
+		Cliente.hasMany(models.CreditoCliente, { foreignKey: "clienteId", as: "creditos" });
 	};
 
 	return Cliente;

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/shared/lib/api-client"
+import { SortingState } from "@tanstack/react-table"
 
 export function useServiciosData() {
-  const [servicios, setServicios] = useState([])
-  const [categorias, setCategorias] = useState([])
-  const [stats, setStats] = useState({ total: 0, activos: 0, categorias: 0, masSolicitado: null })
+  const [servicios, setServicios] = useState<any[]>([])
+  const [categorias, setCategorias] = useState<any[]>([])
+  const [stats, setStats] = useState<any>({ total: 0, activos: 0, categorias: 0, masSolicitado: null })
   
   const [isTableFetching, setIsTableFetching] = useState(true)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
@@ -15,8 +16,9 @@ export function useServiciosData() {
   const [categoriaFilter, setCategoriaFilter] = useState("ALL")
   
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
-  const [sorting, setSorting] = useState([])
+  const [sorting, setSorting] = useState<SortingState>([])
   const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
 
   const fetchServicios = useCallback(async () => {
     setIsTableFetching(true)
@@ -36,6 +38,7 @@ export function useServiciosData() {
       const data: any = await apiClient.get(`/productos?${searchParams.toString()}`)
       setServicios(data.data?.items || [])
       setTotalPages(data.data?.meta?.totalPages || 1)
+      setTotalItems(data.data?.meta?.totalItems || data.data?.meta?.total || (data.data?.items || []).length)
     } catch (error: any) {
       console.error("API error fetchServicios:", error)
       toast.error(`Error al cargar los servicios: ${error.message}`)
@@ -85,6 +88,7 @@ export function useServiciosData() {
     pagination, setPagination,
     sorting, setSorting,
     totalPages,
+    totalItems,
     fetchServicios, fetchStats, fetchCategorias
   }
 }

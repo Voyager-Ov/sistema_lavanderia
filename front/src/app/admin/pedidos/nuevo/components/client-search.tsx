@@ -169,7 +169,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
       {isDropdownOpen && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 rounded-3xl shadow-xl border border-gray-100 dark:border-neutral-800 overflow-hidden z-50 max-h-[400px] overflow-y-auto transition-colors">
           {results.length > 0 ? (
-            <ul ref={resultsRef} className="p-2 flex flex-col gap-1">
+            <ul ref={resultsRef} className="p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
               {results.map((cliente) => (
                 <li key={cliente.id}>
                   <button
@@ -177,16 +177,16 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
                       onSelectClient(cliente)
                       setIsDropdownOpen(false)
                     }}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-neutral-800/50 rounded-xl transition-colors text-left group"
+                    className="w-full flex items-center gap-2.5 p-2 hover:bg-gray-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors text-left group border border-transparent hover:border-gray-100 dark:hover:border-neutral-700"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-gray-500 dark:text-neutral-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors">
-                      <User className="w-5 h-5" />
+                    <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-gray-500 dark:text-neutral-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors flex-shrink-0">
+                      <User className="w-3.5 h-3.5" />
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900 dark:text-neutral-100 group-hover:text-brand-blue transition-colors">{cliente.nombre}</p>
-                      <p className="text-sm text-gray-500 dark:text-neutral-400 transition-colors">{cliente.telefono || "Sin teléfono"}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-[13px] text-gray-900 dark:text-neutral-100 group-hover:text-brand-blue transition-colors truncate leading-tight">{cliente.nombre}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-neutral-400 transition-colors truncate leading-tight mt-0.5">{cliente.telefono || "Sin teléfono"}</p>
                     </div>
-                    <Check className="w-5 h-5 text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Check className="w-4 h-4 text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                   </button>
                 </li>
               ))}

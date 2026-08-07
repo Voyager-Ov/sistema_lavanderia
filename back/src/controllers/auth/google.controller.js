@@ -29,24 +29,15 @@ export const googleLogin = async (req, res, next) => {
 
         const normalizedEmail = normalizeEmail(payload.email);
         
-        // Buscamos primero por googleId, luego por email
+        // Buscamos estrictamente por googleId. NO auto-vinculamos por email.
         let usuario = await connectionManager.centralModels.Usuario.findOne({ where: { googleId: payload.sub } });
         
         if (!usuario) {
-            usuario = await connectionManager.centralModels.Usuario.findOne({ where: { email: normalizedEmail } });
-            
-            if (!usuario) {
-                throw new AppError(`Tu email de Google (${payload.email}) no está registrado en el sistema. Regístrate primero.`, 403);
-            }
-            
-            // Auto-vincular si el email coincide (opcional pero muy útil)
-            usuario.googleId = payload.sub;
-            usuario.emailVerificado = true;
-            usuario.verificationCode = null;
-            usuario.verificationExpires = null;
-            await usuario.save();
-        } else if (!usuario.emailVerificado) {
-            // Si inicia sesion con Google por primera vez estando desverificado, lo verificamos.
+            throw new AppError(`Esta cuenta de Google no está vinculada a ningún usuario. Por favor, inicia sesión con tu correo y vincúlala desde tu perfil.`, 403);
+        }
+        
+        if (!usuario.emailVerificado) {
+            // Si por alguna razón estaba desverificado pero tenía Google vinculado, lo verificamos.
             usuario.emailVerificado = true;
             usuario.verificationCode = null;
             usuario.verificationExpires = null;
@@ -78,8 +69,19 @@ export const googleLink = async (req, res, next) => {
         const { token } = req.body;
         if (!token) throw new AppError("Token de Google no proporcionado.", 400);
 
-        const ticket = await client.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
-        const payload = ticket.getPayload();
+        let payload;
+        // Si el token tiene 3 partes (separadas por punto), asumimos que es un JWT (id_token)
+        if (token.split('.').length === 3) {
+            const ticket = await client.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
+            payload = ticket.getPayload();
+        } else {
+            // Es un access_token proveniente de un custom button (useGoogleLogin)
+            const fetchRes = await fetch(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!fetchRes.ok) throw new AppError("Token de Google inválido o expirado.", 401);
+            payload = await fetchRes.json();
+        }
 
         // Verificar si otra cuenta ya usa este Google ID
         const exists = await connectionManager.centralModels.Usuario.findOne({ where: { googleId: payload.sub } });

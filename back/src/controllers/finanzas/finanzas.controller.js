@@ -66,7 +66,8 @@ export const getKPIs = async (req, res, next) => {
             include: [{
                 model: models.Pago,
                 as: 'pago',
-                required: false
+                required: false,
+                attributes: ['id', 'estado']
             }]
         });
 

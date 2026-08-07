@@ -2,7 +2,7 @@ import { body } from "express-validator";
 
 export const crearUsuarioValidator = [
     body("nombre").notEmpty().withMessage("El nombre es obligatorio").isString().trim(),
-    body("email").isEmail().withMessage("Debe ser un email válido").normalizeEmail(),
+    body("email").isEmail().withMessage("Debe ser un email válido").toLowerCase().trim(),
     body("password")
         .isLength({ min: 8 }).withMessage("La contraseña debe tener al menos 8 caracteres")
         .matches(/^[a-zA-Z0-9]+$/).withMessage("La contraseña debe ser estrictamente alfanumérica"),

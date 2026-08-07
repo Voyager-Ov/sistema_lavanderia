@@ -11,19 +11,18 @@ interface ClientesKpisProps {
 export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisProps) {
   
   const stats = useMemo(() => {
-    let deudores = 0
-    let saldoFavor = 0
+    let activos = 0
     let inactivos = 0
+    let conTelefono = 0
 
     const clientList = clientes || []
     clientList.forEach(c => {
-      const saldo = parseFloat(c.saldoCuentaCorriente?.toString() || "0")
-      if (saldo > 0) deudores++
-      if (saldo < 0) saldoFavor++
-      if (!c.activo) inactivos++
+      if (c.activo) activos++
+      else inactivos++
+      if (c.telefono) conTelefono++
     })
 
-    return { deudores, saldoFavor, inactivos }
+    return { activos, inactivos, conTelefono }
   }, [clientes])
 
   return (
@@ -38,18 +37,10 @@ export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisPr
       />
       <DashboardKpi 
         isLoading={isLoading} 
-        title="Clientes con Deuda" 
-        value={stats.deudores.toString()} 
+        title="Clientes Activos" 
+        value={stats.activos.toString()} 
         description="En la página actual" 
-        backMessage="Deben dinero a la lavandería" 
-        colorVariant="red" 
-      />
-      <DashboardKpi 
-        isLoading={isLoading} 
-        title="Clientes con Saldo a Favor" 
-        value={stats.saldoFavor.toString()} 
-        description="En la página actual" 
-        backMessage="Clientes con dinero a favor" 
+        backMessage="Clientes habilitados" 
         colorVariant="green" 
       />
       <DashboardKpi 
@@ -60,7 +51,14 @@ export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisPr
         backMessage="Clientes dados de baja" 
         colorVariant="yellow" 
       />
+      <DashboardKpi 
+        isLoading={isLoading} 
+        title="Con Teléfono" 
+        value={stats.conTelefono.toString()} 
+        description="En la página actual" 
+        backMessage="Clientes con contacto registrado" 
+        colorVariant="purple" 
+      />
     </div>
   )
 }
-

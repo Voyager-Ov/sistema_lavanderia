@@ -26,9 +26,10 @@ interface BulkChargeModalProps {
   onOpenChange: (open: boolean) => void
   pedidos: Pedido[]
   onSuccess: () => void
+  setRowErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
-export function BulkChargeModal({ open, onOpenChange, pedidos, onSuccess }: BulkChargeModalProps) {
+export function BulkChargeModal({ open, onOpenChange, pedidos, onSuccess, setRowErrors }: BulkChargeModalProps) {
   const [metodos, setMetodos] = useState<MetodoPago[]>([])
   const [selectedMetodo, setSelectedMetodo] = useState<string>("")
   const [loading, setLoading] = useState(false)
@@ -70,9 +71,13 @@ export function BulkChargeModal({ open, onOpenChange, pedidos, onSuccess }: Bulk
           monto: parseFloat(pedido.total.toString()),
         })
         successCount++
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error al cobrar pedido", pedido.id, error)
         failCount++
+        if (setRowErrors) {
+          const msg = error.response?.data?.message || error.message || "Error al cobrar"
+          setRowErrors(prev => ({ ...prev, [pedido.id.toString()]: msg }))
+        }
       }
     }
 

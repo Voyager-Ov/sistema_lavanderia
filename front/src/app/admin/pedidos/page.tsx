@@ -186,6 +186,7 @@ export default function PedidosPage() {
         props={modalsProps} 
         onActionSuccess={refreshAll} 
         handleGenerateFactura={handleGenerateFactura} 
+        setRowErrors={setRowErrors}
       />
     </div>
   )

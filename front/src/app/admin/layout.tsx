@@ -12,7 +12,8 @@ import {
   FileText,
   User,
   Wallet,
-  BarChart
+  BarChart,
+  IdCard
 } from "lucide-react";
 
 const adminMainMenu = [
@@ -21,6 +22,7 @@ const adminMainMenu = [
   { title: "Caja", icon: Wallet, href: "/admin/caja" },
   { title: "Clientes", icon: Users, href: "/admin/clientes" },
   { title: "Servicios", icon: Building, href: "/admin/servicios" }, // Consider changing icon to something like Sparkles or Layers if needed
+  { title: "Empleados", icon: IdCard, href: "/admin/empleados" },
   { title: "Finanzas", icon: Wallet, href: "/admin/finanzas" },
   { 
     title: "Reportes", 

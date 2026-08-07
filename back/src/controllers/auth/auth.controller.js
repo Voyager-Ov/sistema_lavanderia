@@ -1,5 +1,5 @@
 import * as authService from "../../services/auth.service.js";
-import { successResponse } from "../../utils/response.util.js";
+import { successResponse, errorResponse } from "../../utils/response.util.js";
 import { normalizeEmail } from "../../utils/email.util.js";
 
 export const register = async (req, res, next) => {
@@ -9,7 +9,7 @@ export const register = async (req, res, next) => {
         return successResponse(res, 201, "Registro exitoso", result);
     } catch (error) {
         if (error.message === "EMAIL_IN_USE") {
-            return res.status(400).json({ message: "El email ya está en uso." });
+            return errorResponse(res, 400, "El email ya está en uso.");
         }
         next(error);
     }
@@ -23,10 +23,10 @@ export const login = async (req, res, next) => {
         return successResponse(res, 200, "Login exitoso", result);
     } catch (error) {
         if (error.message === "INVALID_CREDENTIALS") {
-            return res.status(401).json({ message: "Credenciales inválidas." });
+            return errorResponse(res, 401, "Credenciales inválidas.");
         }
         if (error.message === "USER_DISABLED") {
-            return res.status(403).json({ message: "Cuenta de usuario desactivada." });
+            return errorResponse(res, 403, "Cuenta de usuario desactivada.");
         }
         next(error);
     }

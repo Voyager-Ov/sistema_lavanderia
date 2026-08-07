@@ -89,7 +89,9 @@ export default (sequelize, DataTypes) => {
 				{ fields: ["negocioId"] },
 				{ fields: ["clienteId"] },
 				{ fields: ["estado"] },
-				{ fields: ["codigoSeguimiento"] }
+				{ fields: ["codigoSeguimiento"] },
+				{ fields: ["negocioId", "clienteId", "cobrado"] },
+				{ fields: ["negocioId", "estado", "cobrado"] },
 			]
 		}
 	);
@@ -102,6 +104,8 @@ export default (sequelize, DataTypes) => {
 		Pedido.hasMany(models.HistorialPedido, { foreignKey: "pedidoId", as: "historial" });
 		Pedido.hasOne(models.Pago, { foreignKey: "pedidoId", as: "pago" });
 		Pedido.hasMany(models.Ticket, { foreignKey: "pedidoId", as: "tickets" });
+		Pedido.hasMany(models.CreditoCliente, { foreignKey: "pedidoOrigenId", as: "creditosGenerados" });
+		Pedido.hasMany(models.AplicacionCredito, { foreignKey: "pedidoDestinoId", as: "aplicacionesCreditoRecibidas" });
 	};
 
 	return Pedido;

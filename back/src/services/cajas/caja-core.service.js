@@ -10,26 +10,38 @@ export function calcularMetricasCaja(caja) {
     let totalIngresosDigitales = 0;
     let totalEgresosEfectivo = 0;
     let totalEgresosDigitales = 0;
+    let totalCreditosAplicados = 0;
     
     const metodoMap = {};
 
     caja.pagos?.forEach(p => {
-        const monto = parseFloat(p.monto);
-        totalIngresos += monto;
+        // Dinero físico/digital real que ingresó a la caja en este cobro
+        const montoFisico = p.montoEfectivoTarjeta !== undefined && p.montoEfectivoTarjeta !== null
+            ? parseFloat(p.montoEfectivoTarjeta)
+            : parseFloat(p.monto);
         
-        // Verifica si es efectivo (ej: "Efectivo" o id fijo que suele ser Efectivo, o si metodos_pago tuviera un flag esFijo, acá usamos nombre)
-        const isEfectivo = p.metodoPago && p.metodoPago.nombre.toLowerCase().includes('efectivo');
-        if (isEfectivo) {
-            totalIngresosEfectivo += monto;
-        } else {
-            totalIngresosDigitales += monto;
-        }
+        const montoCredito = p.montoCreditoAplicado !== undefined && p.montoCreditoAplicado !== null
+            ? parseFloat(p.montoCreditoAplicado)
+            : 0;
+
+        totalIngresos += montoFisico;
+        totalCreditosAplicados += montoCredito;
         
-        if (p.metodoPago) {
-            if (!metodoMap[p.metodoPagoId]) {
-                metodoMap[p.metodoPagoId] = { metodoPagoId: p.metodoPagoId, nombre: p.metodoPago.nombre, ingresos: 0, egresos: 0 };
+        if (montoFisico > 0) {
+            const nombreMetodo = p.metodoPago?.nombre || "";
+            const isEfectivo = !p.metodoPago || !nombreMetodo || nombreMetodo.toLowerCase().includes('efectivo');
+            if (isEfectivo) {
+                totalIngresosEfectivo += montoFisico;
+            } else {
+                totalIngresosDigitales += montoFisico;
             }
-            metodoMap[p.metodoPagoId].ingresos += monto;
+            
+            if (p.metodoPago && p.metodoPago.id && nombreMetodo) {
+                if (!metodoMap[p.metodoPagoId]) {
+                    metodoMap[p.metodoPagoId] = { metodoPagoId: p.metodoPagoId, nombre: nombreMetodo, ingresos: 0, egresos: 0 };
+                }
+                metodoMap[p.metodoPagoId].ingresos += montoFisico;
+            }
         }
     });
 
@@ -37,16 +49,18 @@ export function calcularMetricasCaja(caja) {
         const monto = parseFloat(g.monto);
         totalEgresos += monto;
         
-        const isEfectivo = g.metodoPago && g.metodoPago.nombre.toLowerCase().includes('efectivo');
+        // Si no tiene método de pago explícito (o contiene 'efectivo'), se asume egreso de efectivo físico de caja
+        const nombreMetodo = g.metodoPago?.nombre || "";
+        const isEfectivo = !g.metodoPago || !nombreMetodo || nombreMetodo.toLowerCase().includes('efectivo');
         if (isEfectivo) {
             totalEgresosEfectivo += monto;
         } else {
             totalEgresosDigitales += monto;
         }
         
-        if (g.metodoPago) {
+        if (g.metodoPago && g.metodoPago.id && nombreMetodo) {
             if (!metodoMap[g.metodoPagoId]) {
-                metodoMap[g.metodoPagoId] = { metodoPagoId: g.metodoPagoId, nombre: g.metodoPago.nombre, ingresos: 0, egresos: 0 };
+                metodoMap[g.metodoPagoId] = { metodoPagoId: g.metodoPagoId, nombre: nombreMetodo, ingresos: 0, egresos: 0 };
             }
             metodoMap[g.metodoPagoId].egresos += monto;
         }
@@ -61,6 +75,7 @@ export function calcularMetricasCaja(caja) {
         totalIngresosDigitales,
         totalEgresosEfectivo,
         totalEgresosDigitales,
+        totalCreditosAplicados,
         totalesPorMetodo
     };
 }
@@ -93,13 +108,27 @@ export const obtenerCajaActual = async (negocioId, usuarioId) => {
                 as: "pagos", 
                 where: { estado: "COMPLETADO" }, 
                 required: false,
-                include: [{ model: models.MetodoPago, as: "metodoPago" }]
+                include: [
+                    { model: models.MetodoPago, as: "metodoPago" },
+                    {
+                        model: models.Pedido,
+                        as: "pedido",
+                        attributes: ["id", "codigoSeguimiento", "total", "estado", "fechaRecepcion"],
+                        include: [
+                            { model: models.Cliente, as: "cliente", attributes: ["id", "nombre", "telefono", "email"] }
+                        ]
+                    },
+                    { model: models.Usuario, as: "registradoPor", attributes: ["id", "nombre", "email"] }
+                ]
             },
             { 
                 model: models.Gasto, 
                 as: "gastos", 
                 required: false,
-                include: [{ model: models.MetodoPago, as: "metodoPago" }]
+                include: [
+                    { model: models.MetodoPago, as: "metodoPago" },
+                    { model: models.Usuario, as: "registradoPor", attributes: ["id", "nombre", "email"] }
+                ]
             }
         ]
     });

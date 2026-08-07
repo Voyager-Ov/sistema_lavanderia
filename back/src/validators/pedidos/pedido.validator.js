@@ -10,5 +10,6 @@ export const crearPedidoValidator = [
 
 export const actualizarEstadoValidator = [
     body("estado").notEmpty().withMessage("El estado es obligatorio").isIn(["PENDIENTE", "EN_PROCESO", "LISTO_PARA_RETIRAR", "ENTREGADO", "CANCELADO"]),
-    body("comentario").optional().isString().trim()
+    body("comentario").optional().isString().trim(),
+    body("accionDinero").optional().isIn(["SALDO_A_FAVOR", "DEVOLVER"])
 ];

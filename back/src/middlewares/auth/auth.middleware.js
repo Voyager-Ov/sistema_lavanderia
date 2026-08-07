@@ -7,7 +7,7 @@ export const verificarToken = (req, res, next) => {
 		let token = req.headers.authorization;
 
 		if (!token) {
-			return res.status(401).json({ error: "Acceso denegado. No se proporcionó token." });
+			return res.status(401).json({ ok: false, error: "Acceso denegado. No se proporcionó token." });
 		}
 
 		if (token.startsWith("Bearer ")) {
@@ -26,6 +26,6 @@ export const verificarToken = (req, res, next) => {
 		// para que cree el contexto asíncrono (AsyncLocalStorage) y cargue la BD del negocio.
 		resolverTenantDB(req, res, next);
 	} catch (error) {
-		return res.status(401).json({ error: "Token inválido o expirado." });
+		return res.status(401).json({ ok: false, error: "Token inválido o expirado." });
 	}
 };

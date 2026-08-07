@@ -14,9 +14,10 @@ interface PedidosModalsProps {
   props: any
   onActionSuccess: () => void
   handleGenerateFactura: (pedido: any) => Promise<void>
+  setRowErrors?: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
-export function PedidosModals({ props, onActionSuccess, handleGenerateFactura }: PedidosModalsProps) {
+export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, setRowErrors }: PedidosModalsProps) {
   const {
     pedidoToCancel, setPedidoToCancel,
     isCancelSheetOpen, setIsCancelSheetOpen,
@@ -40,13 +41,14 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura }:
         open={isCancelSheetOpen} 
         onOpenChange={setIsCancelSheetOpen} 
         pedido={pedidoToCancel} 
-        onConfirm={async (id, motivo, desc) => {
+        onConfirm={async (id, motivo, desc, accionDinero) => {
           await cambiarEstadoPedido(
             id,
             "CANCELADO",
             "Cancelado desde lista de pedidos",
             motivo,
-            desc
+            desc,
+            accionDinero
           )
           toast.success("Pedido cancelado exitosamente")
           setIsCancelSheetOpen(false)
@@ -128,6 +130,7 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura }:
             (window as any)._clearChargeSelection()
           }
         }}
+        setRowErrors={setRowErrors}
       />
 
       {hiddenPedido && hiddenTickets.length > 0 && (

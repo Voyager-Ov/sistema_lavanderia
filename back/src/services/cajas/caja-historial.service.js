@@ -69,12 +69,26 @@ export const obtenerCajaPorId = async (negocioId, usuarioId, rol, cajaId) => {
             { 
                 model: models.Pago, 
                 as: "pagos",
-                include: [{ model: models.MetodoPago, as: "metodoPago" }]
+                include: [
+                    { model: models.MetodoPago, as: "metodoPago" },
+                    {
+                        model: models.Pedido,
+                        as: "pedido",
+                        attributes: ["id", "codigoSeguimiento", "total", "estado", "fechaRecepcion"],
+                        include: [
+                            { model: models.Cliente, as: "cliente", attributes: ["id", "nombre", "telefono", "email"] }
+                        ]
+                    },
+                    { model: models.Usuario, as: "registradoPor", attributes: ["id", "nombre", "email"] }
+                ]
             },
             { 
                 model: models.Gasto, 
                 as: "gastos",
-                include: [{ model: models.MetodoPago, as: "metodoPago" }]
+                include: [
+                    { model: models.MetodoPago, as: "metodoPago" },
+                    { model: models.Usuario, as: "registradoPor", attributes: ["id", "nombre", "email"] }
+                ]
             }
         ]
     });

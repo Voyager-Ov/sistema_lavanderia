@@ -35,6 +35,7 @@ export const errorHandler = (err, req, res, next) => {
     const isProd = process.env.NODE_ENV === "production";
     
     return res.status(500).json({ 
+        ok: false,
         error: "Error interno del servidor",
         detalle: isProd ? undefined : err.message
     });

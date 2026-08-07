@@ -63,22 +63,6 @@ export const crearPedido = async (negocioId, usuarioId, data) => {
             comentario: "Pedido creado en el sistema"
         }, { transaction: t });
 
-        // 6. Impactar en Cuenta Corriente (Generar Deuda / DEBITO)
-        const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-        const nuevoSaldo = saldoAnterior + totalCalculado;
-        
-        await models.MovimientoCuentaCorriente.create({
-            clienteId,
-            negocioId,
-            pedidoId: nuevoPedido.id,
-            tipoMovimiento: "DEBITO",
-            monto: totalCalculado,
-            saldoResultante: nuevoSaldo,
-            comentario: `Deuda por Pedido #${codigoSeguimiento}`
-        }, { transaction: t });
-
-        await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
-
         await t.commit();
         
         // Emitir evento por WebSockets
@@ -231,7 +215,7 @@ export const obtenerPedidoPorId = async (negocioId, pedidoId) => {
     return pedido;
 };
 
-export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, estado, comentario, motivoCancelacion, descripcionCancelacion) => {
+export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, estado, comentario, motivoCancelacion, descripcionCancelacion, accionDinero = "SALDO_A_FAVOR") => {
     const t = await sequelize.transaction();
     try {
         const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId }, transaction: t });
@@ -254,8 +238,8 @@ export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, e
         }
 
         if (estado === "CANCELADO") {
-            if (!motivoCancelacion || !descripcionCancelacion) {
-                throw new AppError("Motivo y descripción son obligatorios para cancelar un pedido.", 400);
+            if (!motivoCancelacion) {
+                throw new AppError("El motivo es obligatorio para cancelar un pedido.", 400);
             }
         }
 
@@ -264,36 +248,62 @@ export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, e
             ...(estado === "CANCELADO" && { motivoCancelacion, descripcionCancelacion })
         }, { transaction: t });
 
-        // Ajuste por Cancelación
+        // Manejo del dinero si el pedido ya fue cobrado y se cancela
         if (estado === "CANCELADO" && estadoAnterior !== "CANCELADO") {
-            const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
-            if (cliente) {
-                const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-                const nuevoSaldo = saldoAnterior - parseFloat(pedido.total);
+            const pago = await models.Pago.findOne({
+                where: { pedidoId: pedido.id, estado: "COMPLETADO" },
+                transaction: t
+            });
 
-                await models.MovimientoCuentaCorriente.create({
-                    clienteId: cliente.id,
-                    negocioId,
-                    pedidoId: pedido.id,
-                    tipoMovimiento: "CREDITO",
-                    monto: parseFloat(pedido.total),
-                    saldoResultante: nuevoSaldo,
-                    comentario: `Ajuste por cancelación del Pedido #${pedido.codigoSeguimiento}`
-                }, { transaction: t });
+            if (pago) {
+                const esSaldoAFavor = accionDinero === "SALDO_A_FAVOR";
+                const { generarCreditoCancelacion } = await import("../clientes/credito.service.js");
+                
+                if (esSaldoAFavor) {
+                    await generarCreditoCancelacion(
+                        negocioId,
+                        pedido.clienteId,
+                        pedido.id,
+                        parseFloat(pedido.total),
+                        usuarioId,
+                        t
+                    );
+                } else {
+                    // Devolución en caja:
+                    // Si parte del pedido se pagó con saldo a favor, reintegrar esa porción como crédito
+                    const montoCredito = parseFloat(pago.montoCreditoAplicado || 0);
+                    const montoFisico = parseFloat(pago.montoEfectivoTarjeta !== undefined && pago.montoEfectivoTarjeta !== null ? pago.montoEfectivoTarjeta : pago.monto);
 
-                await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
+                    if (montoCredito > 0) {
+                        await generarCreditoCancelacion(
+                            negocioId,
+                            pedido.clienteId,
+                            pedido.id,
+                            montoCredito,
+                            usuarioId,
+                            t
+                        );
+                    }
 
-                // Si el pedido ya había sido cobrado (tiene un pago completado), le sumamos el total al saldoAFavorDisponible
-                // del pago para que el cliente pueda utilizar este crédito en futuros pedidos a través del frontend.
-                const pago = await models.Pago.findOne({
-                    where: { pedidoId: pedido.id, estado: "COMPLETADO" },
-                    transaction: t
-                });
+                    if (montoFisico > 0) {
+                        const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" }, transaction: t });
+                        if (!cajaAbierta) {
+                            throw new AppError("Para devolver dinero en efectivo se requiere tener una caja abierta.", 400);
+                        }
 
-                if (pago) {
-                    const nuevoSaldoAFavor = parseFloat(pago.saldoAFavorDisponible || 0) + parseFloat(pedido.total);
-                    await pago.update({ saldoAFavorDisponible: nuevoSaldoAFavor }, { transaction: t });
+                        await models.Gasto.create({
+                            negocioId,
+                            registradoPorId: usuarioId,
+                            cajaId: cajaAbierta.id,
+                            monto: montoFisico,
+                            categoria: "Reembolso",
+                            descripcion: `Devolución por cancelación del Pedido #${pedido.codigoSeguimiento}`,
+                            metodoPagoId: pago.metodoPagoId || null
+                        }, { transaction: t });
+                    }
                 }
+
+                await pago.update({ estado: "ANULADO" }, { transaction: t });
             }
         }
 
@@ -339,6 +349,11 @@ export const cambiarEstadoPedido = async (negocioId, usuarioId, rol, pedidoId, e
                     }
                 } catch (err) {
                     console.error("❌ Error en hook de WhatsApp:", err);
+                }
+            }).catch(err => {
+                // Ignore if whatsapp.service.js is not implemented yet
+                if (err.code !== 'ERR_MODULE_NOT_FOUND') {
+                    console.error("❌ Error importando hook de WhatsApp:", err);
                 }
             });
         }

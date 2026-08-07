@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ConfigTab = 'business' | 'notifications' | 'hardware' | 'appearance' | 'payments' | 'arca';
+export type ConfigTab = 'business' | 'notifications' | 'hardware' | 'appearance' | 'payments' | 'arca' | 'orders';
 
 export interface BusinessConfig {
   razonSocial: string | null;

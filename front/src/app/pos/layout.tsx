@@ -16,10 +16,11 @@ import {
 } from "lucide-react";
 
 const posMainMenu = [
-  { title: "Pedidos", icon: ShoppingCart, href: "/pos/pedidos" },
-  { title: "Caja", icon: Wallet, href: "/pos/caja" },
-  { title: "Clientes", icon: User, href: "/pos/clientes" },
+  { title: "Dashboard", icon: LayoutDashboard, href: "/pos/dashboard" },
   { title: "POS", icon: LayoutDashboard, href: "/pos/terminal" },
+  { title: "Caja", icon: Wallet, href: "/pos/caja" },
+  { title: "Pedidos", icon: ShoppingCart, href: "/pos/pedidos" },
+  { title: "Clientes", icon: User, href: "/pos/clientes" },
   { title: "Servicios", icon: Utensils, href: "/pos/servicios" },
 ];
 
@@ -33,10 +34,11 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
   const segments = pathname.split("/").filter(Boolean);
-  const breadcrumbs = segments.map((segment: string) => {
+  const breadcrumbs = segments.map((segment: string, index: number) => {
     let label = segment.charAt(0).toUpperCase() + segment.slice(1);
-    if (label.toLowerCase() === "pos") label = "Terminal";
-    return { label };
+    if (label.toLowerCase() === "pos") label = "POS";
+    const href = "/" + segments.slice(0, index + 1).join("/");
+    return { label, href };
   });
 
   return (

@@ -1,0 +1,248 @@
+{
+  "meta": {
+    "feature_id": "gestion-saldos-cuenta-corriente",
+    "title": "Especificación Técnica: Sistema de Cuenta Corriente, Saldos por Pedido, Libro Mayor y Cobros Multi-Funding",
+    "document_type": "technical_specification",
+    "version": "2.0.0",
+    "status": "pending_approval",
+    "created_at": "2026-08-03T21:00:00.000Z",
+    "updated_at": "2026-08-03T23:15:00.000Z",
+    "author": "Antigravity AI"
+  },
+  "architecture": {
+    "paradigm": "Libro Mayor Contable (Ledger) con Trazabilidad 1 a 1 por Pedido y Transacciones ACID",
+    "runtime": "Node.js (Express) + PostgreSQL (Sequelize ORM con Multi-tenancy por Schema) + Next.js 14 (App Router) + TanStack Table",
+    "core_principles": [
+      "Eliminación definitiva de campos acumulativos mutables en Cliente para evitar desincronizaciones.",
+      "Cálculo determinístico en vivo: La deuda exigible es estrictamente la sumatoria de pedidos en estado ENTREGADO con cobrado = false.",
+      "Trazabilidad 1 a 1 de créditos: Todo crédito a favor tiene un pedidoOrigenId, montoOriginal, montoDisponible y ciclo de vida de consumo.",
+      "Consumo seguro con Bloqueo Pesimista (SELECT ... FOR UPDATE) en transacciones ACID para impedir condiciones de carrera y doble gasto.",
+      "Integridad de arqueo de Caja: Separación contable entre dinero real ingresado/egresado de la caja y crédito virtual aplicado."
+    ]
+  },
+  "database_schema": {
+    "new_models": [
+      {
+        "table_name": "creditos_cliente",
+        "model_name": "CreditoCliente",
+        "file_path": "back/src/models/CreditoCliente.js",
+        "description": "Registra los saldos a favor generados para un cliente vinculados a su pedido de origen.",
+        "attributes": {
+          "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+          "negocioId": { "type": "INTEGER", "allowNull": false },
+          "clienteId": { "type": "INTEGER", "allowNull": false, "references": { "model": "clientes", "key": "id" } },
+          "pedidoOrigenId": { "type": "INTEGER", "allowNull": true, "references": { "model": "pedidos", "key": "id" } },
+          "montoOriginal": { "type": "DECIMAL(10, 2)", "allowNull": false },
+          "montoDisponible": { "type": "DECIMAL(10, 2)", "allowNull": false },
+          "tipoOrigen": { "type": "ENUM('SOBREPAGO_EFECTIVO', 'CANCELACION_PEDIDO', 'AJUSTE_MANUAL')", "allowNull": false },
+          "estado": { "type": "ENUM('DISPONIBLE', 'CONSUMIDO_PARCIAL', 'CONSUMIDO_TOTAL', 'ANULADO')", "defaultValue": "DISPONIBLE", "allowNull": false },
+          "motivo": { "type": "TEXT", "allowNull": true },
+          "creadoPorId": { "type": "INTEGER", "allowNull": true, "references": { "model": "usuarios", "key": "id" } },
+          "createdAt": { "type": "DATE", "allowNull": false },
+          "updatedAt": { "type": "DATE", "allowNull": false }
+        },
+        "indexes": [
+          { "fields": ["negocioId", "clienteId", "estado"] },
+          { "fields": ["pedidoOrigenId"] }
+        ]
+      },
+      {
+        "table_name": "aplicaciones_credito",
+        "model_name": "AplicacionCredito",
+        "file_path": "back/src/models/AplicacionCredito.js",
+        "description": "Tabla inmutable de auditoría que registra qué crédito se aplicó a qué cobro y pedido de destino.",
+        "attributes": {
+          "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+          "negocioId": { "type": "INTEGER", "allowNull": false },
+          "creditoId": { "type": "INTEGER", "allowNull": false, "references": { "model": "creditos_cliente", "key": "id" } },
+          "pagoDestinoId": { "type": "INTEGER", "allowNull": false, "references": { "model": "pagos", "key": "id" } },
+          "pedidoDestinoId": { "type": "INTEGER", "allowNull": false, "references": { "model": "pedidos", "key": "id" } },
+          "montoAplicado": { "type": "DECIMAL(10, 2)", "allowNull": false },
+          "createdAt": { "type": "DATE", "allowNull": false }
+        },
+        "indexes": [
+          { "fields": ["negocioId", "creditoId"] },
+          { "fields": ["pagoDestinoId"] },
+          { "fields": ["pedidoDestinoId"] }
+        ]
+      }
+    ],
+    "modified_models": [
+      {
+        "model_name": "Pago",
+        "file_path": "back/src/models/Pago.js",
+        "changes": [
+          "Agregar campo montoEfectivoTarjeta (DECIMAL(10, 2), default total, representa el dinero ingresado por caja/medio de pago externo).",
+          "Agregar campo montoCreditoAplicado (DECIMAL(10, 2), default 0, representa la porción cubierta con saldo a favor).",
+          "Asociar con AplicacionCredito (hasMany as aplicacionesCredito)."
+        ]
+      },
+      {
+        "model_name": "Pedido",
+        "file_path": "back/src/models/Pedido.js",
+        "changes": [
+          "Asociar con CreditoCliente (hasMany as creditosGenerados, foreignKey: pedidoOrigenId).",
+          "Asociar con AplicacionCredito (hasMany as aplicacionesCreditoRecibidas, foreignKey: pedidoDestinoId)."
+        ]
+      },
+      {
+        "model_name": "Cliente",
+        "file_path": "back/src/models/Cliente.js",
+        "changes": [
+          "Asociar con CreditoCliente (hasMany as creditos, foreignKey: clienteId)."
+        ]
+      }
+    ]
+  },
+  "backend_layers": {
+    "services": [
+      {
+        "name": "cliente-cuenta.service.js",
+        "file_path": "back/src/services/clientes/cliente-cuenta.service.js",
+        "description": "Responsable de calcular en vivo la posición contable, extractos y balances.",
+        "methods": [
+          {
+            "name": "obtenerEstadoCuenta",
+            "params": "(negocioId, clienteId)",
+            "returns": "{ cliente, resumen: { deudaExigible, deudaNoExigible, saldoAFavorDisponible, saldoNeto, pedidosDeudaCount, creditosCount }, pedidosDeuda, pedidosEnCurso, creditosDisponibles }",
+            "logic": "Calcula pedidos ENTREGADOS con cobrado = false para deudaExigible; pedidos PENDIENTE/EN_PROCESO/LISTO con cobrado = false para deudaNoExigible; suma montoDisponible de CreditoCliente con estado IN ('DISPONIBLE', 'CONSUMIDO_PARCIAL')."
+          },
+          {
+            "name": "obtenerMovimientosCuenta",
+            "params": "(negocioId, clienteId, { page, limit, desde, hasta })",
+            "returns": "{ items: [...movimientos_unificados], meta: { total, totalPages, currentPage } }",
+            "logic": "Une cronológicamente: Pedidos entregados sin cobrar (cargos), Pagos recibidos (abonos), Créditos generados (saldos a favor) y Aplicaciones de crédito."
+          },
+          {
+            "name": "obtenerCreditosDisponibles",
+            "params": "(negocioId, clienteId)",
+            "returns": "[ { id, pedidoOrigenId, codigoSeguimiento, montoOriginal, montoDisponible, tipoOrigen, createdAt } ]",
+            "logic": "Filtra exclusivamente registros con montoDisponible > 0 y estado IN ('DISPONIBLE', 'CONSUMIDO_PARCIAL')."
+          }
+        ]
+      },
+      {
+        "name": "credito.service.js",
+        "file_path": "back/src/services/clientes/credito.service.js",
+        "description": "Gestiona el ciclo de vida y consumo atómico de créditos con bloqueo pesimista.",
+        "methods": [
+          {
+            "name": "consumirCreditosFIFO",
+            "params": "(negocioId, clienteId, montoACubrir, pagoDestinoId, pedidoDestinoId, transaction)",
+            "returns": "{ totalAplicado, aplicaciones: [...] }",
+            "logic": "Ejecuta SELECT FOR UPDATE sobre los créditos del cliente ordenados por id ASC (FIFO). Descuenta montoDisponible, actualiza estado a CONSUMIDO_TOTAL o CONSUMIDO_PARCIAL y crea registros en AplicacionCredito."
+          },
+          {
+            "name": "generarCreditoSobrepago",
+            "params": "(negocioId, clienteId, pedidoOrigenId, monto, usuarioId, transaction)",
+            "returns": "CreditoCliente",
+            "logic": "Crea registro con tipoOrigen = 'SOBREPAGO_EFECTIVO', estado = 'DISPONIBLE'."
+          },
+          {
+            "name": "generarCreditoCancelacion",
+            "params": "(negocioId, clienteId, pedidoOrigenId, monto, usuarioId, transaction)",
+            "returns": "CreditoCliente",
+            "logic": "Crea registro con tipoOrigen = 'CANCELACION_PEDIDO', estado = 'DISPONIBLE'."
+          }
+        ]
+      },
+      {
+        "name": "pago-core.service.js (Extensión)",
+        "file_path": "back/src/services/pagos/pago-core.service.js",
+        "description": "Orquesta el cobro transaccional de pedidos individuales y masivos.",
+        "methods": [
+          {
+            "name": "registrarPago",
+            "params": "(negocioId, usuarioId, data)",
+            "data_shape": "{ pedidoId, metodoPagoId, montoEfectivo, aplicarSaldoAFavor, montoSaldoAFavor, dejarVueltoAFavor, facturarAfip }",
+            "logic": "Abre transacción ACID -> Valida caja abierta si montoEfectivo > 0 -> Consume crédito FIFO si aplicarSaldoAFavor = true -> Valida que montoEfectivo + totalCreditoCubierto >= pedido.total -> Genera Pago y AplicacionCredito -> Si dejarVueltoAFavor crea CreditoCliente -> Actualiza Pedido a cobrado = true -> Emite WebSockets."
+          },
+          {
+            "name": "cobrarDeudaMasiva",
+            "params": "(negocioId, usuarioId, data)",
+            "data_shape": "{ clienteId, pedidosIds: [id1, id2, ...], metodoPagoId, montoEfectivo, aplicarSaldoAFavor, dejarVueltoAFavor, comentario }",
+            "logic": "Abre transacción ACID -> Valida pedidos pertenecen al cliente y están cobrado = false -> Itera cada pedido emitiendo su Pago individual asociado a la Caja -> Satisface principio 1 Pago = 1 Pedido."
+          }
+        ]
+      }
+    ],
+    "controllers": [
+      {
+        "name": "cliente-cuenta.controller.js",
+        "file_path": "back/src/controllers/clientes/cliente-cuenta.controller.js",
+        "handlers": ["getEstadoCuenta", "getMovimientosCuenta", "getCreditosDisponibles", "cobrarDeudaMasiva"]
+      }
+    ],
+    "routes": [
+      {
+        "name": "cliente-cuenta.routes.js",
+        "file_path": "back/src/routes/clientes/cliente-cuenta.routes.js",
+        "prefix": "/api/clientes/:id/cuenta-corriente",
+        "endpoints": [
+          "GET /estado-cuenta",
+          "GET /movimientos",
+          "GET /creditos",
+          "POST /cobrar-deuda"
+        ]
+      }
+    ]
+  },
+  "endpoints_specification": [
+    {
+      "method": "GET",
+      "path": "/api/clientes/:id/cuenta-corriente/estado-cuenta",
+      "auth": true,
+      "roles": ["admin", "empleado"],
+      "description": "Obtiene la posición financiera consolidada calculada en vivo.",
+      "response_200": {
+        "success": true,
+        "data": {
+          "cliente": { "id": 10, "nombre": "María López" },
+          "resumen": {
+            "deudaExigible": 12000,
+            "deudaNoExigible": 5000,
+            "saldoAFavorDisponible": 3000,
+            "saldoNeto": -9000,
+            "pedidosDeudaCount": 2,
+            "creditosCount": 1
+          },
+          "pedidosDeuda": [
+            { "id": 101, "codigoSeguimiento": "PED-00101", "total": 8000, "fechaEntrega": "2026-08-01T15:00:00.000Z" },
+            { "id": 105, "codigoSeguimiento": "PED-00105", "total": 4000, "fechaEntrega": "2026-08-02T11:30:00.000Z" }
+          ],
+          "creditosDisponibles": [
+            { "id": 1, "pedidoOrigenId": 90, "montoOriginal": 5000, "montoDisponible": 3000, "tipoOrigen": "SOBREPAGO_EFECTIVO" }
+          ]
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/pagos",
+      "auth": true,
+      "roles": ["admin", "empleado"],
+      "description": "Registra cobro compuesto de un pedido individual (Caja + Saldo a favor).",
+      "request_body": {
+        "pedidoId": 105,
+        "metodoPagoId": 1,
+        "montoEfectivo": 1000,
+        "aplicarSaldoAFavor": true,
+        "montoSaldoAFavor": 3000,
+        "dejarVueltoAFavor": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/clientes/:id/cuenta-corriente/cobrar-deuda",
+      "auth": true,
+      "roles": ["admin", "empleado"],
+      "description": "Cancela deudas de múltiples pedidos entregados en una sola transacción ACID manteniendo 1 Pago -> 1 Pedido.",
+      "request_body": {
+        "pedidosIds": [101, 105],
+        "metodoPagoId": 1,
+        "montoEfectivo": 12000,
+        "aplicarSaldoAFavor": false
+      }
+    }
+  ]
+}

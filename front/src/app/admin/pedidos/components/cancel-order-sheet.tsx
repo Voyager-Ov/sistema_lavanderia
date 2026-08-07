@@ -14,7 +14,7 @@ interface CancelOrderSheetProps {
   pedido: Pedido | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (pedidoId: number, motivo: string, descripcion: string) => Promise<void>
+  onConfirm: (pedidoId: number, motivo: string, descripcion: string, accionDinero: "SALDO_A_FAVOR" | "DEVOLVER") => Promise<void>
 }
 
 const MOTIVOS = [
@@ -28,6 +28,7 @@ const MOTIVOS = [
 export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: CancelOrderSheetProps) {
   const [motivo, setMotivo] = React.useState("")
   const [descripcion, setDescripcion] = React.useState("")
+  const [accionDinero, setAccionDinero] = React.useState<"SALDO_A_FAVOR" | "DEVOLVER">("SALDO_A_FAVOR")
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState("")
 
@@ -36,6 +37,7 @@ export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: Canc
     if (open) {
       setMotivo("")
       setDescripcion("")
+      setAccionDinero("SALDO_A_FAVOR")
       setError("")
     }
   }, [open])
@@ -51,7 +53,7 @@ export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: Canc
     setIsLoading(true)
     setError("")
     try {
-      await onConfirm(pedido.id, motivo, descripcion)
+      await onConfirm(pedido.id, motivo, descripcion, accionDinero)
       onOpenChange(false)
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || "Error al cancelar el pedido")
@@ -101,6 +103,43 @@ export function CancelOrderSheet({ pedido, open, onOpenChange, onConfirm }: Canc
         </p>
         <p>Esta acción es irreversible y quedará registrada en el historial del pedido bajo tu usuario.</p>
       </div>
+
+      {pedido.cobrado && (
+        <div className="space-y-3 p-4 bg-blue-50/70 border border-blue-200 rounded-2xl">
+          <Label className="text-xs font-bold uppercase tracking-wider text-blue-900">
+            Destino del Dinero Cobrado (${parseFloat(pedido.total as any || 0).toLocaleString("es-AR")})
+          </Label>
+          <div className="grid grid-cols-2 gap-2">
+            <div
+              onClick={() => setAccionDinero("SALDO_A_FAVOR")}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                accionDinero === "SALDO_A_FAVOR"
+                  ? "bg-white border-blue-600 shadow-sm"
+                  : "bg-white/50 border-transparent hover:border-slate-200 opacity-70"
+              }`}
+            >
+              <p className="text-xs font-bold text-slate-900">Saldo a Favor</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Se acredita en la cuenta del cliente sin retirar dinero de caja.
+              </p>
+            </div>
+
+            <div
+              onClick={() => setAccionDinero("DEVOLVER")}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                accionDinero === "DEVOLVER"
+                  ? "bg-white border-blue-600 shadow-sm"
+                  : "bg-white/50 border-transparent hover:border-slate-200 opacity-70"
+              }`}
+            >
+              <p className="text-xs font-bold text-slate-900">Devolución en Caja</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Registra un egreso físico en la caja de turno actual.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 

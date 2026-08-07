@@ -61,14 +61,16 @@ export const registerAdmin = async (data) => {
 
         return { 
             mensaje: "Registro exitoso. Revisa tu correo para verificar tu cuenta.",
-            usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } 
+            usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+            verificationCode: process.env.NODE_ENV !== "production" ? admin.verificationCode : undefined
         };
     } catch (error) {
         console.error("Error al inicializar tenant db o correo:", error);
         // Retornamos éxito de todos modos porque el admin sí se creó.
         return { 
             mensaje: "Registro completado, pero ocurrió un problema interno al inicializar el local.",
-            usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol } 
+            usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol },
+            verificationCode: process.env.NODE_ENV !== "production" ? admin.verificationCode : undefined
         };
     }
 };
@@ -98,7 +100,7 @@ export const login = async (email, password) => {
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new AppError("Missing JWT_SECRET in environment", 401);
     const token = jwt.sign(
-        { id: usuario.id, negocioId: usuario.negocioId, rol: usuario.rol },
+        { id: usuario.id, nombre: usuario.nombre, email: usuario.email, negocioId: usuario.negocioId, rol: usuario.rol },
         secret,
         { expiresIn: "8h" }
     );
@@ -142,7 +144,10 @@ export const reenviarCodigoVerificacion = async (email) => {
         console.error("❌ Error al reenviar correo de verificación:", err);
     });
 
-    return { mensaje: "Código reenviado exitosamente. Revisa tu bandeja de entrada." };
+    return { 
+        mensaje: "Código reenviado exitosamente. Revisa tu bandeja de entrada.",
+        verificationCode: process.env.NODE_ENV !== "production" ? nuevoCodigo : undefined
+    };
 };
 
 export const solicitarRecuperacionPassword = async (email) => {
@@ -162,7 +167,10 @@ export const solicitarRecuperacionPassword = async (email) => {
         console.error("❌ Error al enviar correo de recuperación:", err);
     });
 
-    return { mensaje: "Si el correo está registrado, recibirás un enlace de recuperación." };
+    return { 
+        mensaje: "Si el correo está registrado, recibirás un enlace de recuperación.",
+        resetPasswordToken: process.env.NODE_ENV !== "production" ? resetToken : undefined
+    };
 };
 
 export const resetPassword = async (token, newPassword) => {

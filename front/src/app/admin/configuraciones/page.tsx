@@ -5,13 +5,14 @@ import { useConfigStore } from './_store/useConfigStore';
 import { obtenerConfiguracion } from '@/domains/configuracion/api';
 import SidebarNav from './_components/SidebarNav';
 import BusinessForm from './_components/forms/BusinessForm';
+import PaymentsForm from './_components/forms/PaymentsForm';
 import NotificationsForm from './_components/forms/NotificationsForm';
 import HardwareForm from './_components/forms/HardwareForm';
 import ArcaForm from './_components/forms/ArcaForm';
 import AppearanceForm from './_components/forms/AppearanceForm';
-import PaymentsForm from './_components/forms/PaymentsForm';
 import FloatingSaveBar from './_components/FloatingSaveBar';
 import UnsavedChangesDialog from './_components/UnsavedChangesDialog';
+import OrdersForm from './_components/forms/OrdersForm';
 
 import { Spinner } from '@/shared/ui/feedback/spinner';
 
@@ -54,6 +55,7 @@ export default function ConfiguracionesPage() {
           {activeTab === 'hardware' && <HardwareForm />}
           {activeTab === 'arca' && <ArcaForm />}
           {activeTab === 'appearance' && <AppearanceForm />}
+          {activeTab === 'orders' && <OrdersForm />}
         </div>
       </main>
 

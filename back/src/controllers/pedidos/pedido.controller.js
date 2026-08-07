@@ -39,7 +39,8 @@ export const cambiarEstadoPedido = async (req, res, next) => {
             req.body.estado, 
             req.body.comentario,
             req.body.motivoCancelacion,
-            req.body.descripcionCancelacion
+            req.body.descripcionCancelacion,
+            req.body.accionDinero
         );
         return successResponse(res, 200, "Estado del pedido actualizado", pedidoActualizado);
     } catch (error) {

@@ -9,13 +9,39 @@ export interface MetodoPagoInfo {
 export interface CajaPago {
   id: number;
   monto: number | string;
+  montoAFavorGenerado?: number | string;
+  saldoAFavorDisponible?: number | string;
   metodoPagoId: number;
   pedidoId: number;
   cajaId: number;
   registradoPorId: number;
   estado: string;
+  cae?: string;
+  vencimientoCae?: string;
+  nroComprobante?: string;
+  tipoComprobante?: number;
+  fechaPago?: string;
   createdAt: string;
   metodoPago?: MetodoPagoInfo;
+  pedido?: {
+    id: number;
+    codigoSeguimiento: string;
+    total: number | string;
+    estado: string;
+    fechaRecepcion: string;
+    clienteId?: number;
+    cliente?: {
+      id: number;
+      nombre: string;
+      telefono?: string;
+      email?: string;
+    };
+  };
+  registradoPor?: {
+    id: number;
+    nombre: string;
+    email: string;
+  };
 }
 
 export interface CajaGasto {
@@ -28,6 +54,11 @@ export interface CajaGasto {
   metodoPagoId?: number;
   createdAt: string;
   metodoPago?: MetodoPagoInfo;
+  registradoPor?: {
+    id: number;
+    nombre: string;
+    email: string;
+  };
 }
 
 export interface CajaActual {

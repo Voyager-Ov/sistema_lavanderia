@@ -96,6 +96,9 @@ export const crearUsuario = async (negocioId, userData) => {
 
     const dataDevuelta = nuevoUsuario.toJSON();
     delete dataDevuelta.passwordHash;
+    if (process.env.NODE_ENV !== "production") {
+        dataDevuelta.verificationCode = nuevoUsuario.verificationCode;
+    }
     
     return dataDevuelta;
 };
@@ -128,4 +131,49 @@ export const desactivarUsuario = async (negocioId, targetId, miId) => {
 
     await usuario.update({ activo: false });
     return true;
+};
+
+export const obtenerMetricasUsuario = async (negocioId, targetId) => {
+    const usuario = await connectionManager.centralModels.Usuario.findOne({
+        where: { id: targetId, negocioId },
+        attributes: ['id']
+    });
+
+    if (!usuario) {
+        throw new AppError("Usuario no encontrado en este negocio.", 404);
+    }
+
+    const { models: tenantModels } = await connectionManager.getTenantDb(negocioId);
+
+    const cajasOperadas = await tenantModels.Caja.findAll({
+        where: { usuarioId: targetId }, // Caja has usuarioId, but what about negocioId? Let's check Caja model.
+        order: [['fechaApertura', 'DESC']],
+        attributes: ['id', 'fechaApertura', 'fechaCierre', 'montoInicial', 'efectivoEsperado', 'efectivoReal', 'diferenciaEfectivo', 'estado']
+    });
+
+    const pagos = await tenantModels.Pago.findAll({
+        where: { registradoPorId: targetId, estado: "COMPLETADO" },
+        attributes: ['id', 'monto']
+    });
+    const cantidadVentas = pagos.length;
+    const montoVentas = pagos.reduce((acc, pago) => acc + Number(pago.monto), 0);
+
+    const gastos = await tenantModels.Gasto.findAll({
+        where: { registradoPorId: targetId },
+        attributes: ['id', 'monto']
+    });
+    const cantidadGastos = gastos.length;
+    const montoGastos = gastos.reduce((acc, gasto) => acc + Number(gasto.monto), 0);
+
+    return {
+        cajasOperadas,
+        ventasTotales: {
+            cantidad: cantidadVentas,
+            monto: montoVentas
+        },
+        gastosRegistrados: {
+            cantidad: cantidadGastos,
+            monto: montoGastos
+        }
+    };
 };

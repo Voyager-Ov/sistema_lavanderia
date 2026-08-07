@@ -94,12 +94,27 @@ export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<a
     },
     {
       accessorKey: "precioActual",
-      header: "Precio",
-      cell: ({ row }) => (
-        <span className="font-black text-gray-900 text-base">
-          ${Number(row.original.precioActual).toLocaleString("es-AR")}
-        </span>
-      ),
+      header: "Precio / Costo",
+      cell: ({ row }) => {
+        const p = Number(row.original.precioActual || 0)
+        const c = Number(row.original.costoEstimado || 0)
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-black text-gray-900 text-base">
+              ${p.toLocaleString("es-AR")}
+            </span>
+            {c > 0 ? (
+              <span className="text-[11px] font-bold text-gray-400">
+                Costo: ${c.toLocaleString("es-AR")}
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-gray-300">
+                Sin costo est.
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "tiempoEstimadoMinutos",

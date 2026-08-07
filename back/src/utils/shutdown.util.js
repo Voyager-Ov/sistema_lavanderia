@@ -52,12 +52,9 @@ export const setupGracefulShutdown = (server) => {
     process.on("SIGINT", () => shutdownHandler("SIGINT (Ctrl+C)"));
     process.on("SIGTERM", () => shutdownHandler("SIGTERM"));
 
-    // Atrapamos errores no controlados (Unhandled Promise Rejections & Uncaught Exceptions)
+    // Loguear promesas no capturadas sin tumbar el servidor
     process.on("unhandledRejection", (reason, promise) => {
-        console.error("🚨 CRÍTICO: Unhandled Promise Rejection (Promesa rota sin atrapar):");
-        console.error("Promesa:", promise, "Razón:", reason);
-        console.error("Apagando el servidor por seguridad...");
-        shutdownHandler("unhandledRejection");
+        console.error("⚠️ [ShutdownUtil] Unhandled Promise Rejection:", reason?.message || reason);
     });
 
     process.on("uncaughtException", (error) => {

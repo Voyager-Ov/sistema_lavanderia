@@ -35,18 +35,18 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
             {crumb.href && !isLast ? (
               <a 
                 href={crumb.href} 
-                className={`text-gray-900 transition-colors cursor-pointer ${hoverColor}`}
+                className={`text-gray-900 dark:text-neutral-300 transition-colors cursor-pointer ${hoverColor}`}
               >
                 {crumb.label}
               </a>
             ) : (
-              <span className={isLast || crumb.active ? "text-gray-900 font-bold" : "text-gray-900"}>
+              <span className={isLast || crumb.active ? "text-gray-900 dark:text-neutral-50 font-bold" : "text-gray-900 dark:text-neutral-300"}>
                 {crumb.label}
               </span>
             )}
             
             {!isLast && (
-              <ChevronRight className="h-4 w-4 mx-1 text-gray-400" />
+              <ChevronRight className="h-4 w-4 mx-1 text-gray-400 dark:text-neutral-600" />
             )}
           </div>
         )

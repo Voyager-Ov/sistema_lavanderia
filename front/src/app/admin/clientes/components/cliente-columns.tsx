@@ -11,14 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 export interface ClienteColumnsActions {
   onView: (cliente: Cliente) => void
   onEdit: (cliente: Cliente) => void
-  onCobrarDeuda: (cliente: Cliente) => void
   onDesactivar: (cliente: Cliente) => void
-}
-
-const SALDO_STATUS = {
-  deuda: { color: "text-red-700 bg-red-50 border-red-100", label: "Debe", prefix: "-$" },
-  favor: { color: "text-emerald-700 bg-emerald-50 border-emerald-100", label: "A favor", prefix: "+$" },
-  ok:    { color: "text-slate-500 bg-slate-50 border-slate-100", label: "Al día", prefix: "$" },
 }
 
 export const getClienteColumns = (actions: ClienteColumnsActions): ColumnDef<Cliente>[] => [
@@ -93,19 +86,13 @@ export const getClienteColumns = (actions: ClienteColumnsActions): ColumnDef<Cli
     ),
   },
   {
-    accessorKey: "saldoCuentaCorriente",
-    header: "Cuenta Corriente",
-    cell: ({ row }) => {
-      const saldo = parseFloat(row.original.saldoCuentaCorriente?.toString() || "0")
-      const status = saldo > 0 ? SALDO_STATUS.deuda : saldo < 0 ? SALDO_STATUS.favor : SALDO_STATUS.ok
-      const abs = Math.abs(saldo).toLocaleString("es-AR")
-      return (
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ${status.color}`}>
-          <span className="text-[10px] font-black uppercase opacity-60">{status.label}</span>
-          <span>{status.prefix}{abs}</span>
-        </div>
-      )
-    },
+    accessorKey: "activo",
+    header: "Estado",
+    cell: ({ row }) => (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${row.original.activo ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        {row.original.activo ? "Activo" : "Inactivo"}
+      </span>
+    ),
   },
   {
     id: "actions",

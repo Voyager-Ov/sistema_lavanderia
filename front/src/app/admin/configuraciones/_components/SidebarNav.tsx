@@ -8,9 +8,10 @@ import {
   BellRing, 
   Printer, 
   Palette,
-  CreditCard,
   Archive,
-  Receipt
+  Receipt,
+  ClipboardList,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Assuming this utility exists
 
@@ -21,6 +22,7 @@ const navItems: { id: ConfigTab; label: string; icon: React.ElementType; color: 
   { id: 'hardware', label: 'Hardware y Tickets', icon: Printer, color: 'text-brand-purple bg-purple-50/50 dark:bg-purple-900/20' },
   { id: 'arca', label: 'Facturación ARCA', icon: Receipt, color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' },
   { id: 'appearance', label: 'Apariencia', icon: Palette, color: 'text-pink-600 bg-pink-50/50 dark:bg-pink-900/20' },
+  { id: 'orders', label: 'Gestión de Pedidos', icon: ClipboardList, color: 'text-amber-600 bg-amber-50/50 dark:bg-amber-900/20' },
 ];
 
 export default function SidebarNav() {

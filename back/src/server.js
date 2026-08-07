@@ -19,7 +19,7 @@ async function start() {
 			await connectionManager.centralDb.sync();
 		}
 
-		const server = app.listen(PORT, () => {
+		const server = app.listen(PORT, "0.0.0.0", () => {
 			console.log(`🚀 Servidor HTTP de Lavandería escuchando en el puerto ${PORT}`);
 		});
 

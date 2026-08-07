@@ -7,6 +7,7 @@ export interface Producto {
   costoEstimado?: number | string
   imagenUrl?: string
   disponible: boolean
+  activo: boolean
   categoriaId: number
   tiempoEstimadoMinutos?: number
 }

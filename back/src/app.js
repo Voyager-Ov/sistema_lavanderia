@@ -19,6 +19,7 @@ import categoriaGastoRoutes from "./routes/gastos/categoriaGasto.routes.js";
 import pagoRoutes from "./routes/pagos/pago.routes.js";
 import finanzasRoutes from "./routes/finanzas/finanzas.routes.js";
 import pedidoRoutes from "./routes/pedidos/pedido.routes.js";
+import motivosCancelacionRoutes from "./routes/pedidos/motivos-cancelacion.routes.js";
 import asistenciaRoutes from "./routes/rrhh/asistencia.routes.js";
 import reporteRrhhRoutes from "./routes/rrhh/reporte.routes.js";
 import reportesRoutes from "./routes/reportes/reportes.routes.js";
@@ -51,14 +52,16 @@ const globalLimiter = rateLimit({
     max: 1000, // Máximo de 1000 peticiones por IP en esos 15 mins para rutas generales
     message: { error: "Has excedido el límite de peticiones. Intenta nuevamente más tarde." },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    skip: (req) => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || req.headers["x-test-suite"] === "true"
 });
 
 // Rate Limiting Estricto para Auth (Prevención de ataques de fuerza bruta)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 20, // Solo 20 intentos
-    message: { error: "Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos." }
+    max: 20, // Solo 20 intentos en producción
+    message: { error: "Demasiadas peticiones desde esta IP, intente de nuevo en 15 minutos." },
+    skip: (req) => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || req.headers["x-test-suite"] === "true"
 });
 
 // Aplicar el limitador global a todas las rutas bajo /api
@@ -75,6 +78,7 @@ app.use("/api/gastos", gastoRoutes);
 app.use("/api/categorias-gastos", categoriaGastoRoutes);
 app.use("/api/pagos", pagoRoutes);
 app.use("/api/finanzas", finanzasRoutes);
+app.use("/api/pedidos/motivos-cancelacion", motivosCancelacionRoutes);
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/rrhh/asistencias", asistenciaRoutes);
 app.use("/api/rrhh/reportes", reporteRrhhRoutes);

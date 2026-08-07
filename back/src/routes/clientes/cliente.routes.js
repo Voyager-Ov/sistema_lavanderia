@@ -1,10 +1,10 @@
 import { Router } from "express";
 import * as clienteController from "../../controllers/clientes/cliente.controller.js";
+import clienteCuentaRoutes from "./cliente-cuenta.routes.js";
 import { verificarToken } from "../../middlewares/auth/auth.middleware.js";
 import { verificarSuscripcionActiva } from "../../middlewares/auth/subscription.middleware.js";
 import { validarCampos } from "../../middlewares/validation.middleware.js";
 import { crearClienteValidator, actualizarClienteValidator, desactivarClienteValidator } from "../../validators/clientes/cliente.validator.js";
-
 import { verificarRol } from "../../middlewares/role.middleware.js";
 
 const router = Router();
@@ -17,7 +17,8 @@ router.get("/:id", clienteController.getClienteById);
 router.post("/", verificarRol(["admin", "empleado"]), crearClienteValidator, validarCampos, clienteController.crearCliente);
 router.put("/:id", verificarRol(["admin", "empleado"]), actualizarClienteValidator, validarCampos, clienteController.actualizarCliente);
 router.patch("/:id/estado", verificarRol(["admin", "empleado"]), desactivarClienteValidator, validarCampos, clienteController.desactivarCliente);
-router.post("/:id/cuenta-corriente/pagos", verificarRol(["admin", "empleado"]), clienteController.registrarPagoCuentaCorriente);
-router.post("/:id/cuenta-corriente/recalcular", verificarRol(["admin", "empleado"]), clienteController.recalcularSaldoCuentaCorriente);
+
+// Submódulo de Cuenta Corriente y Gestión de Saldos
+router.use("/:id/cuenta-corriente", clienteCuentaRoutes);
 
 export default router;

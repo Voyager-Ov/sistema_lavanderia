@@ -3,160 +3,164 @@ import { models, sequelize } from "../../models/index.js";
 import { emitToTenant } from "../../socket/socket.js";
 import { generarFacturaPedido } from "../integraciones/afip.service.js";
 import { connectionManager } from "../../models/connectionManager.js";
+import { consumirCreditosFIFO, generarCreditoSobrepago } from "../clientes/credito.service.js";
 import { Op } from "sequelize";
 
 export const registrarPago = async (negocioId, usuarioId, data) => {
-    let { pedidoId, metodoPagoId, monto, dejarVueltoAFavor = false, saldosAplicados = [], usarSaldoGlobal = false } = data;
+    let { 
+        pedidoId, 
+        metodoPagoId, 
+        monto, 
+        montoRecibido,
+        montoEfectivo,
+        aplicarSaldoAFavor = false, 
+        montoSaldoAFavor = null, 
+        dejarVueltoAFavor = false,
+        facturarAfip = false 
+    } = data;
+
     const t = await sequelize.transaction();
 
     try {
-        if (!metodoPagoId) {
-            const efectivo = await models.MetodoPago.findOne({ where: { negocioId, nombre: { [Op.iLike]: "%efectivo%" }, activo: true }, transaction: t });
-            if (!efectivo) throw new AppError("Debe especificar un método de pago o habilitar 'Efectivo'.", 400);
-            metodoPagoId = efectivo.id;
-        }
-
-        const metodoPago = await models.MetodoPago.findByPk(metodoPagoId, { transaction: t });
-        const esEfectivo = metodoPago && metodoPago.nombre.toLowerCase().includes("efectivo");
-
-        const cajaAbierta = await models.Caja.findOne({ where: { negocioId, usuarioId, estado: "ABIERTA" }, transaction: t });
+        const cajaAbierta = await models.Caja.findOne({ 
+            where: { negocioId, usuarioId, estado: "ABIERTA" }, 
+            transaction: t 
+        });
         if (!cajaAbierta) {
             throw new AppError("No se puede cobrar pedidos sin abrir una caja.", 400);
         }
 
-        const pedido = await models.Pedido.findOne({ where: { id: pedidoId, negocioId }, transaction: t });
+        const pedido = await models.Pedido.findOne({ 
+            where: { id: pedidoId, negocioId }, 
+            lock: t.LOCK.UPDATE,
+            transaction: t 
+        });
         if (!pedido) throw new AppError("Pedido no encontrado.", 404);
         if (pedido.estado === "CANCELADO") throw new AppError("No se puede cobrar un pedido cancelado.", 400);
         if (pedido.cobrado) throw new AppError("Este pedido ya está registrado como pagado.", 400);
 
-        let totalSaldosAplicados = 0;
+        const totalPedido = parseFloat(pedido.total);
+        let montoCreditoAplicado = 0;
+        let aplicacionesCreditoGeneradas = [];
 
-        if (saldosAplicados && saldosAplicados.length > 0) {
-            for (const saldo of saldosAplicados) {
-                const pagoOrigen = await models.Pago.findOne({ 
-                    where: { id: saldo.pagoId, estado: "COMPLETADO" },
-                    include: [{ model: models.Pedido, as: "pedido" }],
+        // 1. Manejo de Saldo a Favor si fue solicitado
+        if (aplicarSaldoAFavor) {
+            const montoDeseado = montoSaldoAFavor ? Math.min(parseFloat(montoSaldoAFavor), totalPedido) : totalPedido;
+            if (montoDeseado > 0) {
+                // Primero creamos el pago temporal para tener el ID, o consumimos después
+                // Para consistencia con FK pagoDestinoId, reservamos el consumo luego de crear el pago o usamos un ID
+            }
+        }
+
+        let montoRestanteAPagar = totalPedido;
+        let creditoConsumoData = null;
+
+        if (aplicarSaldoAFavor) {
+            const maxCredito = montoSaldoAFavor ? Math.min(parseFloat(montoSaldoAFavor), totalPedido) : totalPedido;
+            if (maxCredito > 0) {
+                // Pre-calculamos disponibilidad
+                const creditosDisponibles = await models.CreditoCliente.findAll({
+                    where: {
+                        negocioId,
+                        clienteId: pedido.clienteId,
+                        estado: { [Op.in]: ["DISPONIBLE", "CONSUMIDO_PARCIAL"] },
+                        montoDisponible: { [Op.gt]: 0 }
+                    },
+                    order: [["id", "ASC"]],
+                    lock: t.LOCK.UPDATE,
+                    transaction: t
+                });
+
+                let totalCreditoDisponible = creditosDisponibles.reduce((acc, c) => acc + parseFloat(c.montoDisponible), 0);
+                let aCubrir = Math.min(totalCreditoDisponible, maxCredito);
+                montoCreditoAplicado = Number(aCubrir.toFixed(2));
+                montoRestanteAPagar = Number((totalPedido - montoCreditoAplicado).toFixed(2));
+            }
+        }
+
+        // 2. Validación de fondos físicos (Efectivo / Tarjeta / Transferencia)
+        const efectivoIngresado = parseFloat(montoRecibido ?? montoEfectivo ?? monto ?? 0);
+        let montoEfectivoParaCaja = 0;
+        let vueltoGenerado = 0;
+
+        if (montoRestanteAPagar > 0) {
+            if (!metodoPagoId) {
+                const efectivo = await models.MetodoPago.findOne({ 
+                    where: { negocioId, nombre: { [Op.iLike]: "%efectivo%" }, activo: true }, 
                     transaction: t 
                 });
-                
-                if (!pagoOrigen || parseFloat(pagoOrigen.saldoAFavorDisponible) < parseFloat(saldo.monto)) {
-                    throw new AppError(`Saldo a favor insuficiente en el pago #${saldo.pagoId}.`, 400);
+                if (!efectivo) throw new AppError("Debe especificar un método de pago.", 400);
+                metodoPagoId = efectivo.id;
+            }
+
+            const metodoPago = await models.MetodoPago.findByPk(metodoPagoId, { transaction: t });
+            const esEfectivo = metodoPago && metodoPago.nombre.toLowerCase().includes("efectivo");
+
+            if (efectivoIngresado < montoRestanteAPagar) {
+                throw new AppError(
+                    `El monto ingresado ($${efectivoIngresado}) no cubre el saldo restante del pedido ($${montoRestanteAPagar}).`, 
+                    400
+                );
+            }
+
+            if (efectivoIngresado > montoRestanteAPagar && !esEfectivo) {
+                throw new AppError("Solo se permite abonar de más si el método de pago es Efectivo.", 400);
+            }
+
+            if (efectivoIngresado > montoRestanteAPagar && esEfectivo) {
+                vueltoGenerado = Number((efectivoIngresado - montoRestanteAPagar).toFixed(2));
+                if (dejarVueltoAFavor) {
+                    montoEfectivoParaCaja = efectivoIngresado; // Todo el billete entra a la caja física
+                } else {
+                    montoEfectivoParaCaja = montoRestanteAPagar; // El vuelto se retiró en mano
                 }
-
-                // Descontar saldo disponible
-                const nuevoDisponible = parseFloat(pagoOrigen.saldoAFavorDisponible) - parseFloat(saldo.monto);
-                await pagoOrigen.update({ saldoAFavorDisponible: nuevoDisponible }, { transaction: t });
-
-                // Registrar en Movimientos como historial
-                await models.MovimientoCuentaCorriente.create({
-                    clienteId: pedido.clienteId,
-                    negocioId,
-                    pedidoId: pedido.id,
-                    tipoMovimiento: "CREDITO",
-                    monto: parseFloat(saldo.monto),
-                    saldoResultante: 0, 
-                    comentario: `Saldo a favor aplicado desde el Pedido #${pagoOrigen.pedido?.codigoSeguimiento || pagoOrigen.pedidoId}`
-                }, { transaction: t });
-
-                totalSaldosAplicados += parseFloat(saldo.monto);
-            }
-        }
-
-        const totalPedido = parseFloat(pedido.total);
-        let montoAUsarGlobal = 0;
-
-        if (usarSaldoGlobal) {
-            const clienteParaSaldo = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
-            if (clienteParaSaldo) {
-                const saldoGlobalActual = parseFloat(clienteParaSaldo.saldoCuentaCorriente || 0);
-                if (saldoGlobalActual < 0) {
-                    const saldoGlobalFavor = Math.abs(saldoGlobalActual);
-                    const faltaPagar = totalPedido - totalSaldosAplicados;
-                    
-                    if (faltaPagar > 0) {
-                        montoAUsarGlobal = Math.min(saldoGlobalFavor, faltaPagar);
-                        totalSaldosAplicados += montoAUsarGlobal;
-
-                        // Registrar movimiento del uso del saldo global
-                        await models.MovimientoCuentaCorriente.create({
-                            clienteId: pedido.clienteId,
-                            negocioId,
-                            pedidoId: pedido.id,
-                            tipoMovimiento: "CREDITO",
-                            monto: montoAUsarGlobal,
-                            saldoResultante: 0, 
-                            comentario: `Saldo global a favor aplicado al Pedido #${pedido.codigoSeguimiento}`
-                        }, { transaction: t });
-                    }
-                }
-            }
-        }
-
-        const montoIngresado = parseFloat(monto) || 0;
-        const totalAbonado = montoIngresado + totalSaldosAplicados;
-
-        if (totalAbonado < totalPedido) {
-            throw new AppError("El monto total abonado no cubre el total del pedido.", 400);
-        }
-
-        const vuelto = totalAbonado - totalPedido;
-        let montoAFavorGenerado = 0;
-        let saldoAFavorDisponible = 0;
-        let montoRealCaja = montoIngresado;
-
-        if (vuelto > 0) {
-            if (!esEfectivo) {
-                throw new AppError("Solo se permite pagar de más o dar vuelto si el método de pago es Efectivo.", 400);
-            }
-            if (dejarVueltoAFavor) {
-                montoAFavorGenerado = vuelto;
-                saldoAFavorDisponible = vuelto;
-                // El cajero se queda con toda la plata física ingresada
-                montoRealCaja = montoIngresado;
             } else {
-                // El cajero devuelve el vuelto físico
-                montoRealCaja = montoIngresado - vuelto;
+                montoEfectivoParaCaja = montoRestanteAPagar;
             }
         }
 
+        // 3. Crear Registro de Pago
         const nuevoPago = await models.Pago.create({
             pedidoId,
             registradoPorId: usuarioId,
-            metodoPagoId,
+            metodoPagoId: montoRestanteAPagar > 0 ? metodoPagoId : null,
             cajaId: cajaAbierta.id,
-            monto: montoRealCaja,
-            montoAFavorGenerado,
-            saldoAFavorDisponible,
+            monto: totalPedido,
+            montoEfectivoTarjeta: montoEfectivoParaCaja,
+            montoCreditoAplicado: montoCreditoAplicado,
+            montoAFavorGenerado: (dejarVueltoAFavor && vueltoGenerado > 0) ? vueltoGenerado : 0,
+            saldoAFavorDisponible: 0,
             estado: "COMPLETADO"
         }, { transaction: t });
 
+        // 4. Consumir créditos aplicando el ID del Pago recién creado
+        if (montoCreditoAplicado > 0) {
+            await consumirCreditosFIFO(
+                negocioId,
+                pedido.clienteId,
+                montoCreditoAplicado,
+                nuevoPago.id,
+                pedido.id,
+                t
+            );
+        }
+
+        // 5. Si se dejó vuelto a favor, generar el nuevo CreditoCliente
+        if (dejarVueltoAFavor && vueltoGenerado > 0) {
+            await generarCreditoSobrepago(
+                negocioId,
+                pedido.clienteId,
+                pedido.id,
+                vueltoGenerado,
+                usuarioId,
+                t
+            );
+        }
+
+        // 6. Actualizar Pedido a cobrado
         await pedido.update({ cobrado: true }, { transaction: t });
 
-        // Registrar el pago de caja en MovimientoCuentaCorriente
-        if (montoRealCaja > 0) {
-            await models.MovimientoCuentaCorriente.create({
-                clienteId: pedido.clienteId,
-                negocioId,
-                pedidoId: pedido.id,
-                tipoMovimiento: "CREDITO",
-                monto: montoRealCaja,
-                saldoResultante: 0,
-                comentario: `Cobro en caja para Pedido #${pedido.codigoSeguimiento}`
-            }, { transaction: t });
-        }
-
-        // Recalcular el saldo global real del cliente solo por si acaso lo siguen mirando
-        // Aunque la fuente de la verdad ahora son los pedidos impagos
-        const cliente = await models.Cliente.findOne({ where: { id: pedido.clienteId, negocioId }, transaction: t });
-        if (cliente) {
-            // El saldo bajó por el total del pedido pagado,
-            // ya que los saldos a favor (vouchers) se manejan en una contabilidad separada (Pago.saldoAFavorDisponible).
-            // NOTA: Si se usó el saldo global, esa porción NO debe reducir el saldo (porque consumir saldo global = mover saldo a 0).
-            const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-            const nuevoSaldo = saldoAnterior - (totalPedido - montoAUsarGlobal);
-            await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
-        }
-
+        // 7. Facturación AFIP si corresponde
         try {
             const ConfiguracionNegocio = connectionManager.centralModels.ConfiguracionNegocio;
             const config = await ConfiguracionNegocio.findOne({ where: { negocioId }, transaction: t });
@@ -165,7 +169,7 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
             if (config && config.afipActivo && config.afipCertificado && config.afipLlavePrivada) {
                 if (config.afipModoFacturacion === "AUTOMATICO") {
                     debeFacturar = true;
-                } else if (config.afipModoFacturacion === "MANUAL" && data.facturarAfip === true) {
+                } else if (config.afipModoFacturacion === "MANUAL" && facturarAfip === true) {
                     debeFacturar = true;
                 }
             }
@@ -188,7 +192,9 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
         emitToTenant(negocioId, "pago_registrado", {
             pagoId: nuevoPago.id,
             pedidoId: pedido.id,
-            monto: montoRealCaja
+            monto: totalPedido,
+            montoEfectivoTarjeta: montoEfectivoParaCaja,
+            montoCreditoAplicado
         });
         
         emitToTenant(negocioId, "pedido_actualizado", {
@@ -198,6 +204,170 @@ export const registrarPago = async (negocioId, usuarioId, data) => {
         });
 
         return nuevoPago;
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
+};
+
+/**
+ * Liquidación masiva o individual de pedidos adeudados de un cliente.
+ * Garantiza 1 Pago individual para cada Pedido liquidado bajo una sola transacción ACID.
+ */
+export const cobrarDeudaMasiva = async (negocioId, usuarioId, data) => {
+    const { 
+        clienteId, 
+        pedidosIds, 
+        pedidos, 
+        metodoPagoId, 
+        montoRecibido, 
+        aplicarSaldoAFavor = false, 
+        dejarVueltoAFavor = false 
+    } = data;
+
+    const t = await sequelize.transaction();
+
+    try {
+        const cajaAbierta = await models.Caja.findOne({ 
+            where: { negocioId, usuarioId, estado: "ABIERTA" }, 
+            transaction: t 
+        });
+        if (!cajaAbierta) {
+            throw new AppError("No se puede cobrar deudas sin abrir una caja.", 400);
+        }
+
+        const ids = pedidosIds || (pedidos ? pedidos.map(p => p.pedidoId || p.id) : []);
+        if (!ids || ids.length === 0) {
+            throw new AppError("Debe seleccionar al menos un pedido para cobrar la deuda.", 400);
+        }
+
+        // Bloqueo pesimista sobre todos los pedidos adeudados seleccionados
+        const pedidosDb = await models.Pedido.findAll({
+            where: {
+                id: { [Op.in]: ids },
+                negocioId,
+                clienteId,
+                cobrado: false
+            },
+            order: [["fechaRecepcion", "ASC"]],
+            lock: t.LOCK.UPDATE,
+            transaction: t
+        });
+
+        if (pedidosDb.length !== ids.length) {
+            throw new AppError("Uno o más pedidos seleccionados no existen, ya fueron cobrados o no pertenecen a este cliente.", 400);
+        }
+
+        const deudaTotal = pedidosDb.reduce((acc, p) => acc + parseFloat(p.total), 0);
+
+        // 1. Créditos a favor disponibles si se aplican
+        let creditoRestanteDisponible = 0;
+        if (aplicarSaldoAFavor) {
+            const creditos = await models.CreditoCliente.findAll({
+                where: {
+                    negocioId,
+                    clienteId,
+                    estado: { [Op.in]: ["DISPONIBLE", "CONSUMIDO_PARCIAL"] },
+                    montoDisponible: { [Op.gt]: 0 }
+                },
+                order: [["id", "ASC"]],
+                lock: t.LOCK.UPDATE,
+                transaction: t
+            });
+            creditoRestanteDisponible = creditos.reduce((acc, c) => acc + parseFloat(c.montoDisponible), 0);
+        }
+
+        let efectivoDisponible = parseFloat(montoRecibido || 0);
+        const fondosTotalesDisponibles = Number((creditoRestanteDisponible + efectivoDisponible).toFixed(2));
+
+        if (fondosTotalesDisponibles < deudaTotal) {
+            throw new AppError(
+                `Fondos insuficientes para saldar los pedidos seleccionados. Total requerido: $${deudaTotal.toFixed(2)}, Fondos provistos: $${fondosTotalesDisponibles.toFixed(2)}.`,
+                400
+            );
+        }
+
+        const pagosCreados = [];
+
+        // 2. Liquidación pedido a pedido (1 Pago -> 1 Pedido)
+        for (const pedido of pedidosDb) {
+            const totalPedido = parseFloat(pedido.total);
+            let creditoParaEstePedido = 0;
+            let efectivoParaEstePedido = 0;
+
+            if (creditoRestanteDisponible > 0) {
+                creditoParaEstePedido = Math.min(creditoRestanteDisponible, totalPedido);
+                creditoRestanteDisponible = Number((creditoRestanteDisponible - creditoParaEstePedido).toFixed(2));
+            }
+
+            const remanentePedido = Number((totalPedido - creditoParaEstePedido).toFixed(2));
+            if (remanentePedido > 0) {
+                efectivoParaEstePedido = remanentePedido;
+                efectivoDisponible = Number((efectivoDisponible - efectivoParaEstePedido).toFixed(2));
+            }
+
+            const nuevoPago = await models.Pago.create({
+                pedidoId: pedido.id,
+                registradoPorId: usuarioId,
+                metodoPagoId: efectivoParaEstePedido > 0 ? metodoPagoId : null,
+                cajaId: cajaAbierta.id,
+                monto: totalPedido,
+                montoEfectivoTarjeta: efectivoParaEstePedido,
+                montoCreditoAplicado: creditoParaEstePedido,
+                montoAFavorGenerado: 0,
+                saldoAFavorDisponible: 0,
+                estado: "COMPLETADO"
+            }, { transaction: t });
+
+            if (creditoParaEstePedido > 0) {
+                await consumirCreditosFIFO(
+                    negocioId,
+                    clienteId,
+                    creditoParaEstePedido,
+                    nuevoPago.id,
+                    pedido.id,
+                    t
+                );
+            }
+
+            await pedido.update({ cobrado: true }, { transaction: t });
+            pagosCreados.push(nuevoPago);
+        }
+
+        // 3. Sobrante de efectivo si se solicitó dejar como saldo a favor
+        if (dejarVueltoAFavor && efectivoDisponible > 0) {
+            await generarCreditoSobrepago(
+                negocioId,
+                clienteId,
+                pedidosDb[0].id,
+                efectivoDisponible,
+                usuarioId,
+                t
+            );
+        }
+
+        await t.commit();
+
+        // Emisión de WebSockets para cada pedido liquidado
+        pagosCreados.forEach(p => {
+            emitToTenant(negocioId, "pago_registrado", {
+                pagoId: p.id,
+                pedidoId: p.pedidoId,
+                monto: p.monto
+            });
+            emitToTenant(negocioId, "pedido_actualizado", {
+                action: "UPDATE_STATUS",
+                pedidoId: p.pedidoId,
+                cobrado: true
+            });
+        });
+
+        return {
+            totalLiquidado: deudaTotal,
+            pedidosSaldadosCount: pedidosDb.length,
+            pagos: pagosCreados,
+            vueltoGeneradoAFavor: (dejarVueltoAFavor && efectivoDisponible > 0) ? efectivoDisponible : 0
+        };
     } catch (error) {
         await t.rollback();
         throw error;
@@ -221,70 +391,19 @@ export const anularPago = async (negocioId, usuarioId, pagoId) => {
             throw new AppError("El pago ya está anulado.", 400);
         }
 
-        const cliente = await models.Cliente.findOne({ where: { id: pago.pedido.clienteId, negocioId }, transaction: t });
-        if (cliente) {
-            const saldoAnterior = parseFloat(cliente.saldoCuentaCorriente || 0);
-            const nuevoSaldo = saldoAnterior + parseFloat(pago.monto);
-
-            await models.MovimientoCuentaCorriente.create({
-                clienteId: cliente.id,
-                negocioId,
-                pedidoId: pago.pedido.id,
-                tipoMovimiento: "DEBITO",
-                monto: parseFloat(pago.monto),
-                saldoResultante: nuevoSaldo,
-                comentario: `Anulación del Pago #${pago.id} para Pedido #${pago.pedido.codigoSeguimiento}`
-            }, { transaction: t });
-
-            await cliente.update({ saldoCuentaCorriente: nuevoSaldo }, { transaction: t });
-        }
-
         await pago.update({ estado: "ANULADO" }, { transaction: t });
+        await pago.pedido.update({ cobrado: false }, { transaction: t });
 
         await t.commit();
 
-        emitToTenant(negocioId, "pago_anulado", {
+        emitToTenant(negocioId, "pago_actualizado", {
             pagoId: pago.id,
-            pedidoId: pago.pedido.id
+            estado: "ANULADO"
         });
 
-        // Intentar cancelar el pedido usando la lógica estándar, pero no fallar si no se puede (ya que el pago ya se anuló)
-        try {
-            const { cambiarEstadoPedido } = await import("../pedidos/pedido.service.js");
-            // Se usa "ADMIN" como rol para forzar la cancelación aunque el pedido ya esté en estados avanzados, 
-            // ya que la anulación del pago es una operación de caja fuerte.
-            await cambiarEstadoPedido(negocioId, usuarioId, "ADMIN", pago.pedido.id, "CANCELADO", "Anulación del pago asociado", "Anulación de pago", "El pago asociado a este pedido fue anulado desde caja.");
-        } catch (pedidoError) {
-            console.error("⚠️ El pago se anuló pero falló la cancelación del pedido asociado:", pedidoError.message);
-        }
-
-        return true;
+        return pago;
     } catch (error) {
-        if (!t.finished) await t.rollback();
+        await t.rollback();
         throw error;
     }
-};
-
-export const obtenerSaldosAFavor = async (negocioId, clienteId) => {
-    const pagos = await models.Pago.findAll({
-        where: {
-            saldoAFavorDisponible: { [Op.gt]: 0 },
-            estado: 'COMPLETADO'
-        },
-        include: [{
-            model: models.Pedido,
-            as: 'pedido',
-            where: { clienteId, negocioId },
-            attributes: ['id', 'codigoSeguimiento', 'createdAt']
-        }],
-        order: [['createdAt', 'ASC']]
-    });
-
-    return pagos.map(p => ({
-        pagoId: p.id,
-        pedidoId: p.pedido.id,
-        codigoSeguimiento: p.pedido.codigoSeguimiento,
-        fechaOriginal: p.createdAt,
-        montoDisponible: parseFloat(p.saldoAFavorDisponible)
-    }));
 };

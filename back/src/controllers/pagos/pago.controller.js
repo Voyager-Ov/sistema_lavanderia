@@ -66,7 +66,8 @@ export const facturarPagoRetroactivo = async (req, res, next) => {
 
 export const obtenerSaldosAFavor = async (req, res, next) => {
     try {
-        const saldos = await pagoService.obtenerSaldosAFavor(req.user.negocioId, req.params.clienteId);
+        const { obtenerCreditosDisponibles } = await import("../clientes/cliente-cuenta.service.js");
+        const saldos = await obtenerCreditosDisponibles(req.user.negocioId, req.params.clienteId);
         return successResponse(res, 200, "Saldos a favor obtenidos", saldos);
     } catch (error) {
         next(error);

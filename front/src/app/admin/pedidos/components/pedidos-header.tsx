@@ -12,6 +12,7 @@ interface PedidosHeaderProps {
   setFechaFin: (val: string) => void
   setQuickFilter: (type: "hoy" | "semana" | "mes" | "anio") => void
   onClearFilters: () => void
+  hideNewOrderButton?: boolean
 }
 
 export function PedidosHeader({
@@ -20,7 +21,8 @@ export function PedidosHeader({
   fechaFin,
   setFechaFin,
   setQuickFilter,
-  onClearFilters
+  onClearFilters,
+  hideNewOrderButton
 }: PedidosHeaderProps) {
   const router = useRouter()
 
@@ -96,9 +98,11 @@ export function PedidosHeader({
           </PopoverContent>
         </Popover>
 
-        <Button onClick={() => router.push('/admin/pedidos/nuevo')} className="rounded-full h-12 px-6 shadow-sm hover:shadow-md transition-all font-bold gap-2">
-          <span className="text-lg leading-none">+</span> Crear Nuevo Pedido
-        </Button>
+        {!hideNewOrderButton && (
+          <Button onClick={() => router.push('/admin/pedidos/nuevo')} className="rounded-full h-12 px-6 shadow-sm hover:shadow-md transition-all font-bold gap-2">
+            <span className="text-lg leading-none">+</span> Crear Nuevo Pedido
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -1,0 +1,170 @@
+[
+  {
+    "id": "FASE-1-MODELS",
+    "title": "Modelos de Base de Datos y Mapeo Relacional",
+    "status": "COMPLETED",
+    "tasks": [
+      {
+        "id": "TASK-1.1",
+        "file": "back/src/models/CreditoCliente.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Definir modelo CreditoCliente para trazabilidad de saldo a favor"
+      },
+      {
+        "id": "TASK-1.2",
+        "file": "back/src/models/AplicacionCredito.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Definir modelo AplicacionCredito como tabla inmutable de auditoría FIFO"
+      },
+      {
+        "id": "TASK-1.3",
+        "file": "back/src/models/Pago.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Agregar campos montoEfectivoTarjeta, montoCreditoAplicado y asociaciones"
+      },
+      {
+        "id": "TASK-1.4",
+        "file": "back/src/models/Cliente.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Asociar CreditoCliente y remover saldoCuentaCorriente"
+      },
+      {
+        "id": "TASK-1.5",
+        "file": "back/src/models/Pedido.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Asociar creditosGenerados y aplicacionesCreditoRecibidas"
+      },
+      {
+        "id": "TASK-1.6",
+        "file": "back/src/models/connectionManager.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Registrar CreditoCliente y AplicacionCredito en el inicializador multi-tenant"
+      }
+    ]
+  },
+  {
+    "id": "FASE-2-SERVICES",
+    "title": "Servicios Core y Lógica Transaccional ACID",
+    "status": "COMPLETED",
+    "tasks": [
+      {
+        "id": "TASK-2.1",
+        "file": "back/src/services/clientes/credito.service.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Implementar consumirCreditosFIFO con SELECT FOR UPDATE y generadores de créditos"
+      },
+      {
+        "id": "TASK-2.2",
+        "file": "back/src/services/clientes/cliente-cuenta.service.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Implementar obtenerEstadoCuenta y obtenerMovimientosCuenta en vivo"
+      },
+      {
+        "id": "TASK-2.3",
+        "file": "back/src/services/pagos/pago-core.service.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Integrar cobro de pedidos con saldo a favor y cobrarDeudaMasiva con 1 pago por pedido"
+      },
+      {
+        "id": "TASK-2.4",
+        "file": "back/src/services/cajas/caja-core.service.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Ajustar calcularMetricasCaja para discriminar dinero físico de créditos aplicados"
+      },
+      {
+        "id": "TASK-2.5",
+        "file": "back/src/services/pedidos/pedido-core.service.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Integrar política de reintegro en cancelaciones (SALDO_A_FAVOR vs DEVOLVER)"
+      }
+    ]
+  },
+  {
+    "id": "FASE-3-CONTROLLERS-ROUTES",
+    "title": "Controladores, Rutas y Validadores Express",
+    "status": "COMPLETED",
+    "tasks": [
+      {
+        "id": "TASK-3.1",
+        "file": "back/src/validators/clientes/cliente-cuenta.validator.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Validadores para cobrarDeuda, ajusteManualCredito y filtros de movimientos"
+      },
+      {
+        "id": "TASK-3.2",
+        "file": "back/src/controllers/clientes/cliente-cuenta.controller.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Controladores REST para estado de cuenta, movimientos, cobro de deuda y créditos"
+      },
+      {
+        "id": "TASK-3.3",
+        "file": "back/src/routes/clientes/cliente-cuenta.routes.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Definición de rutas /api/clientes/:id/cuenta-corriente/*"
+      },
+      {
+        "id": "TASK-3.4",
+        "file": "back/src/routes/clientes/cliente.routes.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Montar submódulo de cuenta corriente y limpiar endpoints obsoletos"
+      }
+    ]
+  },
+  {
+    "id": "FASE-4-ADAPTATIONS",
+    "title": "Adaptación de Pedidos y Pagos",
+    "status": "COMPLETED",
+    "tasks": [
+      {
+        "id": "TASK-4.1",
+        "file": "back/src/validators/pagos/pago.validator.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Permitir pagos con saldo a favor y vuelto como crédito"
+      },
+      {
+        "id": "TASK-4.2",
+        "file": "back/src/controllers/pagos/pago.controller.js",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Actualizar handler obtenerSaldosAFavor delegando al nuevo servicio"
+      }
+    ]
+  },
+  {
+    "id": "FASE-5-DOCS-TESTS",
+    "title": "Documentación y Suite de Pruebas",
+    "status": "COMPLETED",
+    "tasks": [
+      {
+        "id": "TASK-5.1",
+        "file": "back/docs/endpoints_y_reglas/02-clientes.md",
+        "action": "MODIFY",
+        "status": "COMPLETED",
+        "description": "Documentación detallada de endpoints de cuenta corriente y reglas de negocio"
+      },
+      {
+        "id": "TASK-5.2",
+        "file": "back/src/tests/cuenta-corriente.test.js",
+        "action": "CREATE",
+        "status": "COMPLETED",
+        "description": "Suite de tests unitarios y de integración con 8 escenarios completos"
+      }
+    ]
+  }
+]

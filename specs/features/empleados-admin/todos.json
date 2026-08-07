@@ -1,0 +1,114 @@
+[
+  {
+    "id": "T1",
+    "title": "Backend: Implementar servicio para métricas de usuario",
+    "owner_role": "Backend Engineer",
+    "status": "completed",
+    "parallelizable": true,
+    "depends_on": [],
+    "outputs": [
+      "back/src/services/usuarios/usuario.service.js"
+    ],
+    "exit_criteria": "Método obtenerMetricasUsuario creado que agrupa Cajas, Pagos y Gastos de un usuario para un negocioId."
+  },
+  {
+    "id": "T2",
+    "title": "Backend: Crear endpoint para métricas de empleado",
+    "owner_role": "Backend Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["T1"],
+    "outputs": [
+      "back/src/controllers/usuarios/usuario.controller.js",
+      "back/src/routes/usuarios/usuario.routes.js"
+    ],
+    "exit_criteria": "GET /api/usuarios/:id/metricas devuelve la data estructurada y requiere token y rol ADMIN/SUPERADMIN."
+  },
+  {
+    "id": "T3",
+    "title": "Backend: Revisar creación de usuario con contraseña",
+    "owner_role": "Backend Engineer",
+    "status": "completed",
+    "parallelizable": true,
+    "depends_on": [],
+    "outputs": [
+      "back/src/services/usuarios/usuario.service.js"
+    ],
+    "exit_criteria": "POST /api/usuarios garantiza que si se envía una contraseña, se hashee y se guarde correctamente en la BD."
+  },
+  {
+    "id": "T4",
+    "title": "Frontend: Crear hooks y tipos de Empleados",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": true,
+    "depends_on": [],
+    "outputs": [
+      "front/src/app/admin/empleados/hooks/useEmpleadosData.ts",
+      "front/src/app/admin/empleados/hooks/useEmpleadosModals.ts"
+    ],
+    "exit_criteria": "Hooks creados y testeados mockeando o consumiendo la API de listar y editar."
+  },
+  {
+    "id": "T5",
+    "title": "Frontend: Componentes Header y KPIs de Empleados",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": true,
+    "depends_on": [],
+    "outputs": [
+      "front/src/app/admin/empleados/components/empleados-header.tsx",
+      "front/src/app/admin/empleados/components/empleados-kpis.tsx"
+    ],
+    "exit_criteria": "Componentes de vista base creados con diseño Tailwind/Lucide."
+  },
+  {
+    "id": "T6",
+    "title": "Frontend: Componentes Tabla y Columnas de Empleados",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": true,
+    "depends_on": ["T4"],
+    "outputs": [
+      "front/src/app/admin/empleados/components/empleados-table.tsx",
+      "front/src/app/admin/empleados/components/empleado-columns.tsx"
+    ],
+    "exit_criteria": "Tabla lista con acciones de Editar, Desactivar y Ver Detalles."
+  },
+  {
+    "id": "T7",
+    "title": "Frontend: Modales (Crear/Editar) usando ResponsiveSheet",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["T4"],
+    "outputs": [
+      "front/src/app/admin/empleados/components/empleados-modals.tsx"
+    ],
+    "exit_criteria": "Formularios de Crear (con email y pass) y Editar funcionando con react-hook-form y ResponsiveSheet."
+  },
+  {
+    "id": "T8",
+    "title": "Frontend: Ensamblar página principal de Empleados",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["T5", "T6", "T7"],
+    "outputs": [
+      "front/src/app/admin/empleados/page.tsx"
+    ],
+    "exit_criteria": "Vista completa en /admin/empleados renderiza correctamente, incluye animaciones GSAP y los modales funcionan."
+  },
+  {
+    "id": "T9",
+    "title": "Frontend: Página de Detalles del Empleado (Métricas)",
+    "owner_role": "Frontend Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["T2", "T8"],
+    "outputs": [
+      "front/src/app/admin/empleados/[id]/page.tsx"
+    ],
+    "exit_criteria": "La ruta dinámica consume el nuevo endpoint de métricas y renderiza las tarjetas de KPIs y el historial de Cajas."
+  }
+]

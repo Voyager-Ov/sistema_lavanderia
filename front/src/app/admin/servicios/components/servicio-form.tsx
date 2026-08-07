@@ -38,6 +38,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
     nombre: "",
     descripcion: "",
     precioActual: "",
+    costoEstimado: "",
     tiempoEstimadoMinutos: "",
     categoriaId: "",
     disponible: true,
@@ -82,6 +83,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
             nombre: s.nombre || "",
             descripcion: s.descripcion || "",
             precioActual: s.precioActual?.toString() || "",
+            costoEstimado: s.costoEstimado !== null && s.costoEstimado !== undefined ? s.costoEstimado.toString() : "",
             tiempoEstimadoMinutos: s.tiempoEstimadoMinutos?.toString() || "",
             categoriaId: s.categoria?.id?.toString() || "",
             disponible: s.disponible,
@@ -129,6 +131,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
       payload.append("nombre", formData.nombre)
       payload.append("descripcion", formData.descripcion)
       payload.append("precioActual", formData.precioActual.toString())
+      payload.append("costoEstimado", formData.costoEstimado || "0")
       payload.append("categoriaId", formData.categoriaId.toString())
       payload.append("disponible", formData.disponible.toString())
       if (formData.tiempoEstimadoMinutos) {
@@ -333,16 +336,16 @@ export function ServicioForm({ id }: ServicioFormProps) {
           {/* Right column - pricing & settings */}
           <div className="space-y-4">
 
-            {/* Precio y tiempo */}
+            {/* Precio, Costo y tiempo */}
             <div className="form-section bg-white rounded-2xl border border-gray-100">
               <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-gray-400" />
-                <span className="font-bold text-sm text-gray-700">Precio y Tiempo</span>
+                <span className="font-bold text-sm text-gray-700">Precios y Rentabilidad</span>
               </div>
               <div className="p-5 space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="precio" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    Precio Actual ($) *
+                    Precio de Venta ($) *
                   </Label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
@@ -360,6 +363,50 @@ export function ServicioForm({ id }: ServicioFormProps) {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label htmlFor="costoEstimado" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    Costo Estimado ($)
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                    <Input
+                      id="costoEstimado"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.costoEstimado || ""}
+                      onChange={(e) => setFormData(p => ({ ...p, costoEstimado: e.target.value }))}
+                      placeholder="0.00"
+                      className="h-11 rounded-xl border border-gray-200 pl-7 font-bold text-gray-900 bg-gray-50/50"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-medium">Costo de insumos, jabón, luz, etc. por unidad</p>
+                </div>
+
+                {/* Previsualización del Margen */}
+                {parseFloat(formData.precioActual) > 0 && (
+                  <div className={`p-3.5 rounded-xl border flex flex-col gap-1 transition-all ${
+                    (parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) >= 0
+                      ? "bg-emerald-50/60 border-emerald-100 text-emerald-900"
+                      : "bg-red-50/60 border-red-100 text-red-900"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-600">Margen Bruto Est.</span>
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-md ${
+                        (parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) >= 0
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-red-100 text-red-700"
+                      }`}>
+                        {Math.round(((parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) / parseFloat(formData.precioActual)) * 100)}%
+                      </span>
+                    </div>
+                    <p className="text-base font-black">
+                      ${(parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)).toLocaleString("es-AR")}
+                      <span className="text-xs font-normal text-gray-500 ml-1.5">por servicio</span>
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1.5 pt-1">
                   <Label htmlFor="tiempo" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                     Tiempo Estimado
                   </Label>
@@ -433,3 +480,5 @@ export function ServicioForm({ id }: ServicioFormProps) {
     </div>
   )
 }
+
+export default ServicioForm

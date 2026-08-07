@@ -1,0 +1,115 @@
+{
+  "feature": "Admin Portal - Employees View",
+  "architecture": {
+    "moduleBoundaries": {
+      "frontend": {
+        "presentation": "Next.js App Router (React Server Components + Client Components). Focus on distinctive frontend-design with polished UI (Tailwind CSS, Lucide Icons). Animations via GSAP.",
+        "dataFetching": "Custom fetch hooks mapping to existing API patterns (`useEmpleadosData`).",
+        "stateManagement": "React state (`useState`) for local component state, and `useEmpleadosModals` hook to manage the state of the ResponsiveSheets.",
+        "routing": {
+          "/admin/empleados": "List view of employees with data table, kpis, and header.",
+          "/admin/empleados/[id]": "Detailed view of an employee's metrics and history."
+        }
+      },
+      "backend": {
+        "controllers": "Controllers to handle HTTP requests/responses (`usuario.controller.js`).",
+        "services": "Business logic separated into `usuario.service.js`. Aggregation of metrics will happen here.",
+        "models": "Sequelize ORM defining schemas and associations (`Usuario.js`, `Caja.js`, `Pago.js`, `Gasto.js`, `Pedido.js`).",
+        "middlewares": "Auth (`verificarToken`), Subscription (`verificarSuscripcionActiva`), Role (`verificarRol`)."
+      }
+    },
+    "reusableComponents": {
+      "Overlays": "`ResponsiveSheet` from `src/shared/ui/overlays/responsive-sheet.tsx` for forms. Always relying on its automatic responsive behavior (bottom sheet on mobile, side sheet on desktop) without overriding widths.",
+      "Data Display": "Dashboard-style KPI cards (reusing patterns from `/admin/dashboard` or `/admin/clientes`) to display total sales, expenses, and active boxes in the detail view.",
+      "Tables": "Reusing the application's standard DataTable component structure (as seen in `ClientesTable` and `ServiciosTable`) with sortable headers, pagination, and a global search bar.",
+      "Forms": "Standardized inputs, selects, and buttons from the `src/shared/ui` library, integrated with `react-hook-form`."
+    },
+    "dataContracts": {
+      "EmployeeResponse": {
+        "id": "number",
+        "nombre": "string",
+        "email": "string",
+        "rol": "EMPLEADO",
+        "sueldoBase": "number",
+        "horasSemanalesObjetivo": "number",
+        "activo": "boolean",
+        "createdAt": "date"
+      },
+      "EmployeeMetricsResponse": {
+        "cajasOperadas": [
+          {
+            "id": "number",
+            "fechaApertura": "date",
+            "fechaCierre": "date | null",
+            "montoApertura": "number",
+            "montoEsperado": "number | null",
+            "montoCierre": "number | null",
+            "diferencia": "number | null",
+            "estado": "string"
+          }
+        ],
+        "ventasTotales": {
+          "cantidad": "number",
+          "monto": "number"
+        },
+        "gastosRegistrados": {
+          "cantidad": "number",
+          "monto": "number"
+        }
+      },
+      "CreateEmployeeRequest": {
+        "nombre": "string",
+        "email": "string",
+        "password": "string (min 6 chars)",
+        "sueldoBase": "number (optional)",
+        "horasSemanalesObjetivo": "number (optional, default 40)",
+        "rol": "EMPLEADO"
+      }
+    },
+    "dependencyAndLibraryDecisions": {
+      "Form Handling": "React Hook Form + Zod for robust client-side validation and accessible forms.",
+      "Animations": "GSAP (`useGSAP`) for table row staggering and metric card reveals.",
+      "Icons": "Lucide-react for consistent vector graphics."
+    },
+    "failureModesAndEdgeHandling": {
+      "Network Errors": "Show non-blocking toast notifications for API failures. Fallback UI for metric cards when fetch fails.",
+      "Data Constraints": "Handling of unique constraint on `email`. The API must return a 400 error if an email is already registered, and the frontend form must display this field-level error to the user.",
+      "Zero States": "If an employee has never opened a `Caja` or registered a payment, the UI must show an empty state illustration/message.",
+      "Unauthorized Access": "Backend must rigorously verify `negocioId`. An admin attempting to fetch `/api/usuarios/:id/metricas` for a user of another business must receive a 403 Forbidden."
+    },
+    "testingStrategyAndQualityGates": {
+      "Backend": "Unit tests for the new `obtenerMetricasUsuario` service method.",
+      "Frontend": "Verify that `ResponsiveSheet` changes layout correctly between mobile and desktop without custom max-width classes breaking it. Ensure navigation to the detail view correctly loads data."
+    },
+    "phasedImplementationPlan": [
+      {
+        "phase": 1,
+        "name": "Backend: Domain Layer & API",
+        "tasks": [
+          "Validate existing `POST /api/usuarios` handles password hashing properly.",
+          "Implement `obtenerMetricasUsuario` in `usuario.service.js` aggregating `Caja`, `Pago`, and `Gasto` joining with `usuarioId = :id`.",
+          "Expose `GET /api/usuarios/:id/metricas` in `usuario.routes.js`."
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Frontend: List View & Modals",
+        "tasks": [
+          "Create custom hooks `useEmpleadosData.ts` and `useEmpleadosModals.ts`.",
+          "Implement `empleados-table.tsx` with columns.",
+          "Implement `empleados-modals.tsx` encapsulating the `ResponsiveSheet` for Create and Edit.",
+          "Assemble `src/app/admin/empleados/page.tsx` integrating GSAP stagger animations."
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Frontend: Detail Profile View",
+        "tasks": [
+          "Create page `src/app/admin/empleados/[id]/page.tsx`.",
+          "Implement fetching logic for metrics.",
+          "Design UI reusing Dashboard KPI cards for summary metrics and standard DataTable for the `Cajas` history."
+        ]
+      }
+    ]
+  }
+}

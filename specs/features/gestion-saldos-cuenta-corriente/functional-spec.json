@@ -1,0 +1,342 @@
+{
+  "meta": {
+    "feature_id": "gestion-saldos-cuenta-corriente",
+    "title": "Gestión de Cuenta Corriente, Saldos por Pedido, Créditos y Deudas Entregadas",
+    "document_type": "functional_specification",
+    "version": "2.0.0",
+    "status": "pending_approval",
+    "created_at": "2026-08-03T20:30:00.000Z",
+    "updated_at": "2026-08-03T20:45:00.000Z",
+    "author": "Antigravity AI"
+  },
+  "domain_definitions": {
+    "origen_de_los_saldos": {
+      "principio_fundamental": "Todo saldo a favor o saldo en contra (deuda) de un cliente tiene su origen y trazabilidad inequívoca en un PEDIDO específico.",
+      "saldo_en_contra_deuda": {
+        "definicion": "Solo se considera deuda exigible (saldo en contra) a aquel pedido que ha sido ENTREGADO al cliente sin haber sido cobrado (cobrado = false).",
+        "regla_de_estado": "Un pedido en curso (PENDIENTE, EN_PROCESO o LISTO_PARA_RETIRAR) NO representa deuda en cuenta corriente; es un servicio en elaboración. Solo al pasar a ENTREGADO sin cobro se devenga formalmente como deuda del cliente."
+      },
+      "saldo_a_favor_credito": {
+        "definicion": "Crédito a favor del cliente que se genera exclusivamente por eventos de pedidos:",
+        "origenes": [
+          "Vuelto dejado a favor en un cobro en efectivo de un Pedido (Sobrepago).",
+          "Cancelación de un Pedido que ya estaba cobrado, cuando el cliente opta por 'Dejar como saldo a favor' en lugar de reintegro en efectivo.",
+          "Ajuste manual extraordinario autorizado (ej. indemnización por prenda dañada en un Pedido)."
+        ],
+        "ciclo_de_vida_credito": {
+          "DISPONIBLE": "Crédito generado con monto remanente disponible para ser aplicado a nuevos pedidos.",
+          "CONSUMIDO_PARCIAL": "El crédito fue utilizado parcialmente en uno o más pedidos, restando saldo disponible.",
+          "CONSUMIDO_TOTAL": "El crédito fue consumido en su totalidad (montoDisponible = 0), quedando marcado como agotado para impedir doble gasto."
+        }
+      }
+    },
+    "aplicacion_de_credito": {
+      "definicion": "Vínculo explícito que asocia el saldo a favor generado en un Pedido Origen con el Pedido Destino que lo consume.",
+      "trazabilidad": "Permite responder exactamente: 'El Pedido #105 de $5.000 se pagó con $2.000 de saldo a favor del Pedido #98 y $3.000 en efectivo en caja'."
+    },
+    "registro_de_cobros_por_pedido": {
+      "definicion": "Cada pedido tiene su propio registro formal de cobro (Pago). Para liquidar deudas de pedidos entregados anteriores, se registra el cobro imputado directamente a cada pedido pendiente, asociándolo a la Caja abierta del turno."
+    }
+  },
+  "scope": {
+    "in_scope": [
+      "Modelo contable y de cuenta corriente basado en PEDIDOS como fuente de origen de créditos y deudas.",
+      "Regla de devengamiento de deuda: un pedido solo constituye saldo en contra cuando su estado es ENTREGADO y permanece cobrado = false.",
+      "Separación clara en pantalla de cobro: distinción nítida entre (a) Total a pagar del pedido actual, (b) Saldos a favor disponibles de pedidos anteriores y (c) Deudas pendientes de pedidos anteriores ya entregados.",
+      "Trazabilidad y consumo de saldos a favor: cada crédito registra su pedido de origen, monto original, monto disponible y los pedidos destino donde fue aplicado, marcándose como consumido.",
+      "Cobro de pedidos impagos anteriores (liquidación de deudas entregadas): registro de cobro formal vinculado a la Caja abierta y al pedido deudor específico.",
+      "Tratamiento estricto de cancelaciones de pedidos cobrados: (a) Reintegro en efectivo/digital como Gasto en Caja (resta de ingresos del arqueo de caja) o (b) Emisión de un nuevo saldo a favor vinculado al pedido cancelado.",
+      "Auditoría y extracto de cuenta para el cliente: visualización clara de cada pedido impago, cada crédito disponible y cada movimiento histórico.",
+      "Integridad y aislamiento ACID con bloqueo pesimista por fila (SELECT ... FOR UPDATE) para evitar doble consumo concurrente de créditos."
+    ],
+    "out_of_scope": [
+      "Facturación electrónica AFIP/ARCA (se mantiene en su capa desacoplada).",
+      "Pasarelas externas automatizadas online en este alcance."
+    ]
+  },
+  "business_rules": [
+    {
+      "id": "BR-01",
+      "nombre": "Origen de Saldos en Pedidos Específicos",
+      "regla": "Todo saldo a favor (crédito) y todo saldo en contra (deuda) debe estar asociado a un pedidoId de origen. No existen saldos abstractos sin respaldo de pedido o ajuste justificado."
+    },
+    {
+      "id": "BR-02",
+      "nombre": "Momento de Devengamiento de Deuda (Estado ENTREGADO)",
+      "regla": "Un pedido nuevo en estado PENDIENTE, EN_PROCESO o LISTO_PARA_RETIRAR NO suma a la deuda exigible en cuenta corriente del cliente. Solo cuando el pedido pasa a estado ENTREGADO y cobrado = false, se computa formalmente como Saldo en Contra / Deuda del cliente."
+    },
+    {
+      "id": "BR-03",
+      "nombre": "Cobro por Adelantado vs Cobro al Retirar",
+      "regla": "Un pedido puede ser cobrado en cualquier momento de su ciclo de vida (al crearlo, en proceso, listo o al entregarlo). Al cobrarse, se genera el registro de Pago asociado a la Caja abierta y pasa a cobrado = true. Si se entrega estando cobrado, no genera ninguna deuda."
+    },
+    {
+      "id": "BR-04",
+      "nombre": "Generación de Saldo a Favor por Sobrepago (Vuelto en Efectivo)",
+      "regla": "Si el cliente abona en efectivo un monto superior al total del pedido ($E > $T) y elige 'dejar vuelto a favor', la Caja abierta recibe los $E íntegros en efectivo, el pedido queda cobrado = true, y se crea un registro de Crédito a Favor por $V = $E - $T asociado al pedido actual con estado DISPONIBLE."
+    },
+    {
+      "id": "BR-05",
+      "nombre": "Consumo y Bloqueo de Saldos a Favor (Anti Doble Gasto)",
+      "regla": "Al cobrar un nuevo pedido aplicando saldos a favor de pedidos anteriores: (a) Se descuenta el monto aplicado del crédito de origen (montoDisponible -= montoAplicado). (b) Si montoDisponible llega a 0, el crédito pasa a CONSUMIDO_TOTAL. (c) Se registra la aplicación relacionando el crédito origen con el pedido destino. (d) Si queda un saldo remanente a pagar en dinero real, este debe abonarse con un método de pago y registrarse en Caja."
+    },
+    {
+      "id": "BR-06",
+      "nombre": "Claridad y No Duplicidad en la Pantalla de Cobro",
+      "regla": "Al abrir la pantalla para cobrar un pedido #A, la interfaz y el backend deben presentar de forma desacoplada y transparente: 1) Monto del Pedido Actual #A. 2) Lista de Saldos a Favor disponibles con el código de los pedidos que los originaron. 3) Lista de Pedidos Anteriores Entregados con Deuda pendiente. Bajo ninguna circunstancia el monto del pedido actual debe sumarse erróneamente a la deuda anterior."
+    },
+    {
+      "id": "BR-07",
+      "nombre": "Cobro Individualizado de Deudas Anteriores",
+      "regla": "Para cancelar una deuda de un pedido anterior entregado #B, se debe registrar una operación de cobro asociada a dicho Pedido #B en la Caja abierta del usuario. Esto garantiza que cada pedido tenga su Pago formal y no queden pedidos 'eternamente impagos' en la base de datos."
+    },
+    {
+      "id": "BR-08",
+      "nombre": "Cancelación de Pedido Cobrado y Ajuste de Ingresos de Caja",
+      "regla": "Si se cancela un pedido que ya tenía un cobro registrado: (a) Opción 'DEVOLVER_DINERO': Requiere Caja abierta. Se registra un Gasto / Reembolso en la caja del turno por el monto devuelto, restando del total de ingresos/efectivo de la caja actual, y el pago original queda marcado como REEMBOLSADO. (b) Opción 'SALDO_A_FAVOR': El dinero no sale de la caja; se genera un Crédito a Favor disponible a nombre del cliente con origen en el pedido cancelado."
+    },
+    {
+      "id": "BR-09",
+      "nombre": "Cancelación de Pedido No Cobrado",
+      "regla": "Si se cancela un pedido que no había sido cobrado, el pedido pasa a CANCELADO y no genera ningún saldo a favor ni deuda en la cuenta corriente del cliente."
+    },
+    {
+      "id": "BR-10",
+      "nombre": "Aislamiento Transaccional ACID en Consumo de Saldos",
+      "regla": "Toda lectura y modificación de créditos disponibles o cobros de pedidos debe realizarse dentro de una transacción con bloqueo pesimista (FOR UPDATE) sobre el registro del cliente y de los créditos aplicados para garantizar consistencia absoluta en concurrencia."
+    }
+  ],
+  "use_cases": [
+    {
+      "id": "UC-01",
+      "title": "Crear pedido y mantener estado de servicio (Sin generar deuda prematura)",
+      "actor": "Empleado / Admin",
+      "preconditions": [
+        "Cliente registrado en el negocio"
+      ],
+      "main_flow": [
+        "El operador ingresa las prendas y crea el pedido #P1 por $5.000.",
+        "El pedido se guarda con estado PENDIENTE y cobrado = false.",
+        "El saldo en contra del cliente se mantiene en $0 (o el que tuviera previamente), ya que el pedido aún no fue entregado.",
+        "El sistema muestra el pedido en la lista de pedidos activos."
+      ]
+    },
+    {
+      "id": "UC-02",
+      "title": "Cobrar pedido por adelantado o al estar listo",
+      "actor": "Empleado / Admin con Caja abierta",
+      "preconditions": [
+        "Caja del usuario ABIERTA",
+        "Pedido #P1 en estado PENDIENTE, EN_PROCESO o LISTO_PARA_RETIRAR no cobrado"
+      ],
+      "main_flow": [
+        "El cliente decide abonar los $5.000 antes de la entrega.",
+        "El operador selecciona el método de pago (ej. Transferencia) y confirma el cobro.",
+        "En una transacción ACID:",
+        "1. Se registra el Pago de $5.000 vinculado al Pedido #P1 y a la Caja abierta.",
+        "2. El Pedido #P1 pasa a cobrado = true.",
+        "3. La Caja suma $5.000 en ingresos por transferencia.",
+        "Cuando el pedido se entregue posteriormente, no generará ninguna deuda."
+      ]
+    },
+    {
+      "id": "UC-03",
+      "title": "Entregar pedido sin cobrar ('Fiado' -> Se convierte en Deuda)",
+      "actor": "Empleado / Admin",
+      "preconditions": [
+        "Pedido #P1 en estado LISTO_PARA_RETIRAR con cobrado = false"
+      ],
+      "main_flow": [
+        "El cliente retira las prendas sin abonar en el momento.",
+        "El operador cambia el estado del Pedido #P1 a ENTREGADO.",
+        "Al cambiar a ENTREGADO con cobrado = false:",
+        "1. El sistema registra formalmente que el Pedido #P1 constituye una deuda activa del cliente por $5.000.",
+        "2. El saldo en contra del cliente refleja los $5.000 de este pedido entregado.",
+        "3. El pedido aparece en la sección 'Pedidos Entregados Pendientes de Pago'."
+      ]
+    },
+    {
+      "id": "UC-04",
+      "title": "Cobrar pedido en efectivo y generar Saldo a Favor por Vuelto",
+      "actor": "Empleado / Admin con Caja abierta",
+      "preconditions": [
+        "Caja del usuario ABIERTA",
+        "Pedido #P2 por total $3.500",
+        "Pago en efectivo con billete de $5.000 y opción 'Dejar vuelto a favor' marcada"
+      ],
+      "main_flow": [
+        "El cliente entrega $5.000 en efectivo.",
+        "El operador marca la casilla 'Dejar vuelto a favor del cliente' ($1.500).",
+        "En la transacción ACID:",
+        "1. Se registra el Pago en Caja por $5.000 en efectivo (el dinero ingresa 100% a la caja física).",
+        "2. El Pedido #P2 queda cobrado = true.",
+        "3. Se crea un registro de SaldoAFavor por $1.500 con pedidoOrigenId = #P2, montoDisponible = $1.500 y estado = DISPONIBLE.",
+        "La caja física cuadra con los $5.000 ingresados y el cliente tiene un saldo a favor de $1.500 respaldado por el Pedido #P2."
+      ]
+    },
+    {
+      "id": "UC-05",
+      "title": "Cobrar nuevo pedido aplicando Saldo a Favor de pedido anterior",
+      "actor": "Empleado / Admin con Caja abierta",
+      "preconditions": [
+        "Caja del usuario ABIERTA",
+        "Cliente tiene saldo a favor de $1.500 originado en el Pedido #P2",
+        "Nuevo Pedido #P3 por total $2.000"
+      ],
+      "main_flow": [
+        "El operador abre la pantalla de cobro del Pedido #P3 ($2.000).",
+        "El sistema muestra: 'Saldo a favor disponible: $1.500 (del Pedido #P2)'.",
+        "El operador selecciona aplicar el saldo a favor de $1.500. El total restante a abonar es $500.",
+        "El cliente abona los $500 restantes en efectivo.",
+        "En la transacción ACID con row-lock:",
+        "1. El saldo a favor del Pedido #P2 descuenta $1.500, quedando montoDisponible = 0 y estado = CONSUMIDO_TOTAL.",
+        "2. Se crea el registro de AplicacionSaldo (creditoOrigen = #P2, pedidoDestino = #P3, monto = $1.500).",
+        "3. Se crea el Pago en Caja por $500 en efectivo.",
+        "4. El Pedido #P3 queda marcado como cobrado = true.",
+        "5. La Caja abierta suma $500 en efectivo.",
+        "El saldo a favor del Pedido #P2 queda totalmente consumido y no podrá ser reutilizado."
+      ]
+    },
+    {
+      "id": "UC-06",
+      "title": "Cobrar deuda de un pedido anterior entregado",
+      "actor": "Empleado / Admin con Caja abierta",
+      "preconditions": [
+        "Caja del usuario ABIERTA",
+        "Cliente posee el Pedido #P1 entregado e impago por $5.000"
+      ],
+      "main_flow": [
+        "El cliente se presenta a saldar la deuda del Pedido #P1.",
+        "El operador selecciona 'Cobrar Pedido Entregado #P1' por $5.000.",
+        "Selecciona el método de pago (ej. Efectivo) y confirma.",
+        "En la transacción ACID:",
+        "1. Se registra el Pago de $5.000 asociado al Pedido #P1 y a la Caja abierta.",
+        "2. El Pedido #P1 pasa a cobrado = true.",
+        "3. La deuda del cliente disminuye en $5.000.",
+        "4. La Caja abierta suma $5.000 en efectivo.",
+        "El Pedido #P1 deja de figurar como deuda pendiente."
+      ]
+    },
+    {
+      "id": "UC-07",
+      "title": "Cancelar pedido cobrado con Reintegro de Dinero (Gasto en Caja)",
+      "actor": "Empleado / Admin con Caja abierta",
+      "preconditions": [
+        "Caja del usuario ABIERTA",
+        "Pedido #P4 cobrado previamente por $4.000"
+      ],
+      "main_flow": [
+        "El operador cancela el Pedido #P4 y selecciona la opción 'DEVOLVER_DINERO'.",
+        "En la transacción ACID:",
+        "1. El Pedido #P4 pasa a estado CANCELADO.",
+        "2. Se crea un registro de Gasto/Egreso en la Caja abierta por $4.000 con concepto 'Reembolso por cancelación de Pedido #P4'.",
+        "3. El arqueo de caja resta $4.000 del total de ingresos/efectivo.",
+        "4. El estado de la cuenta corriente del cliente no sufre saldo a favor ni deuda.",
+        "La devolución física queda registrada en el turno de caja."
+      ]
+    },
+    {
+      "id": "UC-08",
+      "title": "Cancelar pedido cobrado con opción 'Dejar como Saldo a Favor'",
+      "actor": "Empleado / Admin",
+      "preconditions": [
+        "Pedido #P5 cobrado previamente por $6.000"
+      ],
+      "main_flow": [
+        "El operador cancela el Pedido #P5 y selecciona la opción 'SALDO_A_FAVOR'.",
+        "En la transacción ACID:",
+        "1. El Pedido #P5 pasa a estado CANCELADO.",
+        "2. No hay egreso de dinero de la caja.",
+        "3. Se crea un registro de SaldoAFavor por $6.000 con pedidoOrigenId = #P5, montoDisponible = $6.000 y estado = DISPONIBLE.",
+        "4. El cliente cuenta ahora con $6.000 a favor para sus próximos pedidos."
+      ]
+    },
+    {
+      "id": "UC-09",
+      "title": "Consulta de Estado de Cuenta y Desglose por Pedidos",
+      "actor": "Empleado / Admin / Cliente",
+      "preconditions": [
+        "Cliente existente"
+      ],
+      "main_flow": [
+        "El operador consulta la ficha del cliente.",
+        "El sistema presenta tres bloques independientes y transparentes:",
+        "1. Resumen: Total Deuda en Pedidos Entregados vs Total Saldo a Favor Disponible.",
+        "2. Detalle de Pedidos Deudores: Lista de pedidos con estado ENTREGADO y cobrado = false (código, fecha de entrega, prendas y monto pendiente).",
+        "3. Detalle de Saldos a Favor: Lista de créditos disponibles (código del pedido de origen, fecha original, monto original y monto disponible restante)."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "scenario": "Creación de pedido no genera deuda en cuenta corriente",
+      "given": "Un cliente sin deudas ni saldos a favor",
+      "when": "Se crea un nuevo pedido por $10.000 en estado PENDIENTE",
+      "then": "El pedido tiene cobrado = false, pero la deuda exigible en cuenta corriente del cliente permanece en $0 porque aún no fue entregado."
+    },
+    {
+      "id": "AC-02",
+      "scenario": "Pedido entregado sin cobrar pasa a ser deuda exigible",
+      "given": "Un pedido por $10.000 en estado LISTO_PARA_RETIRAR y cobrado = false",
+      "when": "El operador cambia el estado del pedido a ENTREGADO",
+      "then": "El pedido pasa a ENTREGADO y el cliente pasa a tener una deuda exigible (saldo en contra) de $10.000 vinculada a este pedido."
+    },
+    {
+      "id": "AC-03",
+      "scenario": "Cobro anticipado evita que la entrega genere deuda",
+      "given": "Un pedido por $10.000 en estado PENDIENTE",
+      "when": "Se cobra el pedido de $10.000 en caja y luego se cambia su estado a ENTREGADO",
+      "then": "El pedido tiene cobrado = true y la entrega no genera ninguna deuda en la cuenta del cliente (saldo en contra = $0)."
+    },
+    {
+      "id": "AC-04",
+      "scenario": "Sobrepago en efectivo genera saldo a favor rastreable",
+      "given": "Un pedido #301 por $4.000 de un cliente",
+      "when": "El cliente abona $6.000 en efectivo y se marca 'Dejar vuelto a favor'",
+      "then": "La caja abierta suma $6.000 en efectivo, el pedido #301 queda cobrado = true, y se crea un crédito de $2.000 asociado al pedido #301 con estado DISPONIBLE."
+    },
+    {
+      "id": "AC-05",
+      "scenario": "Consumo de saldo a favor marca el crédito de origen como consumido",
+      "given": "Un cliente con un crédito disponible de $2.000 originado en el pedido #301 y un nuevo pedido #302 por $2.000",
+      "when": "Se cobra el pedido #302 aplicando el crédito del pedido #301",
+      "then": "El crédito del pedido #301 pasa a montoDisponible = 0 y estado = CONSUMIDO_TOTAL, se crea la vinculación entre #301 y #302, y el pedido #302 queda cobrado = true sin requerir dinero en caja."
+    },
+    {
+      "id": "AC-06",
+      "scenario": "Imposibilidad de reutilizar saldo a favor ya consumido",
+      "given": "Un crédito del pedido #301 que ya fue marcado como CONSUMIDO_TOTAL",
+      "when": "Se intenta cobrar otro pedido #303",
+      "then": "El sistema no permite seleccionar el crédito del pedido #301 porque su montoDisponible es $0."
+    },
+    {
+      "id": "AC-07",
+      "scenario": "Cobro de pedido deudor anterior cancela la deuda específica",
+      "given": "Un cliente con el pedido entregado impago #304 por $7.000",
+      "when": "El operador registra el cobro de $7.000 en efectivo para el pedido #304 en la caja abierta",
+      "then": "La caja suma $7.000 en efectivo, el pedido #304 pasa a cobrado = true y el cliente queda sin deudas pendientes."
+    },
+    {
+      "id": "AC-08",
+      "scenario": "Cancelación de pedido cobrado con devolución en caja resta ingresos",
+      "given": "Un pedido #305 cobrado por $5.000 y una caja abierta",
+      "when": "Se cancela el pedido #305 con la opción 'DEVOLVER_DINERO'",
+      "then": "El pedido pasa a CANCELADO, se genera un egreso/reembolso de $5.000 en la caja abierta restando del total de ingresos del turno, y no se genera saldo a favor al cliente."
+    },
+    {
+      "id": "AC-09",
+      "scenario": "Cancelación de pedido cobrado con opción saldo a favor",
+      "given": "Un pedido #306 cobrado por $8.000",
+      "when": "Se cancela el pedido #306 con la opción 'SALDO_A_FAVOR'",
+      "then": "El pedido pasa a CANCELADO, la caja no sufre egresos y se genera un crédito de $8.000 disponible asociado al pedido #306."
+    },
+    {
+      "id": "AC-10",
+      "scenario": "Pantalla de cobro no confunde deuda anterior con pedido en curso",
+      "given": "Un cliente con una deuda de $15.000 por pedidos entregados anteriores y un nuevo pedido #307 por $5.000 en proceso",
+      "when": "El operador abre el diálogo para cobrar el pedido #307",
+      "then": "El sistema indica claramente que el total a pagar de este pedido es $5.000, y muestra por separado un aviso informativo de que el cliente posee $15.000 de deuda por pedidos anteriores ya entregados."
+    }
+  ]
+}

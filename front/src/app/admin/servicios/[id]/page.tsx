@@ -226,65 +226,87 @@ export default function ServicioDetallePage() {
       </div>
 
       {/* KPIs row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Precio</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-indigo-500" />
-            </div>
-          </div>
-          <p className="text-3xl font-black text-gray-900 tracking-tight">
-            ${Number(servicio.precioActual).toLocaleString("es-AR")}
-          </p>
-          {historial.length > 1 && (
-            <p className="text-xs text-gray-400 font-medium">
-              Anterior: ${Number(historial[historial.length - 2]?.precio || 0).toLocaleString("es-AR")}
-            </p>
-          )}
-        </div>
+      {(() => {
+        const precio = Number(servicio.precioActual || 0)
+        const costo = Number(servicio.costoEstimado || 0)
+        const margen = precio - costo
+        const margenPct = precio > 0 ? Math.round((margen / precio) * 100) : 0
 
-        <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tiempo</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-500" />
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Precio y Costo</span>
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-indigo-500" />
+                </div>
+              </div>
+              <div>
+                <p className="text-3xl font-black text-gray-900 tracking-tight">
+                  ${precio.toLocaleString("es-AR")}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-bold text-gray-400">
+                    Costo: ${costo.toLocaleString("es-AR")}
+                  </span>
+                  <span className={cn(
+                    "text-[10px] font-black px-1.5 py-0.5 rounded",
+                    margen >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                  )}>
+                    {margenPct}% margen
+                  </span>
+                </div>
+              </div>
+              {historial.length > 1 && (
+                <p className="text-xs text-gray-400 font-medium">
+                  Anterior: ${Number(historial[historial.length - 2]?.precio || 0).toLocaleString("es-AR")}
+                </p>
+              )}
             </div>
-          </div>
-          <p className="text-3xl font-black text-gray-900 tracking-tight">
-            {servicio.tiempoEstimadoMinutos || "—"}
-          </p>
-          {servicio.tiempoEstimadoMinutos && (
-            <p className="text-xs text-gray-400 font-medium">minutos por unidad</p>
-          )}
-        </div>
 
-        <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Actividad</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
+            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tiempo</span>
+                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-gray-900 tracking-tight">
+                {servicio.tiempoEstimadoMinutos || "—"}
+              </p>
+              {servicio.tiempoEstimadoMinutos && (
+                <p className="text-xs text-gray-400 font-medium">minutos por unidad</p>
+              )}
             </div>
-          </div>
-          <div className="flex-1">
-            <MiniBarChart data={pedidosTrend} color="#10b981" />
-          </div>
-          <p className="text-xs text-gray-400 font-medium">Pedidos — últimas 8 semanas</p>
-        </div>
 
-        <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Antigüedad</span>
-            <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-violet-500" />
+            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Actividad</span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <MiniBarChart data={pedidosTrend} color="#10b981" />
+              </div>
+              <p className="text-xs text-gray-400 font-medium">Pedidos — últimas 8 semanas</p>
+            </div>
+
+            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Antigüedad</span>
+                <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-violet-500" />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-gray-900 tracking-tight">{diasActivo}</p>
+              <p className="text-xs text-gray-400 font-medium">
+                días activo desde el {new Date(servicio.createdAt).toLocaleDateString("es-AR")}
+              </p>
             </div>
           </div>
-          <p className="text-3xl font-black text-gray-900 tracking-tight">{diasActivo}</p>
-          <p className="text-xs text-gray-400 font-medium">
-            días activo desde el {new Date(servicio.createdAt).toLocaleDateString("es-AR")}
-          </p>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -398,10 +420,33 @@ export default function ServicioDetallePage() {
                 )}
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Precio Actual</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Precio de Venta</p>
                 <p className="text-2xl font-black text-brand-blue">
                   ${Number(servicio.precioActual).toLocaleString("es-AR")}
                 </p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Costo Estimado</p>
+                <p className="text-2xl font-black text-gray-700">
+                  ${Number(servicio.costoEstimado || 0).toLocaleString("es-AR")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Margen Unitario</p>
+                <div className="flex items-center gap-2">
+                  <p className={cn(
+                    "text-xl font-black",
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "text-emerald-600" : "text-red-600"
+                  )}>
+                    ${(Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)).toLocaleString("es-AR")}
+                  </p>
+                  <span className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-md",
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                  )}>
+                    {Number(servicio.precioActual) > 0 ? Math.round(((Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) / Number(servicio.precioActual)) * 100) : 0}%
+                  </span>
+                </div>
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Tiempo Estimado</p>
@@ -458,7 +503,7 @@ export default function ServicioDetallePage() {
               {[
                 { label: "Pedidos este mes", value: pedidosTrend[pedidosTrend.length - 1], suffix: "" },
                 { label: "Ingresos est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * Number(servicio.precioActual)).toLocaleString("es-AR")}`, suffix: "" },
-                { label: "Cambios de precio", value: historial.length, suffix: "" },
+                { label: "Margen est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0))).toLocaleString("es-AR")}`, suffix: "" },
               ].map((metric, i) => (
                 <div key={i} className="bg-white rounded-xl p-4 border border-indigo-100">
                   <p className="text-lg font-black text-gray-900">{metric.value}{metric.suffix}</p>

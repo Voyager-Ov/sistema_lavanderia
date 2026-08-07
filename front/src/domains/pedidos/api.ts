@@ -9,7 +9,6 @@ export interface Cliente {
   id: number
   nombre: string
   telefono?: string
-  saldoCuentaCorriente?: number
 }
 
 export interface PedidoItemDetail {
@@ -122,13 +121,15 @@ export const cambiarEstadoPedido = async (
   estado: string,
   comentario?: string,
   motivoCancelacion?: string,
-  descripcionCancelacion?: string
+  descripcionCancelacion?: string,
+  accionDinero?: "SALDO_A_FAVOR" | "DEVOLVER"
 ) => {
   const res = await apiClient.patch<{ data: Pedido }>(`/pedidos/${pedidoId}/estado`, {
     estado,
     comentario,
     motivoCancelacion,
-    descripcionCancelacion
+    descripcionCancelacion,
+    accionDinero
   })
   return res.data
 }

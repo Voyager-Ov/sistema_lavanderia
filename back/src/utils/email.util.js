@@ -5,10 +5,7 @@ export const normalizeEmail = (email) => {
     
     if (!domain) return email.trim().toLowerCase(); // Por si no es un email válido
     
-    // Si es gmail, quitamos todos los puntos de la primera parte
-    if (domain === 'gmail.com' || domain === 'googlemail.com') {
-        localPart = localPart.replace(/\./g, '');
-    }
+    // Ya no quitamos puntos ni alias para permitir registros múltiples con trucos de Gmail
     
     return `${localPart}@${domain}`;
 };
