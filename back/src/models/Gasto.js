@@ -7,56 +7,59 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			negocioId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-			monto: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: false,
-			},
-			fecha: {
+			fechaHora: {
 				type: DataTypes.DATE,
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
-			categoria: {
-				type: DataTypes.STRING, 
-				allowNull: false,
-			},
-			cajaId: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-			},
 			descripcion: {
-				type: DataTypes.TEXT,
+				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			registradoPorId: {
-				type: DataTypes.INTEGER,
+			montoTotal: {
+				type: DataTypes.DOUBLE,
 				allowNull: false,
 			},
-			metodoPagoId: {
-				type: DataTypes.INTEGER,
+			proveedor: {
+				type: DataTypes.STRING,
 				allowNull: true,
-			}
+			},
+			nroComprobante: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			desgloseNeto: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			impuestos: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			percepciones: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			estadoGasto: {
+				type: DataTypes.ENUM("Pagado", "Pendiente", "Vencido", "Anulado"),
+				allowNull: false,
+				defaultValue: "Pendiente",
+			},
 		},
 		{
 			tableName: "gastos",
 			timestamps: true,
-			indexes: [
-				{ fields: ["negocioId"] },
-				{ fields: ["cajaId"] },
-				{ fields: ["metodoPagoId"] }
-			]
 		}
 	);
 
 	Gasto.associate = (models) => {
 		Gasto.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
-		Gasto.belongsTo(models.Usuario, { foreignKey: "registradoPorId", as: "registradoPor", constraints: false });
-		Gasto.belongsTo(models.Caja, { foreignKey: "cajaId", as: "caja" });
-		Gasto.belongsTo(models.MetodoPago, { foreignKey: "metodoPagoId", as: "metodoPago" });
+		Gasto.belongsTo(models.CategoriaGasto, { foreignKey: "categoriaGastoId", as: "categoria", constraints: false });
+		Gasto.belongsTo(models.MetodoPago, { foreignKey: "metodoPagoId", as: "metodoPago", constraints: false });
+		Gasto.belongsTo(models.MovimientoCaja, { foreignKey: "movimientoCajaId", as: "movimientoCaja", constraints: false });
 	};
 
 	return Gasto;

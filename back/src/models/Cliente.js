@@ -7,11 +7,11 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			negocioId: {
-				type: DataTypes.INTEGER,
+			nombre: {
+				type: DataTypes.STRING,
 				allowNull: false,
 			},
-			nombre: {
+			apellido: {
 				type: DataTypes.STRING,
 				allowNull: false,
 			},
@@ -22,43 +22,27 @@ export default (sequelize, DataTypes) => {
 			email: {
 				type: DataTypes.STRING,
 				allowNull: true,
-				validate: {
-					isEmail: true,
-				},
-			},
-			activo: {
-				type: DataTypes.BOOLEAN,
-				allowNull: false,
-				defaultValue: true,
-			},
-			motivoBaja: {
-				type: DataTypes.TEXT,
-				allowNull: true,
 			},
 			direccion: {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			notas: {
-				type: DataTypes.TEXT,
-				allowNull: true,
+			fechaAlta: {
+				type: DataTypes.DATE,
+				allowNull: false,
+				defaultValue: DataTypes.NOW,
 			},
 		},
 		{
 			tableName: "clientes",
 			timestamps: true,
-			indexes: [
-				{ fields: ["negocioId"] },
-				{ fields: ["telefono"] },
-				{ fields: ["activo"] }
-			]
 		}
 	);
 
 	Cliente.associate = (models) => {
 		Cliente.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
-		Cliente.hasMany(models.Pedido, { foreignKey: "clienteId", as: "pedidos" });
-		Cliente.hasMany(models.CreditoCliente, { foreignKey: "clienteId", as: "creditos" });
+		Cliente.hasOne(models.CuentaCorriente, { foreignKey: "clienteId", as: "cuentaCorriente", constraints: false });
+		Cliente.hasMany(models.Pedido, { foreignKey: "clienteId", as: "pedidos", constraints: false });
 	};
 
 	return Cliente;

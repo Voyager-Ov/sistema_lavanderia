@@ -2,80 +2,50 @@ export default (sequelize, DataTypes) => {
 	const Usuario = sequelize.define(
 		"Usuario",
 		{
-			id: {
-				type: DataTypes.INTEGER,
-				autoIncrement: true,
-				primaryKey: true,
-			},
-			negocioId: {
-				type: DataTypes.INTEGER,
-				allowNull: true, // true para que SUPERADMIN no requiera negocio
-			},
-			nombre: {
-				type: DataTypes.STRING,
-				allowNull: false,
-			},
 			email: {
 				type: DataTypes.STRING,
 				allowNull: false,
-				unique: true,
+				primaryKey: true,
 				validate: {
 					isEmail: true,
 				},
+			},
+			password: {
+				type: DataTypes.STRING,
+				allowNull: true,
 			},
 			googleId: {
 				type: DataTypes.STRING,
 				allowNull: true,
 				unique: true,
 			},
-			passwordHash: {
+			tokenConfirmacion: {
 				type: DataTypes.STRING,
-				allowNull: true, // It can be null if registered via Google exclusively
+				allowNull: true,
 			},
-			rol: {
-				type: DataTypes.ENUM("ADMIN", "EMPLEADO", "SUPERADMIN"),
+			tokenConfirmacionExpires: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
+			emailConfirmado: {
+				type: DataTypes.BOOLEAN,
 				allowNull: false,
-			},
-			sueldoBase: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: true,
-				defaultValue: 0,
-			},
-			horasSemanalesObjetivo: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-				defaultValue: 40,
+				defaultValue: false,
 			},
 			activo: {
 				type: DataTypes.BOOLEAN,
+				allowNull: false,
 				defaultValue: true,
 			},
-			emailVerificado: {
-				type: DataTypes.BOOLEAN,
-				defaultValue: false,
-			},
-			verificationCode: {
-				type: DataTypes.STRING,
+			empleadoId: {
+				type: DataTypes.INTEGER,
 				allowNull: true,
 			},
-			verificationExpires: {
-				type: DataTypes.DATE,
-				allowNull: true,
-			},
-			resetPasswordToken: {
-				type: DataTypes.STRING,
-				allowNull: true,
-			},
-			resetPasswordExpires: {
-				type: DataTypes.DATE,
-				allowNull: true,
-			}
 		},
 		{
 			tableName: "usuarios",
 			timestamps: true,
 			indexes: [
-				{ fields: ["negocioId"] },
 				{ fields: ["email"], unique: true },
 				{ fields: ["activo"] }
 			]
@@ -83,14 +53,12 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Usuario.associate = (models) => {
-		Usuario.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
-		Usuario.hasMany(models.Pago, { foreignKey: "registradoPorId", as: "pagosRegistrados", constraints: false });
-		Usuario.hasMany(models.HistorialPedido, { foreignKey: "usuarioId", as: "accionesEnPedidos", constraints: false });
-		Usuario.hasMany(models.Caja, { foreignKey: "usuarioId", as: "cajasOperadas", constraints: false });
-		Usuario.hasMany(models.Gasto, { foreignKey: "registradoPorId", as: "gastosRegistrados", constraints: false });
-		Usuario.hasMany(models.Pedido, { foreignKey: "creadoPorId", as: "pedidosCreados", constraints: false });
-		Usuario.hasMany(models.RegistroAsistencia, { foreignKey: "usuarioId", as: "asistencias", constraints: false });
+		Usuario.belongsTo(models.Empleado, { foreignKey: "empleadoId", as: "personaFisica", constraints: false });
+		Usuario.belongsToMany(models.Rol, { through: "UsuarioRoles", foreignKey: "usuarioEmail", otherKey: "rolId", constraints: false });
+		Usuario.hasMany(models.Sesion, { foreignKey: "usuarioEmail", as: "sesiones", constraints: false });
 	};
 
 	return Usuario;
 };
+
+

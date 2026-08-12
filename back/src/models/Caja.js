@@ -2,79 +2,53 @@ export default (sequelize, DataTypes) => {
 	const Caja = sequelize.define(
 		"Caja",
 		{
-			id: {
+			idCaja: {
 				type: DataTypes.INTEGER,
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			negocioId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-			usuarioId: {
-				type: DataTypes.INTEGER,
-				allowNull: false, // Cajero que abrió la caja
-			},
-			estado: {
-				type: DataTypes.ENUM("ABIERTA", "CERRADA"),
-				allowNull: false,
-				defaultValue: "ABIERTA",
-			},
-			montoInicial: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: false,
-				defaultValue: 0,
-			},
-			fechaApertura: {
+			fechaHoraApertura: {
 				type: DataTypes.DATE,
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
-			fechaCierre: {
+			fechaHoraCierre: {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
-			// Totales calculados por el sistema al cerrar
-			totalIngresosEfectivo: {
-				type: DataTypes.DECIMAL(10, 2),
+			montoInicialEfectivo: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			montoFinalEfectivoReal: {
+				type: DataTypes.DOUBLE,
 				allowNull: true,
 			},
-			totalEgresosEfectivo: {
-				type: DataTypes.DECIMAL(10, 2),
+			observacionApertura: {
+				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			efectivoEsperado: {
-				type: DataTypes.DECIMAL(10, 2),
+			observacionCierre: {
+				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			// Lo que el cajero declara que tiene en la mano al cerrar
-			efectivoReal: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: true,
+			estadoCaja: {
+				type: DataTypes.ENUM("Abierta", "Cerrada"),
+				allowNull: false,
+				defaultValue: "Abierta",
 			},
-			diferenciaEfectivo: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: true, // positivo = sobró plata, negativo = faltó plata
-			},
-            // Se pueden agregar más totales si el local registra otros medios (tarjetas, transferencias), 
-            // pero el arqueo duro siempre es contra el Efectivo físico.
 		},
 		{
 			tableName: "cajas",
 			timestamps: true,
-			indexes: [
-				{ fields: ["negocioId"] },
-				{ fields: ["usuarioId"] },
-				{ fields: ["estado"] }
-			]
 		}
 	);
 
 	Caja.associate = (models) => {
+		Caja.belongsTo(models.Empleado, { foreignKey: "empleadoId", as: "empleado", constraints: false });
 		Caja.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
-		Caja.belongsTo(models.Usuario, { foreignKey: "usuarioId", as: "cajero", constraints: false });
-		Caja.hasMany(models.Pago, { foreignKey: "cajaId", as: "pagos" });
-		Caja.hasMany(models.Gasto, { foreignKey: "cajaId", as: "gastos" });
+		Caja.hasMany(models.MovimientoCaja, { foreignKey: "cajaIdCaja", as: "movimientos", constraints: false });
 	};
 
 	return Caja;

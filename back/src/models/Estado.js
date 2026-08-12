@@ -1,39 +1,31 @@
 export default (sequelize, DataTypes) => {
-	const SuperAdmin = sequelize.define(
-		"SuperAdmin",
+	const Estado = sequelize.define(
+		"Estado",
 		{
 			id: {
 				type: DataTypes.INTEGER,
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			email: {
-				type: DataTypes.STRING,
-				allowNull: false,
-				unique: true,
-				validate: {
-					isEmail: true,
-				},
-			},
-			passwordHash: {
-				type: DataTypes.STRING,
-				allowNull: false,
-			},
 			nombre: {
 				type: DataTypes.STRING,
 				allowNull: false,
 			},
-			activo: {
-				type: DataTypes.BOOLEAN,
+			descripcion: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			ambito: {
+				type: DataTypes.STRING,
 				allowNull: false,
-				defaultValue: true,
+				defaultValue: "Pedido",
 			},
 		},
 		{
-			tableName: "super_admins",
+			tableName: "estados",
 			timestamps: true,
 		}
 	);
 
-	return SuperAdmin;
+	return Estado;
 };

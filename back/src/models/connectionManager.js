@@ -3,26 +3,24 @@ import { Sequelize, DataTypes } from "sequelize";
 import NegocioModel from "./Negocio.js";
 import UsuarioModel from "./Usuario.js";
 import ClienteModel from "./Cliente.js";
-import ProductoModel from "./Producto.js";
 import PedidoModel from "./Pedido.js";
-import PedidoItemModel from "./PedidoItem.js";
-import HistorialPedidoModel from "./HistorialPedido.js";
-import PagoModel from "./Pago.js";
 import MetodoPagoModel from "./MetodoPago.js";
-import CategoriaProductoModel from "./CategoriaProducto.js";
 import GastoModel from "./Gasto.js";
-import RegistroAsistenciaModel from "./RegistroAsistencia.js";
 import CajaModel from "./Caja.js";
-import MicroFrontendModel from "./MicroFrontend.js";
-import ConfiguracionNegocioModel from "./ConfiguracionNegocio.js";
-import TicketModel from "./Ticket.js";
-import MovimientoCuentaCorrienteModel from "./MovimientoCuentaCorriente.js";
-import HistorialPrecioProductoModel from "./HistorialPrecioProducto.js";
 import CategoriaGastoModel from "./CategoriaGasto.js";
-import SuperAdminModel from "./SuperAdmin.js";
-import MotivoCancelacionModel from "./MotivoCancelacion.js";
-import CreditoClienteModel from "./CreditoCliente.js";
-import AplicacionCreditoModel from "./AplicacionCredito.js";
+import EmpleadoModel from "./Empleado.js";
+import RolModel from "./Rol.js";
+import SesionModel from "./Sesion.js";
+import CategoriaServicioModel from "./CategoriaServicio.js";
+import ServicioModel from "./Servicio.js";
+import DetallePedidoModel from "./DetallePedido.js";
+import CambioEstadoPedidoModel from "./CambioEstadoPedido.js";
+import EstadoModel from "./Estado.js";
+import CuentaCorrienteModel from "./CuentaCorriente.js";
+import MovimientoCuentaModel from "./MovimientoCuenta.js";
+import MovimientoCajaModel from "./MovimientoCaja.js";
+import CobroModel from "./Cobro.js";
+import FacturaModel from "./Factura.js";
 
 class ConnectionManager {
     constructor() {
@@ -128,26 +126,24 @@ class ConnectionManager {
             Negocio: NegocioModel(sequelizeInstance, DataTypes),
             Usuario: UsuarioModel(sequelizeInstance, DataTypes),
             Cliente: ClienteModel(sequelizeInstance, DataTypes),
-            Producto: ProductoModel(sequelizeInstance, DataTypes),
             Pedido: PedidoModel(sequelizeInstance, DataTypes),
-            PedidoItem: PedidoItemModel(sequelizeInstance, DataTypes),
-            HistorialPedido: HistorialPedidoModel(sequelizeInstance, DataTypes),
-            Pago: PagoModel(sequelizeInstance, DataTypes),
             MetodoPago: MetodoPagoModel(sequelizeInstance, DataTypes),
-            CategoriaProducto: CategoriaProductoModel(sequelizeInstance, DataTypes),
             Gasto: GastoModel(sequelizeInstance, DataTypes),
-            RegistroAsistencia: RegistroAsistenciaModel(sequelizeInstance, DataTypes),
             Caja: CajaModel(sequelizeInstance, DataTypes),
-            MicroFrontend: MicroFrontendModel(sequelizeInstance, DataTypes),
-            ConfiguracionNegocio: ConfiguracionNegocioModel(sequelizeInstance, DataTypes),
-            Ticket: TicketModel(sequelizeInstance, DataTypes),
-            MovimientoCuentaCorriente: MovimientoCuentaCorrienteModel(sequelizeInstance, DataTypes),
-            HistorialPrecioProducto: HistorialPrecioProductoModel(sequelizeInstance, DataTypes),
             CategoriaGasto: CategoriaGastoModel(sequelizeInstance, DataTypes),
-            SuperAdmin: SuperAdminModel(sequelizeInstance, DataTypes),
-            MotivoCancelacion: MotivoCancelacionModel(sequelizeInstance, DataTypes),
-            CreditoCliente: CreditoClienteModel(sequelizeInstance, DataTypes),
-            AplicacionCredito: AplicacionCreditoModel(sequelizeInstance, DataTypes),
+            Empleado: EmpleadoModel(sequelizeInstance, DataTypes),
+            Rol: RolModel(sequelizeInstance, DataTypes),
+            Sesion: SesionModel(sequelizeInstance, DataTypes),
+            CategoriaServicio: CategoriaServicioModel(sequelizeInstance, DataTypes),
+            Servicio: ServicioModel(sequelizeInstance, DataTypes),
+            DetallePedido: DetallePedidoModel(sequelizeInstance, DataTypes),
+            CambioEstadoPedido: CambioEstadoPedidoModel(sequelizeInstance, DataTypes),
+            Estado: EstadoModel(sequelizeInstance, DataTypes),
+            CuentaCorriente: CuentaCorrienteModel(sequelizeInstance, DataTypes),
+            MovimientoCuenta: MovimientoCuentaModel(sequelizeInstance, DataTypes),
+            MovimientoCaja: MovimientoCajaModel(sequelizeInstance, DataTypes),
+            Cobro: CobroModel(sequelizeInstance, DataTypes),
+            Factura: FacturaModel(sequelizeInstance, DataTypes),
         };
 
         // En Postgres, debemos indicar a cada modelo a qué esquema pertenece ANTES de asociar
@@ -155,7 +151,7 @@ class ConnectionManager {
             Object.keys(models).forEach(modelName => {
                 const model = models[modelName];
                 // Estos modelos siempre viven en el esquema central (public)
-                if (['Usuario', 'Negocio', 'MicroFrontend', 'ConfiguracionNegocio', 'SuperAdmin'].includes(model.name)) {
+                if (['Usuario', 'Negocio', 'Rol'].includes(model.name)) {
                     models[modelName] = model.schema('public');
                 } else {
                     models[modelName] = model.schema(schemaName);

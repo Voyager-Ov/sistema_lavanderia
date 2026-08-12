@@ -1,6 +1,6 @@
 export default (sequelize, DataTypes) => {
-	const CategoriaGasto = sequelize.define(
-		"CategoriaGasto",
+	const CategoriaServicio = sequelize.define(
+		"CategoriaServicio",
 		{
 			id: {
 				type: DataTypes.INTEGER,
@@ -17,14 +17,14 @@ export default (sequelize, DataTypes) => {
 			},
 		},
 		{
-			tableName: "categorias_gasto",
+			tableName: "categorias_servicio",
 			timestamps: true,
 		}
 	);
 
-	CategoriaGasto.associate = (models) => {
-		CategoriaGasto.hasMany(models.Gasto, { foreignKey: "categoriaGastoId", as: "gastos" });
+	CategoriaServicio.associate = (models) => {
+		CategoriaServicio.hasMany(models.Servicio, { foreignKey: "categoriaServicioId", as: "servicios" });
 	};
 
-	return CategoriaGasto;
+	return CategoriaServicio;
 };

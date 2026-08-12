@@ -1,6 +1,6 @@
 export default (sequelize, DataTypes) => {
-	const CategoriaGasto = sequelize.define(
-		"CategoriaGasto",
+	const Rol = sequelize.define(
+		"Rol",
 		{
 			id: {
 				type: DataTypes.INTEGER,
@@ -10,6 +10,7 @@ export default (sequelize, DataTypes) => {
 			nombre: {
 				type: DataTypes.STRING,
 				allowNull: false,
+				unique: true,
 			},
 			descripcion: {
 				type: DataTypes.STRING,
@@ -17,14 +18,14 @@ export default (sequelize, DataTypes) => {
 			},
 		},
 		{
-			tableName: "categorias_gasto",
+			tableName: "roles",
 			timestamps: true,
 		}
 	);
 
-	CategoriaGasto.associate = (models) => {
-		CategoriaGasto.hasMany(models.Gasto, { foreignKey: "categoriaGastoId", as: "gastos" });
+	Rol.associate = (models) => {
+		Rol.belongsToMany(models.Usuario, { through: "UsuarioRoles", foreignKey: "rolId", otherKey: "usuarioEmail", constraints: false });
 	};
 
-	return CategoriaGasto;
+	return Rol;
 };

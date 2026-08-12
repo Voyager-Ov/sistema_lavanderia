@@ -7,27 +7,38 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			nombre: {
+			razonSocial: {
 				type: DataTypes.STRING,
-				allowNull: false,
+				allowNull: true,
 			},
 			cuit: {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			estadoSuscripcion: {
-				type: DataTypes.ENUM("ACTIVA", "VENCIDA", "PRUEBA", "CANCELADA"),
-				allowNull: false,
-				defaultValue: "PRUEBA",
-			},
-			fechaVencimientoSuscripcion: {
-				type: DataTypes.DATE,
+			colorPrincipal: {
+				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			activo: {
+			colorSecundario: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			facturacionHabilitada: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
-				defaultValue: true,
+				defaultValue: false,
+			},
+			certificadoAfipPath: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			llaveAfipPath: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			tokenMercadoPago: {
+				type: DataTypes.STRING,
+				allowNull: true,
 			},
 		},
 		{
@@ -37,14 +48,12 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Negocio.associate = (models) => {
-		Negocio.hasMany(models.Usuario, { foreignKey: "negocioId", as: "usuarios", constraints: false });
 		Negocio.hasMany(models.Cliente, { foreignKey: "negocioId", as: "clientes", constraints: false });
-		Negocio.hasMany(models.Producto, { foreignKey: "negocioId", as: "productos", constraints: false });
-		Negocio.hasMany(models.Pedido, { foreignKey: "negocioId", as: "pedidos", constraints: false });
-		Negocio.hasMany(models.MetodoPago, { foreignKey: "negocioId", as: "metodosPago", constraints: false });
-		Negocio.hasMany(models.CategoriaProducto, { foreignKey: "negocioId", as: "categoriasProducto", constraints: false });
+		Negocio.hasMany(models.Empleado, { foreignKey: "negocioId", as: "empleados", constraints: false });
+		Negocio.hasMany(models.Servicio, { foreignKey: "negocioId", as: "servicios", constraints: false });
 		Negocio.hasMany(models.Caja, { foreignKey: "negocioId", as: "cajas", constraints: false });
-		Negocio.hasOne(models.ConfiguracionNegocio, { foreignKey: "negocioId", as: "configuracion", constraints: false });
+		Negocio.hasMany(models.Pedido, { foreignKey: "negocioId", as: "pedidos", constraints: false });
+		Negocio.hasMany(models.Gasto, { foreignKey: "negocioId", as: "gastos", constraints: false });
 	};
 
 	return Negocio;

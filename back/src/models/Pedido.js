@@ -2,110 +2,64 @@ export default (sequelize, DataTypes) => {
 	const Pedido = sequelize.define(
 		"Pedido",
 		{
-			id: {
+			numeroPedido: {
 				type: DataTypes.INTEGER,
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			codigoSeguimiento: {
-				type: DataTypes.STRING,
-				allowNull: false,
-				unique: true,
-			},
-			negocioId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-			clienteId: {
-				type: DataTypes.INTEGER,
-				allowNull: false,
-			},
-			estado: {
-				type: DataTypes.ENUM("PENDIENTE", "EN_PROCESO", "LISTO_PARA_RETIRAR", "ENTREGADO", "CANCELADO"),
-				allowNull: false,
-				defaultValue: "PENDIENTE",
-			},
-			total: {
-				type: DataTypes.DECIMAL(10, 2),
-				allowNull: false,
-				defaultValue: 0,
-			},
-			cobrado: {
-				type: DataTypes.BOOLEAN,
-				allowNull: false,
-				defaultValue: false,
-			},
-			fechaRecepcion: {
+			fechaHoraCreacion: {
 				type: DataTypes.DATE,
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
-			fechaEntregaEstimada: {
+			fechaHoraEntregaEstimada: {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
-			fechaEntregadoReal: {
-				type: DataTypes.DATE,
-				allowNull: true,
-			},
-			notas: {
+			observaciones: {
 				type: DataTypes.TEXT,
 				allowNull: true,
 			},
-			creadoPorId: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
+			origen: {
+				type: DataTypes.STRING,
+				allowNull: false,
 			},
-			motivoCancelacion: {
+			nombreClienteFactura: {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			descripcionCancelacion: {
-				type: DataTypes.TEXT,
+			cuitClienteFactura: {
+				type: DataTypes.STRING,
 				allowNull: true,
 			},
-			facturado: {
+			direccionEntrega: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			costoEnvio: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			ticketImpreso: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
 				defaultValue: false,
-			},
-			facturaCae: {
-				type: DataTypes.STRING,
-				allowNull: true,
-			},
-			facturaVtoCae: {
-				type: DataTypes.STRING,
-				allowNull: true,
-			},
-			facturaNro: {
-				type: DataTypes.STRING,
-				allowNull: true,
 			},
 		},
 		{
 			tableName: "pedidos",
 			timestamps: true,
-			indexes: [
-				{ fields: ["negocioId"] },
-				{ fields: ["clienteId"] },
-				{ fields: ["estado"] },
-				{ fields: ["codigoSeguimiento"] },
-				{ fields: ["negocioId", "clienteId", "cobrado"] },
-				{ fields: ["negocioId", "estado", "cobrado"] },
-			]
 		}
 	);
 
 	Pedido.associate = (models) => {
 		Pedido.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
-		Pedido.belongsTo(models.Cliente, { foreignKey: "clienteId", as: "cliente" });
-		Pedido.belongsTo(models.Usuario, { foreignKey: "creadoPorId", as: "creador", constraints: false });
-		Pedido.hasMany(models.PedidoItem, { foreignKey: "pedidoId", as: "items" });
-		Pedido.hasMany(models.HistorialPedido, { foreignKey: "pedidoId", as: "historial" });
-		Pedido.hasOne(models.Pago, { foreignKey: "pedidoId", as: "pago" });
-		Pedido.hasMany(models.Ticket, { foreignKey: "pedidoId", as: "tickets" });
-		Pedido.hasMany(models.CreditoCliente, { foreignKey: "pedidoOrigenId", as: "creditosGenerados" });
-		Pedido.hasMany(models.AplicacionCredito, { foreignKey: "pedidoDestinoId", as: "aplicacionesCreditoRecibidas" });
+		Pedido.belongsTo(models.Cliente, { foreignKey: "clienteId", as: "cliente", constraints: false });
+		Pedido.hasMany(models.DetallePedido, { foreignKey: "pedidoNumeroPedido", as: "detalles", constraints: false });
+		Pedido.hasMany(models.CambioEstadoPedido, { foreignKey: "pedidoNumeroPedido", as: "cambiosEstado", constraints: false });
+		Pedido.hasMany(models.Cobro, { foreignKey: "pedidoNumeroPedido", as: "cobros", constraints: false });
+		Pedido.hasOne(models.Factura, { foreignKey: "pedidoNumeroPedido", as: "factura", constraints: false });
 	};
 
 	return Pedido;
