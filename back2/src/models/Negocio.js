@@ -1,0 +1,60 @@
+export default (sequelize, DataTypes) => {
+	const Negocio = sequelize.define(
+		"Negocio",
+		{
+			id: {
+				type: DataTypes.INTEGER,
+				autoIncrement: true,
+				primaryKey: true,
+			},
+			razonSocial: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			cuit: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			colorPrincipal: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			colorSecundario: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			facturacionHabilitada: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			certificadoAfipPath: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			llaveAfipPath: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			tokenMercadoPago: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+		},
+		{
+			tableName: "negocios",
+			timestamps: true,
+		}
+	);
+
+	Negocio.associate = (models) => {
+		Negocio.hasMany(models.Cliente, { foreignKey: "negocioId", as: "clientes", constraints: false });
+		Negocio.hasMany(models.Empleado, { foreignKey: "negocioId", as: "empleados", constraints: false });
+		Negocio.hasMany(models.Servicio, { foreignKey: "negocioId", as: "servicios", constraints: false });
+		Negocio.hasMany(models.Caja, { foreignKey: "negocioId", as: "cajas", constraints: false });
+		Negocio.hasMany(models.Pedido, { foreignKey: "negocioId", as: "pedidos", constraints: false });
+		Negocio.hasMany(models.Gasto, { foreignKey: "negocioId", as: "gastos", constraints: false });
+	};
+
+	return Negocio;
+};
