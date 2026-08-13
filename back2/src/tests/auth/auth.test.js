@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from "@jest/globals";
+import jwt from "jsonwebtoken";
 import { connectionManager } from "../../models/connectionManager.js";
 import { authService } from "../../modules/auth/services/auth.service.js";
 
@@ -92,5 +93,22 @@ describe("Módulo de Autenticación (Auth)", () => {
         const profile = await authService.getProfile(testEmail);
         expect(profile.usuario.email).toBe(testEmail);
         expect(profile.usuario.nombre).toBe("Carlos Gómez");
+    });
+
+    it("9. Debe permitir el inicio de sesión y vinculación con Google OAuth", async () => {
+        const mockGoogleToken = jwt.sign(
+            { sub: "google_123456789_test", email: testEmail, name: "Carlos Gómez" },
+            "test_secret"
+        );
+
+        const googleRes = await authService.loginWithGoogle({ token: mockGoogleToken });
+
+        expect(googleRes.token).toBeDefined();
+        expect(googleRes.usuario.email).toBe(testEmail);
+        expect(googleRes.usuario.googleLinked).toBe(true);
+
+        const { Usuario } = connectionManager.centralModels;
+        const usuarioDb = await Usuario.findByPk(testEmail);
+        expect(usuarioDb.googleId).toBe("google_123456789_test");
     });
 });
