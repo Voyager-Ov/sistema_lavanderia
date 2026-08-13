@@ -13,7 +13,8 @@ export default (sequelize, DataTypes) => {
 			},
 			apellido: {
 				type: DataTypes.STRING,
-				allowNull: false,
+				allowNull: true,
+				defaultValue: "",
 			},
 			telefono: {
 				type: DataTypes.STRING,
@@ -32,6 +33,11 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
+			negocioId: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				defaultValue: 1,
+			}
 		},
 		{
 			tableName: "clientes",
