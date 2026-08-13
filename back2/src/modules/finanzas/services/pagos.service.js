@@ -1,0 +1,212 @@
+import { connectionManager } from "../../../models/connectionManager.js";
+import { AppError } from "../../../utils/appError.js";
+
+class PagosService {
+
+    async _getModels(negocioId) {
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        return tenantDb.models;
+    }
+
+    // Métodos de pago por defecto para sembrar si no existen
+    _getMetodosBase(negocioId) {
+        return [
+            { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: true, negocioId },
+            { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: true, negocioId },
+            { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+            { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+            { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: true, negocioId }
+        ];
+    }
+
+    // Listar métodos de pago y autosembrar los fijos por defecto
+    async obtenerMetodosPago(negocioId) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { MetodoPago } = await this._getModels(negocioId);
+
+        let metodos = await MetodoPago.findAll({
+            order: [["esFijo", "DESC"], ["id", "ASC"]]
+        });
+
+        if (metodos.length === 0) {
+            const base = this._getMetodosBase(negocioId);
+            for (const m of base) {
+                await MetodoPago.findOrCreate({
+                    where: { nombre: m.nombre },
+                    defaults: m
+                });
+            }
+            metodos = await MetodoPago.findAll({
+                order: [["esFijo", "DESC"], ["id", "ASC"]]
+            });
+        }
+
+        return metodos;
+    }
+
+    // Crear método de pago personalizado
+    async crearMetodoPago(negocioId, data) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { MetodoPago } = await this._getModels(negocioId);
+
+        if (!data.nombre || data.nombre.trim() === "") {
+            throw new AppError("El nombre del método de pago es obligatorio.", 400, "MISSING_PAYMENT_METHOD_NAME");
+        }
+
+        const nuevoMetodo = await MetodoPago.create({
+            nombre: data.nombre.trim(),
+            icono: data.icono || "CreditCard",
+            activo: true,
+            esFijo: false,
+            negocioId
+        });
+
+        return nuevoMetodo;
+    }
+
+    // Activar / Desactivar método de pago
+    async toggleMetodoPago(negocioId, id) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { MetodoPago } = await this._getModels(negocioId);
+
+        const metodo = await MetodoPago.findByPk(id);
+        if (!metodo) {
+            throw new AppError("Método de pago no encontrado.", 404, "PAYMENT_METHOD_NOT_FOUND");
+        }
+
+        await metodo.update({ activo: !metodo.activo });
+        return metodo;
+    }
+
+    // Eliminar método de pago personalizado
+    async eliminarMetodoPago(negocioId, id) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { MetodoPago } = await this._getModels(negocioId);
+
+        const metodo = await MetodoPago.findByPk(id);
+        if (!metodo) {
+            throw new AppError("Método de pago no encontrado.", 404, "PAYMENT_METHOD_NOT_FOUND");
+        }
+
+        if (metodo.esFijo) {
+            throw new AppError("No se puede eliminar un método de pago fijo del sistema.", 400, "CANNOT_DELETE_FIXED_METHOD");
+        }
+
+        await metodo.destroy();
+        return { message: "Método de pago eliminado exitosamente." };
+    }
+
+    // Registrar pago de pedido
+    async registrarPago(negocioId, params) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { Pedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
+
+        const pedidoId = params.pedidoId || params.pedidoNumeroPedido;
+        if (!pedidoId) {
+            throw new AppError("El ID del pedido es obligatorio para registrar un pago.", 400, "MISSING_ORDER_ID");
+        }
+
+        const pedido = await Pedido.findOne({ where: { numeroPedido: pedidoId } });
+        if (!pedido) {
+            throw new AppError("Pedido no encontrado para cobrar.", 404, "ORDER_NOT_FOUND");
+        }
+
+        if (pedido.cobrado) {
+            throw new AppError("El pedido ya se encuentra cobrado.", 400, "ORDER_ALREADY_PAID");
+        }
+
+        const montoTotal = parseFloat(pedido.total) || 0;
+        const montoAbonado = parseFloat(params.monto) || montoTotal;
+        const montoRecibido = parseFloat(params.montoRecibido) || montoAbonado;
+
+        let vuelto = 0;
+        let saldoGenerado = 0;
+
+        if (montoRecibido > montoAbonado) {
+            const diferencia = montoRecibido - montoAbonado;
+            if (params.dejarVueltoAFavor) {
+                saldoGenerado = diferencia;
+            } else {
+                vuelto = diferencia;
+            }
+        }
+
+        // Buscar caja abierta para asociar movimiento
+        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
+
+        let movimientoCajaId = null;
+        if (cajaAbierta) {
+            const nuevoMovimiento = await MovimientoCaja.create({
+                monto: montoAbonado,
+                tipoMovimiento: "Ingreso por Venta",
+                observacion: `Cobro de Pedido #${pedido.codigoSeguimiento || pedido.numeroPedido}`,
+                cajaIdCaja: cajaAbierta.idCaja
+            });
+            movimientoCajaId = nuevoMovimiento.id;
+        }
+
+        const nuevoCobro = await Cobro.create({
+            montoAbonado,
+            montoRecibidoEfectivo: montoRecibido,
+            vueltoEntregado: vuelto,
+            fechaHora: new Date(),
+            pedidoNumeroPedido: pedido.numeroPedido,
+            metodoPagoId: params.metodoPagoId || 1,
+            movimientoCajaId
+        });
+
+        // Marcar pedido como cobrado
+        await pedido.update({ cobrado: true });
+
+        // Si se generó saldo a favor, impactar cuenta corriente del cliente
+        if (saldoGenerado > 0 && pedido.clienteId) {
+            const cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId } });
+            if (cuenta) {
+                await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGenerado });
+            }
+        }
+
+        return {
+            id: nuevoCobro.id,
+            pedidoId: pedido.numeroPedido,
+            monto: montoAbonado,
+            montoAFavorGenerado: saldoGenerado,
+            vueltoEntregado: vuelto,
+            estado: "COMPLETADO"
+        };
+    }
+
+    // Obtener saldos a favor de un cliente
+    async obtenerSaldosAFavorCliente(negocioId, clienteId) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { CuentaCorriente } = await this._getModels(negocioId);
+
+        const cuenta = await CuentaCorriente.findOne({ where: { clienteId } });
+        if (!cuenta || (parseFloat(cuenta.saldo) || 0) <= 0) {
+            return [];
+        }
+
+        return [
+            {
+                id: cuenta.id,
+                clienteId,
+                montoDisponible: parseFloat(cuenta.saldo),
+                descripcion: "Saldo acumulado en cuenta corriente"
+            }
+        ];
+    }
+}
+
+export const pagosService = new PagosService();
