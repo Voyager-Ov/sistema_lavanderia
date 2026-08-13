@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 
 import { SettingItem } from '../SettingItem';
+import { actualizarConfiguracion } from '@/domains/configuracion/api';
 
 const appearanceSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
