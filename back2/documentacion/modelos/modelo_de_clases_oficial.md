@@ -9,15 +9,33 @@ Este documento especifica la estructura y relaciones del **Modelo de Clases Ofic
 ```mermaid
 classDiagram
     class Negocio {
-        +Integer idNegocio (PK)
+        +Integer id (PK)
         +String razonSocial
         +String cuit
+        +String direccion
+        +String telefonoContacto
         +String colorPrincipal
         +String colorSecundario
+        +String logoUrl
+        +String simboloMoneda
+        +String zonaHoraria
+        +String mensajeTicket
+        +Boolean imprimirTicketAutomatico
+        +Boolean mostrarQrTicket
         +Boolean facturacionHabilitada
+        +Boolean afipActivo
+        +String afipModoFacturacion
+        +Integer afipPuntoVenta
         +String certificadoAfipPath
         +String llaveAfipPath
+        +Boolean whatsappActivo
+        +String whatsappEstadoConexion
+        +String whatsappMensajeListo
+        +String whatsappMensajeManual
         +String tokenMercadoPago
+        +String mercadopagoPublicKey
+        +String mpModoCobro
+        +String aliasMp
     }
 
     class Empleado {
