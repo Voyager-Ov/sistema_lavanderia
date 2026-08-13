@@ -12,28 +12,47 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 			},
 			descripcion: {
-				type: DataTypes.STRING,
+				type: DataTypes.TEXT,
 				allowNull: true,
+			},
+			precioActual: {
+				type: DataTypes.DECIMAL(10, 2),
+				allowNull: false,
+				defaultValue: 0.00,
+			},
+			costoEstimado: {
+				type: DataTypes.DECIMAL(10, 2),
+				allowNull: true,
+				defaultValue: 0.00,
+			},
+			tiempoEstimadoMinutos: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				defaultValue: 0,
 			},
 			imagenUrl: {
 				type: DataTypes.STRING,
 				allowNull: true,
-			},
-			costo: {
-				type: DataTypes.DOUBLE,
-				allowNull: false,
-				defaultValue: 0,
-			},
-			precio: {
-				type: DataTypes.DOUBLE,
-				allowNull: false,
-				defaultValue: 0,
 			},
 			disponible: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
 				defaultValue: true,
 			},
+			activo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
+			},
+			categoriaId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
+			negocioId: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				defaultValue: 1,
+			}
 		},
 		{
 			tableName: "servicios",
@@ -42,7 +61,7 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Servicio.associate = (models) => {
-		Servicio.belongsTo(models.CategoriaServicio, { foreignKey: "categoriaServicioId", as: "categoria", constraints: false });
+		Servicio.belongsTo(models.CategoriaServicio, { foreignKey: "categoriaId", as: "categoria", constraints: false });
 		Servicio.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
 	};
 
