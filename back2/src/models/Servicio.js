@@ -51,7 +51,6 @@ export default (sequelize, DataTypes) => {
 			negocioId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,
-				defaultValue: 1,
 			}
 		},
 		{

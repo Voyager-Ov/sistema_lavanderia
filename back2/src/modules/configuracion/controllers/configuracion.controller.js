@@ -1,9 +1,18 @@
 import { configuracionService } from "../services/configuracion.service.js";
 import { successResponse } from "../../../utils/response.util.js";
+import { AppError } from "../../../utils/appError.js";
+
+const getTenantId = (req) => {
+    const negocioId = req.user?.negocioId;
+    if (!negocioId) {
+        throw new AppError("No se ha identificado el negocio activo en la sesión.", 401, "TENANT_REQUIRED");
+    }
+    return negocioId;
+};
 
 export const getConfiguracion = async (req, res, next) => {
     try {
-        const negocioId = req.user?.negocioId || 1;
+        const negocioId = getTenantId(req);
         const config = await configuracionService.getConfiguracion(negocioId);
         return successResponse(res, 200, "Configuración recuperada exitosamente", config);
     } catch (error) {
@@ -13,7 +22,7 @@ export const getConfiguracion = async (req, res, next) => {
 
 export const actualizarConfiguracion = async (req, res, next) => {
     try {
-        const negocioId = req.user?.negocioId || 1;
+        const negocioId = getTenantId(req);
         const config = await configuracionService.actualizarConfiguracion(negocioId, req.body);
         return successResponse(res, 200, "Configuración actualizada exitosamente", config);
     } catch (error) {
@@ -23,7 +32,7 @@ export const actualizarConfiguracion = async (req, res, next) => {
 
 export const subirCertificadosAfip = async (req, res, next) => {
     try {
-        const negocioId = req.user?.negocioId || 1;
+        const negocioId = getTenantId(req);
         
         let certPath = null;
         let keyPath = null;
@@ -46,7 +55,7 @@ export const subirCertificadosAfip = async (req, res, next) => {
 
 export const subirLogo = async (req, res, next) => {
     try {
-        const negocioId = req.user?.negocioId || 1;
+        const negocioId = getTenantId(req);
         const logoPath = req.file ? `/uploads/logos/${req.file.filename}` : null;
 
         const config = await configuracionService.guardarLogo(negocioId, logoPath);
@@ -58,7 +67,7 @@ export const subirLogo = async (req, res, next) => {
 
 export const validarMercadoPagoToken = async (req, res, next) => {
     try {
-        const negocioId = req.user?.negocioId || 1;
+        const negocioId = getTenantId(req);
         const token = req.body.tokenMercadoPago || req.body.token;
 
         const result = await configuracionService.validarMercadoPagoToken(negocioId, token);

@@ -38,13 +38,14 @@ class ConfiguracionService {
 
     // Obtener la configuración del negocio del usuario activo
     async getConfiguracion(negocioId) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido para consultar configuración.", 400, "MISSING_TENANT_ID");
+        }
         const { Negocio } = connectionManager.centralModels;
-        const targetId = negocioId || 1;
 
-        let negocio = await Negocio.findByPk(targetId);
+        let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            // Si por alguna razón no existe, crearlo con defaults
-            negocio = await Negocio.create({ id: targetId, razonSocial: "Mi Lavandería" });
+            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
         }
 
         return this._formatConfigResponse(negocio);
@@ -52,12 +53,14 @@ class ConfiguracionService {
 
     // Actualizar configuración parcialmente
     async actualizarConfiguracion(negocioId, data) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido para actualizar configuración.", 400, "MISSING_TENANT_ID");
+        }
         const { Negocio } = connectionManager.centralModels;
-        const targetId = negocioId || 1;
 
-        let negocio = await Negocio.findByPk(targetId);
+        let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: targetId, razonSocial: "Mi Lavandería" });
+            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
         }
 
         // Mapeo de alias y propiedades recibidas
@@ -112,12 +115,14 @@ class ConfiguracionService {
 
     // Subir certificados AFIP
     async guardarCertificadosAfip(negocioId, certificadoPath, llavePrivadaPath) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Negocio } = connectionManager.centralModels;
-        const targetId = negocioId || 1;
 
-        let negocio = await Negocio.findByPk(targetId);
+        let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: targetId, razonSocial: "Mi Lavandería" });
+            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
         }
 
         const updateFields = {};
@@ -133,12 +138,14 @@ class ConfiguracionService {
 
     // Subir Logo
     async guardarLogo(negocioId, logoPath) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Negocio } = connectionManager.centralModels;
-        const targetId = negocioId || 1;
 
-        let negocio = await Negocio.findByPk(targetId);
+        let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: targetId, razonSocial: "Mi Lavandería" });
+            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
         }
 
         await negocio.update({ logoUrl: logoPath });
