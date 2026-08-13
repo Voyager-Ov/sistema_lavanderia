@@ -326,18 +326,18 @@ export default function ClienteDetailPage() {
                           </td>
                         </tr>
                       ) : (
-                        (cliente.pedidos || []).map((p: any) => {
+                        (cliente.pedidos || []).map((p: any, idx: number) => {
                           const estadoInfo = PEDIDO_ESTADO[p.estado] || { label: p.estado, color: "bg-gray-50 text-gray-500 border-gray-100", icon: Package }
                           const EstadoIcon = estadoInfo.icon
                           return (
                             <tr
-                              key={p.id}
+                              key={p.id || p.numeroPedido || idx}
                               className="hover:bg-gray-50/80 cursor-pointer transition-colors group"
-                              onClick={() => router.push(`/admin/pedidos/${p.id}`)}
+                              onClick={() => router.push(`/admin/pedidos/${p.id || p.numeroPedido}`)}
                             >
                               <td className="px-5 py-3.5">
                                 <span className="font-bold text-indigo-600 group-hover:underline font-mono text-xs">
-                                  #{p.codigoSeguimiento || p.id}
+                                  #{p.codigoSeguimiento || p.numeroPedido || p.id}
                                 </span>
                               </td>
                               <td className="px-5 py-3.5">
@@ -355,7 +355,7 @@ export default function ClienteDetailPage() {
                                 ${parseFloat(p.total || "0").toLocaleString("es-AR")}
                               </td>
                               <td className="px-5 py-3.5 text-gray-400 text-xs">
-                                {formatDistanceToNow(parseISO(p.createdAt), { addSuffix: true, locale: es })}
+                                {p.createdAt ? formatDistanceToNow(parseISO(p.createdAt), { addSuffix: true, locale: es }) : "-"}
                               </td>
                             </tr>
                           )
