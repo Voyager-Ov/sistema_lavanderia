@@ -56,11 +56,14 @@ export default function CrearPedidoPage() {
 
   // Page entry animation
   useGSAP(() => {
-    gsap.fromTo(
-      ".fade-up-element",
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out" }
-    )
+    const elements = document.querySelectorAll(".fade-up-element")
+    if (elements.length > 0) {
+      gsap.fromTo(
+        elements,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out" }
+      )
+    }
   }, [])
 
   const handleCreateOrder = async () => {

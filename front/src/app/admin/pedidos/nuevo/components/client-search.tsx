@@ -93,7 +93,7 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
 
   // Animate results
   useGSAP(() => {
-    if (isDropdownOpen && resultsRef.current) {
+    if (isDropdownOpen && resultsRef.current && resultsRef.current.children && resultsRef.current.children.length > 0) {
       gsap.fromTo(
         resultsRef.current.children,
         { opacity: 0, x: -10 },

@@ -18,8 +18,11 @@ export interface CategoriasResponse {
 }
 
 export const getCategorias = async (): Promise<Categoria[]> => {
-  const response = await apiClient.get<CategoriasResponse>(`/categorias`);
-  return response.data?.items || [];
+  const response: any = await apiClient.get<CategoriasResponse>(`/categorias`);
+  if (Array.isArray(response.data)) return response.data;
+  if (Array.isArray(response.data?.items)) return response.data.items;
+  if (Array.isArray(response)) return response;
+  return [];
 };
 
 export const crearCategoria = async (data: Partial<Categoria>): Promise<Categoria> => {
