@@ -1,5 +1,6 @@
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { cajasSocket } from "../sockets/cajas.socket.js";
 
 class CajasService {
 
@@ -120,7 +121,9 @@ class CajasService {
             negocioId
         });
 
-        return this._formatCaja(nuevaCaja);
+        const formattedApertura = this._formatCaja(nuevaCaja);
+        cajasSocket.emitirCajaAbierta(negocioId, formattedApertura);
+        return formattedApertura;
     }
 
     // Cerrar el turno de caja activo
@@ -152,7 +155,9 @@ class CajasService {
             observacionCierre: data.observaciones || "Cierre de turno"
         });
 
-        return this._formatCaja(caja);
+        const formattedCierre = this._formatCaja(caja);
+        cajasSocket.emitirCajaCerrada(negocioId, formattedCierre);
+        return formattedCierre;
     }
 
     // Historial de cajas

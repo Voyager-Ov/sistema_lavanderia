@@ -1,6 +1,7 @@
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
 import { categoriasGastosService } from "./categoriasGastos.service.js";
+import { cajasSocket } from "../../finanzas/sockets/cajas.socket.js";
 
 class GastosService {
 
@@ -59,6 +60,7 @@ class GastosService {
             movimientoCajaId
         });
 
+        cajasSocket.emitirGastoRegistrado(negocioId, nuevoGasto);
         return nuevoGasto;
     }
 

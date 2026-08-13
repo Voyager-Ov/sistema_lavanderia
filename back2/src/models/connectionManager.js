@@ -27,6 +27,7 @@ class ConnectionManager {
         this.centralDb = null;
         this.centralModels = {};
         this.tenantDbs = new Map();
+        this.tenantDbPromises = new Map();
     }
 
     // Inicializa la conexión a la base de datos central
@@ -56,7 +57,7 @@ class ConnectionManager {
         console.log("🟢 Base de Datos Central conectada y sincronizada.");
     }
 
-    // Obtiene o crea la conexión para un Tenant (Negocio) específico
+    // Obtiene o crea la conexión para un Tenant (Negocio) específico de forma concurrente y segura
     async getTenantDb(negocioId, forceSync = false) {
         if (!negocioId) throw new Error("negocioId es requerido para obtener la BD del tenant");
 
@@ -64,45 +65,51 @@ class ConnectionManager {
             return this.tenantDbs.get(negocioId);
         }
 
-        const isTest = process.env.NODE_ENV === "test";
-        let tenantDb;
-
-        if (isTest) {
-            tenantDb = new Sequelize({
-                dialect: "sqlite",
-                storage: ":memory:",
-                logging: false,
-                dialectOptions: { pragmas: { foreign_keys: 0 } }
-            });
-        } else {
-            const dbUrl = process.env.DATABASE_URL;
-            const schemaName = `tenant_${negocioId}`;
-            
-            // Si estamos forzando la creacion del schema (ej. en el registro de la app), lo creamos.
-            if (forceSync) {
-                await this.centralDb.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName};`);
-            }
-
-            tenantDb = new Sequelize(dbUrl, {
-                dialect: "postgres",
-                logging: false,
-                schema: schemaName,
-                searchPath: schemaName,
-                dialectOptions: {
-                    ssl: { require: true, rejectUnauthorized: false }
-                }
-            });
+        if (this.tenantDbPromises.has(negocioId)) {
+            return await this.tenantDbPromises.get(negocioId);
         }
 
-        const schemaNameArg = !isTest ? `tenant_${negocioId}` : null;
-        const tenantModels = this._initModels(tenantDb, schemaNameArg);
+        const initPromise = (async () => {
+            const isTest = process.env.NODE_ENV === "test";
+            let tenantDb;
 
-        // Sincronizar esquemas de tenant para asegurar que todas las columnas existan
-        if (isTest || forceSync || process.env.NODE_ENV === "development") {
-            await tenantDb.sync(isTest ? {} : { alter: true });
-            
             if (isTest) {
-                await tenantDb.query("PRAGMA foreign_keys = OFF;");
+                tenantDb = new Sequelize({
+                    dialect: "sqlite",
+                    storage: ":memory:",
+                    logging: false,
+                    dialectOptions: { pragmas: { foreign_keys: 0 } }
+                });
+            } else {
+                const dbUrl = process.env.DATABASE_URL;
+                const schemaName = `tenant_${negocioId}`;
+                
+                if (forceSync) {
+                    await this.centralDb.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName};`);
+                }
+
+                tenantDb = new Sequelize(dbUrl, {
+                    dialect: "postgres",
+                    logging: false,
+                    schema: schemaName,
+                    searchPath: schemaName,
+                    dialectOptions: {
+                        ssl: { require: true, rejectUnauthorized: false }
+                    }
+                });
+            }
+
+            const schemaNameArg = !isTest ? `tenant_${negocioId}` : null;
+            const tenantModels = this._initModels(tenantDb, schemaNameArg);
+
+            // Sincronizar esquemas de tenant
+            if (isTest || forceSync) {
+                await tenantDb.sync(isTest ? {} : { alter: true });
+                if (isTest) {
+                    await tenantDb.query("PRAGMA foreign_keys = OFF;");
+                }
+            } else {
+                await tenantDb.sync();
             }
 
             // Insertar un Negocio dummy para satisfacer las Foreign Keys locales si no existe
@@ -116,12 +123,19 @@ class ConnectionManager {
             }
             
             console.log(`🔵 Base de Datos Tenant conectada y sincronizada (Negocio ID: ${negocioId}).`);
-        }
 
-        const tenantContext = { sequelize: tenantDb, models: tenantModels };
-        this.tenantDbs.set(negocioId, tenantContext);
-        
-        return tenantContext;
+            const tenantContext = { sequelize: tenantDb, models: tenantModels };
+            this.tenantDbs.set(negocioId, tenantContext);
+            return tenantContext;
+        })();
+
+        this.tenantDbPromises.set(negocioId, initPromise);
+
+        try {
+            return await initPromise;
+        } finally {
+            this.tenantDbPromises.delete(negocioId);
+        }
     }
 
     // Función auxiliar para inicializar modelos y asociaciones

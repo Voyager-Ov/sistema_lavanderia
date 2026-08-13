@@ -1,5 +1,6 @@
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { rrhhSocket } from "../sockets/rrhh.socket.js";
 
 class EstadoEmpleadosService {
 
@@ -28,6 +29,7 @@ class EstadoEmpleadosService {
             }
         }
 
+        rrhhSocket.emitirEstadoEmpleadoCambiado(negocioId, empleado);
         return empleado;
     }
 }

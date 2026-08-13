@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { pedidosSocket } from "../sockets/pedidos.socket.js";
 
 class PedidosService {
 
@@ -314,7 +315,9 @@ class PedidosService {
             fechaHoraInicio: new Date()
         });
 
-        return this.obtenerPedidoPorNumero(negocioId, nuevoPedido.numeroPedido);
+        const res = await this.obtenerPedidoPorNumero(negocioId, nuevoPedido.numeroPedido);
+        pedidosSocket.emitirPedidoCreado(negocioId, res);
+        return res;
     }
 
     // Cambiar estado de un pedido (Trazabilidad)
@@ -348,7 +351,9 @@ class PedidosService {
             fechaHoraInicio: new Date()
         });
 
-        return this.obtenerPedidoPorNumero(negocioId, numeroPedido);
+        const res = await this.obtenerPedidoPorNumero(negocioId, numeroPedido);
+        pedidosSocket.emitirEstadoCambiado(negocioId, res, nuevoEstadoNombre);
+        return res;
     }
 
     // Marcar ticket como impreso
