@@ -1,18 +1,31 @@
-# Especificación del Módulo de Cobros, Pagos y Saldos a Favor (Pagos)
+# Especificación del Módulo de Cobros, Pagos, Métodos de Pago y Saldos a Favor (Pagos)
 
-Este documento detalla la especificación técnica completa del **Módulo de Cobros, Pagos y Saldos a Favor (`pagos`)** para la plataforma SaaS Multi-Tenant de lavandería, enfocándose en las **lógicas cruzadas de intersección contable** entre Pedidos, Cuentas Corrientes de Clientes, Cajas de Turno e Integración Fiscal, vinculando cada Caso de Uso (CU) con sus **Actores autorizados**, las **Pantallas y Componentes de Interfaz del Frontend (UI)** donde se originan las acciones y la **Funcionalidad Backend/Frontend** utilizada para resolverlas.
+Este documento detalla la especificación técnica completa del **Módulo de Cobros, Pagos, Métodos de Pago y Saldos a Favor (`pagos`)** para la plataforma SaaS Multi-Tenant de lavandería en `back2`, enfocándose en la gestión de formas de cobro y las **lógicas cruzadas de intersección contable** entre Pedidos, Cuentas Corrientes de Clientes, Cajas de Turno e Integración Fiscal.
 
 ---
 
 ## 1. Alcance y Objetivos del Módulo
 
-El módulo de Pagos es el motor de conciliación y liquidación contable de la plataforma. Resuelve las lógicas cruzadas entre los módulos de Pedidos, Clientes y Cajas garantizando **consistencia ACID e inmutabilidad** mediante transacciones manejadas y **bloqueos pesimistas (`LOCK.UPDATE`)**.
+El módulo de Pagos es el motor de conciliación y liquidación contable de la plataforma. Resuelve las lógicas cruzadas entre los módulos de Pedidos, Clientes, Métodos de Pago y Cajas garantizando **consistencia ACID e inmutabilidad** mediante transacciones manejadas y **bloqueos pesimistas (`LOCK.UPDATE`)**.
 
 ---
 
 ## 2. Mapeo Integral: Casos de Uso, Actores, Pantallas Frontend y Funcionalidad de Resolución
 
-A continuación se especifica la matriz detallada de trazabilidad entre la interfaz de usuario, los actores del sistema y los servicios de backend:
+### CU-30: Gestionar Métodos de Pago (Fijos y Personalizados)
+*   **Actores Autorizados:** `Administrador de Negocio` (`admin`) *(Exclusivo)*.
+*   **Pantalla / Componente Frontend de Origen:**
+    *   **Configuración del Negocio:** `/admin/configuraciones`.
+    *   **Componentes UI:** `PaymentsForm.tsx`.
+*   **Funcionalidad con la que se Resuelve:**
+    *   *Frontend:* Lista de tarjetas de métodos de pago con botones de encendido/apagado (`switch` activo), formulario para agregar nuevos métodos de pago personalizados y botón de eliminación.
+    *   *Backend:*
+        *   `GET /api/pagos/metodos`: Recupera las formas de cobro del tenant (`obtenerMetodosPago`).
+        *   `POST /api/pagos/metodos`: Registra una nueva forma de cobro personalizada con `esFijo = false` (`crearMetodoPago`).
+        *   `PATCH /api/pagos/metodos/:id`: Invierte la bandera `activo` (`toggleMetodoPago`).
+        *   `DELETE /api/pagos/metodos/:id`: Elimina la forma de cobro. **Regla de Protección Contable:** Si el método tiene `esFijo = true` (*Efectivo*, *Mercado Pago QR*, *Tarjeta Débito*, *Tarjeta Crédito*, *Transferencia*), rechaza la eliminación con HTTP 400 Bad Request (*"No se puede eliminar un método de pago fijo del sistema"*); en su lugar, sólo permite desactivarlo mediante `PATCH`. Si `esFijo = false`, ejecuta `metodo.destroy()`.
+
+---
 
 ### CU-31: Cobrar Pedido Individual Mostrador
 *   **Actores Autorizados:** `Empleado Operativo / Cajero` (`empleado`), `Administrador de Negocio` (`admin`).
@@ -20,8 +33,8 @@ A continuación se especifica la matriz detallada de trazabilidad entre la inter
     *   **Dashboard de Pedidos:** `/admin/pedidos` y `/pos/pedidos`.
     *   **Componentes UI:** `cobrar-pedido-sheet.tsx` (desplegado dentro de `ResponsiveSheet`) y `pedido-detail-view.tsx`.
 *   **Funcionalidad con la que se Resuelve:**
-    *   *Frontend:* Formulario de cobro eligiendo Método de Pago (Efectivo, Tarjeta, QR), monto recibido y opción de aplicar Saldo a Favor.
-    *   *Backend (Endpoint `POST /api/v1/pagos`):* Ejecución de `registrarPago()` en `pago-core.service.js` dentro de una transacción Sequelize.
+    *   *Frontend:* Formulario de cobro eligiendo Método de Pago (Efectivo, Tarjeta, QR, Personalizado), monto recibido y opción de aplicar Saldo a Favor.
+    *   *Backend (Endpoint `POST /api/pagos`):* Ejecución en `pago-core.service.js` dentro de una transacción Sequelize.
     *   *Lógica Cruzada:*
         1. Exige una `Caja` en estado `ABIERTA`.
         2. Aplica bloqueo pesimista `t.LOCK.UPDATE` sobre el `Pedido` y los `CreditoCliente`.
@@ -42,43 +55,39 @@ A continuación se especifica la matriz detallada de trazabilidad entre la inter
 
 ---
 
-### CU-33: Liquidar Deuda Exigible Masiva de Cliente
+### CU-33: Consultar Saldos a Favor de Cliente
 *   **Actores Autorizados:** `Empleado Operativo / Cajero` (`empleado`), `Administrador de Negocio` (`admin`).
 *   **Pantalla / Componente Frontend de Origen:**
-    *   **Ficha del Cliente / Cuenta Corriente:** `/admin/clientes` y `/admin/clientes/[id]`.
-    *   **Componentes UI:** `CuentaCorrienteTab.tsx` y `ModalCobroDeuda.tsx`.
+    *   **Ficha del Cliente / Sheet de Cobro:** `/admin/clientes` y `cobrar-pedido-sheet.tsx`.
 *   **Funcionalidad con la que se Resuelve:**
-    *   *Frontend:* Selección de múltiples pedidos entregados en estado no cobrado y confirmación de monto provisto.
-    *   *Backend (Endpoint `POST /api/v1/clientes/:id/cuenta-corriente/cobrar-deuda`):* Ejecución de `cobrarDeudaMasiva()` en `pago-core.service.js`.
-    *   *Atomicidad:* En una sola transacción ACID, aplica saldo a favor FIFO, distribuye los fondos entregados pedido a pedido y genera atómicamente **1 `Pago` individual por cada `Pedido` saldado**. Si alguna validación falla, ejecuta rollback total preservando la consistencia.
+    *   *Backend (Endpoint `GET /api/pagos/saldos-a-favor/:clienteId`):* Consulta los créditos disponibles acumulados por el cliente ordenados por fecha FIFO.
 
 ---
 
-### CU-34: Generar Crédito Automático por Cancelación de Pedido Abonado
-*   **Actores Autorizados:** `Empleado Operativo / Cajero` (`empleado`), `Administrador de Negocio` (`admin`).
-*   **Pantalla / Componente Frontend de Origen:**
-    *   **Sheet de Cancelación:** `/admin/pedidos` y `/pos/pedidos`.
-    *   **Componentes UI:** `cancel-order-sheet.tsx` / `cancel-pedido-sheet.tsx` (`ResponsiveSheet`).
-*   **Funcionalidad con la que se Resuelve:**
-    *   *Frontend:* Confirmación de anulación de orden de trabajo.
-    *   *Backend (Endpoint `PATCH /api/v1/pedidos/:id/cancelar`):* `cancelarPedido()` en `pedido.service.js`. Si el pedido ya estaba cobrado, invoca `generarCreditoCancelacion()` en `credito.service.js` reintegrando automáticamente el importe abonado como un `CreditoCliente` (`CANCELACION_PEDIDO`) disponible.
-
----
-
-### CU-35: Anular Pago de Pedido y Restablecer Deuda Exigible
+### CU-34: Anular Pago de Pedido y Restablecer Deuda Exigible
 *   **Actores Autorizados:** `Administrador de Negocio` (`admin`) *(Exclusivo)*.
 *   **Pantalla / Componente Frontend de Origen:**
     *   **Detalle de Finanzas y Auditoría:** `/admin/finanzas`.
     *   **Componentes UI:** `movimiento-detail-sheet.tsx` (`ResponsiveSheet`).
 *   **Funcionalidad con la que se Resuelve:**
     *   *Frontend:* Botón "Anular Pago" con confirmación.
-    *   *Backend (Endpoint `PATCH /api/v1/pagos/:id/anular`):* Ejecución de `anularPago()` en `pago-core.service.js`. Invalida el comprobante (`estado = "ANULADO"`), reajusta la caja y restablece el pedido a `cobrado = false`, reabriendo la deuda exigible en la Cuenta Corriente del cliente.
+    *   *Backend (Endpoint `PATCH /api/pagos/:id/anular`):* Ejecución de `anularPago()` en `pago-core.service.js`. Invalida el comprobante (`estado = "ANULADO"`), reajusta la caja y restablece el pedido a `cobrado = false`, reabriendo la deuda exigible en la Cuenta Corriente del cliente.
 
 ---
 
 ## 3. Modelos de Base de Datos Vinculados
 
-### A. Modelo `Pago`
+### A. Modelo `MetodoPago`
+*   `id` (DataTypes.INTEGER, **PK**, autoIncrement): Identificador.
+*   `nombre` (DataTypes.STRING, allowNull: false): Nombre ("Efectivo", "Mercado Pago / QR", "Tarjeta de Débito", "Tarjeta de Crédito", "Transferencia Bancaria", etc.).
+*   `activo` (DataTypes.BOOLEAN, defaultValue: true): Flag de activación.
+*   `icono` (DataTypes.STRING, defaultValue: "Banknote"): Nombre de icono Lucide-React.
+*   `esFijo` (DataTypes.BOOLEAN, defaultValue: false): Bandera de método del sistema (no eliminable si `esFijo = true`).
+*   `negocioId` (DataTypes.INTEGER, allowNull: false): Llave tenant.
+
+---
+
+### B. Modelo `Pago`
 *   `id` (DataTypes.INTEGER, **PK**, autoIncrement): Identificador del pago.
 *   `pedidoId` (DataTypes.INTEGER, allowNull: false): FK hacia `Pedido`.
 *   `registradoPorId` (DataTypes.INTEGER, allowNull: false): FK hacia `Usuario`.
@@ -94,131 +103,42 @@ A continuación se especifica la matriz detallada de trazabilidad entre la inter
 
 ## 4. Contratos de API (JSON Payloads)
 
-### 1. Registrar Pago (`POST /api/v1/pagos`)
-```json
-{
-  "pedidoId": 105,
-  "metodoPagoId": 1,
-  "monto": 3000.00,
-  "montoRecibido": 5000.00,
-  "aplicarSaldoAFavor": true,
-  "dejarVueltoAFavor": true
-}
-```
-*   **Respuesta (HTTP 200 OK):**
-```json
-{
-  "status": "success",
-  "message": "Pago registrado exitosamente",
-  "data": {
-    "id": 88,
-    "pedidoId": 105,
-    "monto": 3000.00,
-    "montoEfectivoTarjeta": 2000.00,
-    "montoCreditoAplicado": 1000.00,
-    "montoAFavorGenerado": 3000.00,
-    "estado": "COMPLETADO"
-  }
-}
-```
+### 1. Obtener Métodos de Pago (`GET /api/pagos/metodos`)
+*   **Headers:** `Authorization: Bearer <token_jwt>`
+*   **Responses:**
+    *   `200 OK` ➔ Retorna la lista de métodos de pago configurados.
+        ```json
+        {
+          "success": true,
+          "message": "Métodos de pago obtenidos",
+          "data": [
+            { "id": 1, "nombre": "Efectivo", "activo": true, "icono": "Banknote", "esFijo": true },
+            { "id": 2, "nombre": "Mercado Pago / QR", "activo": true, "icono": "QrCode", "esFijo": true },
+            { "id": 6, "nombre": "Cuenta DNI", "activo": true, "icono": "Wallet", "esFijo": false }
+          ]
+        }
+        ```
 
 ---
 
-## 5. Algoritmos de Negocio y Lógica en los Servicios
-
-### Algoritmo de Liquidación Atómica (`registrarPago`)
-
-```javascript
-export const registrarPago = async (negocioId, usuarioId, data) => {
-    let { 
-        pedidoId, metodoPagoId, monto, montoRecibido, 
-        aplicarSaldoAFavor = false, montoSaldoAFavor = null, 
-        dejarVueltoAFavor = false
-    } = data;
-
-    const t = await sequelize.transaction();
-    try {
-        // 1. Validar caja abierta
-        const cajaAbierta = await models.Caja.findOne({ 
-            where: { negocioId, usuarioId, estado: "ABIERTA" }, transaction: t 
-        });
-        if (!cajaAbierta) throw new AppError("No se puede cobrar pedidos sin abrir una caja.", 400);
-
-        // 2. Bloqueo Pesimista sobre el Pedido
-        const pedido = await models.Pedido.findOne({ 
-            where: { id: pedidoId, negocioId }, lock: t.LOCK.UPDATE, transaction: t 
-        });
-        if (!pedido) throw new AppError("Pedido no encontrado.", 404);
-
-        const totalPedido = parseFloat(pedido.total);
-        let montoCreditoAplicado = 0;
-
-        // 3. Imputación FIFO de Saldo a Favor
-        if (aplicarSaldoAFavor) {
-            const maxCredito = montoSaldoAFavor ? Math.min(parseFloat(montoSaldoAFavor), totalPedido) : totalPedido;
-            if (maxCredito > 0) {
-                const creditosDisponibles = await models.CreditoCliente.findAll({
-                    where: {
-                        negocioId,
-                        clienteId: pedido.clienteId,
-                        estado: { [Op.in]: ["DISPONIBLE", "CONSUMIDO_PARCIAL"] },
-                        montoDisponible: { [Op.gt]: 0 }
-                    },
-                    order: [["id", "ASC"]],
-                    lock: t.LOCK.UPDATE,
-                    transaction: t
-                });
-
-                let totalCreditoDisponible = creditosDisponibles.reduce((acc, c) => acc + parseFloat(c.montoDisponible), 0);
-                montoCreditoAplicado = Number(Math.min(totalCreditoDisponible, maxCredito).toFixed(2));
-            }
+### 2. Eliminar Método de Pago Personalizado (`DELETE /api/pagos/metodos/:id`)
+*   **Headers:** `Authorization: Bearer <token_jwt>`
+*   **Roles Permitidos:** `admin` *(Exclusivo)*
+*   **Responses:**
+    *   `200 OK` ➔ Método eliminado exitosamente.
+        ```json
+        {
+          "success": true,
+          "message": "Método de pago eliminado",
+          "data": null
         }
-
-        let montoRestanteAPagar = Number((totalPedido - montoCreditoAplicado).toFixed(2));
-        const efectivoIngresado = parseFloat(montoRecibido || 0);
-        let vueltoGenerado = 0;
-
-        if (montoRestanteAPagar > 0) {
-            vueltoGenerado = Number((efectivoIngresado - montoRestanteAPagar).toFixed(2));
-        }
-
-        // 4. Registrar Pago
-        const nuevoPago = await models.Pago.create({
-            pedidoId,
-            registradoPorId: usuarioId,
-            metodoPagoId: montoRestanteAPagar > 0 ? metodoPagoId : null,
-            cajaId: cajaAbierta.id,
-            monto: totalPedido,
-            montoEfectivoTarjeta: dejarVueltoAFavor ? efectivoIngresado : montoRestanteAPagar,
-            montoCreditoAplicado: montoCreditoAplicado,
-            montoAFavorGenerado: (dejarVueltoAFavor && vueltoGenerado > 0) ? vueltoGenerado : 0,
-            estado: "COMPLETADO"
-        }, { transaction: t });
-
-        // 5. Consumo FIFO
-        if (montoCreditoAplicado > 0) {
-            await consumirCreditosFIFO(negocioId, pedido.clienteId, montoCreditoAplicado, nuevoPago.id, pedido.id, t);
-        }
-
-        // 6. Nuevo saldo a favor si retuvo vuelto
-        if (dejarVueltoAFavor && vueltoGenerado > 0) {
-            await generarCreditoSobrepago(negocioId, pedido.clienteId, pedido.id, vueltoGenerado, usuarioId, t);
-        }
-
-        await pedido.update({ cobrado: true }, { transaction: t });
-        await t.commit();
-
-        emitToTenant(negocioId, "pago_registrado", { pagoId: nuevoPago.id, pedidoId: pedido.id });
-        return nuevoPago;
-    } catch (error) {
-        if (t.finished !== 'commit') await t.rollback();
-        throw error;
-    }
-};
-```
+        ```
+    *   `400 Bad Request` ➔ Si el método es fijo (`esFijo = true`): `"No se puede eliminar un método de pago fijo del sistema."`
 
 ---
 
-## 6. Middlewares y Seguridad
+## 5. Diagnóstico de Errores Comunes de Red
 
-*   `verificarToken` y `verificarRol(["admin", "empleado"])`.
+### `net::ERR_CONNECTION_REFUSED`
+*   **Causa:** Ocurre cuando el navegador o el cliente HTTP no puede establecer una conexión TCP con el puerto de la API (ej. `http://localhost:5000`). Significa que el servidor Node.js backend está detenido, caído o escuchando en un puerto distinto.
+*   **Solución:** Verificar que el proceso backend Express esté ejecutándose activamente mediante `npm run dev` en el puerto especificado (`5000`).

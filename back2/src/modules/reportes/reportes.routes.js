@@ -1,7 +1,8 @@
 import { Router } from "express";
 import {
     obtenerReporteVentasPorMetodoPago,
-    obtenerReporteGeneralFinanzas
+    obtenerReporteGeneralFinanzas,
+    obtenerReporteEmpleados
 } from "./controllers/reportes.controller.js";
 import { verificarToken } from "../../middlewares/auth.middleware.js";
 
@@ -10,5 +11,6 @@ const router = Router();
 router.get("/ventas-metodo-pago", verificarToken, obtenerReporteVentasPorMetodoPago);
 router.get("/metodos-pago", verificarToken, obtenerReporteVentasPorMetodoPago);
 router.get("/finanzas", verificarToken, obtenerReporteGeneralFinanzas);
+router.get("/empleados", verificarToken, obtenerReporteEmpleados);
 
 export default router;

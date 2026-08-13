@@ -9,7 +9,7 @@ export default (sequelize, DataTypes) => {
 			},
 			legajo: {
 				type: DataTypes.INTEGER,
-				allowNull: false,
+				allowNull: true,
 			},
 			nombre: {
 				type: DataTypes.STRING,
@@ -17,10 +17,38 @@ export default (sequelize, DataTypes) => {
 			},
 			apellido: {
 				type: DataTypes.STRING,
-				allowNull: false,
+				allowNull: true,
+			},
+			email: {
+				type: DataTypes.STRING,
+				allowNull: true,
 			},
 			telefono: {
 				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			rol: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "empleado",
+			},
+			activo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
+			},
+			sueldoBase: {
+				type: DataTypes.DOUBLE,
+				allowNull: true,
+				defaultValue: 0,
+			},
+			horasSemanalesObjetivo: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+				defaultValue: 40,
+			},
+			usuarioIdCentral: {
+				type: DataTypes.INTEGER,
 				allowNull: true,
 			},
 			fechaAlta: {

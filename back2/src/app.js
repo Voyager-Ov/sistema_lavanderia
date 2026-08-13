@@ -77,6 +77,8 @@ app.use("/api/servicios", serviciosRoutes);
 app.use("/api/productos", serviciosRoutes);
 app.use("/api/categorias", categoriasRoutes);
 app.use("/api/rrhh", rrhhRoutes);
+app.use("/api/empleados", rrhhRoutes);
+app.use("/api/usuarios", rrhhRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reportes", reportesRoutes);
 app.use("/api/superadmin", superadminRoutes);

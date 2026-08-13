@@ -66,6 +66,40 @@ class ReportesService {
             pedidosPendientesPago: totalPedidos - pedidosCobrados
         };
     }
+
+    // Reporte de Rendimiento de Empleados
+    async obtenerReporteEmpleados(negocioId, query = {}) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { Empleado, Caja, Pedido } = await this._getModels(negocioId);
+
+        const empleados = await Empleado.findAll();
+        const items = [];
+
+        for (const emp of empleados) {
+            const cajas = await Caja.count({ where: { empleadoId: emp.id } });
+            let totalRecaudado = 0;
+            try {
+                totalRecaudado = await Pedido.sum("total", { where: { cobrado: true } }) || 0;
+            } catch (e) {
+                totalRecaudado = 0;
+            }
+
+            items.push({
+                id: emp.id,
+                nombre: emp.nombre,
+                email: emp.email,
+                rol: emp.rol,
+                activo: emp.activo,
+                cajasAtendidas: cajas,
+                pedidosAtendidos: await Pedido.count(),
+                totalRecaudado: parseFloat(totalRecaudado)
+            });
+        }
+
+        return { items };
+    }
 }
 
 export const reportesService = new ReportesService();

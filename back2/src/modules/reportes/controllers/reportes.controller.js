@@ -29,3 +29,13 @@ export const obtenerReporteGeneralFinanzas = async (req, res, next) => {
         next(error);
     }
 };
+
+export const obtenerReporteEmpleados = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const report = await reportesService.obtenerReporteEmpleados(negocioId, req.query);
+        return successResponse(res, 200, "Reporte de empleados generado exitosamente", report);
+    } catch (error) {
+        next(error);
+    }
+};
