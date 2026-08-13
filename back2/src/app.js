@@ -26,6 +26,8 @@ import configuracionRoutes from "./modules/configuracion/configuracion.routes.js
 import trackingRoutes from "./modules/pedidos/tracking.routes.js";
 import cajasRoutes from "./modules/finanzas/cajas.routes.js";
 import pagosRoutes from "./modules/finanzas/pagos.routes.js";
+import gastosRoutes from "./modules/gastos/gastos.routes.js";
+import categoriasGastosRoutes from "./modules/gastos/categoriasGastos.routes.js";
 
 const app = express();
 
@@ -82,6 +84,8 @@ app.use("/api/configuracion", configuracionRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/cajas", cajasRoutes);
 app.use("/api/pagos", pagosRoutes);
+app.use("/api/gastos", gastosRoutes);
+app.use("/api/categorias-gastos", categoriasGastosRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {
