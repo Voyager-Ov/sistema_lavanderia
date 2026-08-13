@@ -9,7 +9,7 @@ import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/data-display/card"
 import { Badge } from "@/shared/ui/data-display/badge"
-import { cn, formatCurrency } from "@/shared/lib/utils"
+import { cn, formatCurrency, safeFormatDate } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/forms/button"
 import { Separator } from "@/shared/ui/layout/separator"
 import { TicketPrintTemplate } from "./ticket-print-template"
@@ -144,7 +144,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateF
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground font-medium transition-colors">
-            Registrado el {format(new Date(pedido.createdAt), "PPP 'a las' p", { locale: es })}
+            Registrado el {safeFormatDate(pedido.createdAt, "PPP 'a las' p")}
           </p>
         </div>
 
@@ -255,13 +255,13 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateF
               <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
                 <span className="text-muted-foreground font-medium transition-colors">Recepción</span>
                 <span className="font-bold text-foreground transition-colors">
-                  {pedido.fechaRecepcion ? format(new Date(pedido.fechaRecepcion), "dd/MM/yyyy HH:mm") : format(new Date(pedido.createdAt), "dd/MM/yyyy HH:mm")}
+                  {safeFormatDate(pedido.fechaRecepcion || pedido.createdAt, "dd/MM/yyyy HH:mm")}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
                 <span className="text-muted-foreground font-medium transition-colors">Entrega Estimada</span>
                 <span className="font-bold text-foreground transition-colors">
-                  {pedido.fechaEntregaEstimada ? format(new Date(pedido.fechaEntregaEstimada), "dd/MM/yyyy") : 'No especificada'}
+                  {safeFormatDate(pedido.fechaEntregaEstimada, "dd/MM/yyyy", "No especificada")}
                 </span>
               </div>
               
@@ -303,7 +303,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateF
                     <div className="flex-1">
                       <p className="text-sm font-bold text-foreground transition-colors">{hist.estadoNuevo?.replace(/_/g, ' ') || 'Desconocido'}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 transition-colors">
-                        {format(new Date(hist.createdAt), "dd MMM, HH:mm", { locale: es })}
+                        {safeFormatDate(hist.createdAt, "dd MMM, HH:mm")}
                         {hist.usuario && (
                           <>
                             <span>•</span>
@@ -445,7 +445,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateF
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-muted-foreground font-medium mb-1 transition-colors">
-                          {format(new Date(ticket.createdAt), "dd MMM HH:mm", { locale: es })}
+                          {safeFormatDate(ticket.createdAt, "dd MMM HH:mm")}
                         </p>
                         <Printer className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-brand-blue transition-colors ml-auto" />
                       </div>
