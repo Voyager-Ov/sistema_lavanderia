@@ -58,6 +58,12 @@ export default function NotificationsForm() {
     setIsDirty(isDirty);
   }, [isDirty, setIsDirty]);
 
+  useEffect(() => {
+    reset({
+      whatsappMensajeManual: notificationsConfig.whatsappMensajeManual || '',
+    });
+  }, [notificationsConfig, reset]);
+
   // Shake Error Animation
   useEffect(() => {
     if (errors.whatsappMensajeManual) {

@@ -40,20 +40,22 @@ export default function AppearanceForm() {
     setIsDirty(isDirty);
   }, [isDirty, setIsDirty]);
 
-  const onSubmit = (data: AppearanceFormValues) => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 800)),
-      {
-        loading: 'Guardando configuración visual...',
-        success: () => {
-          setAppearanceConfig(data);
-          setTheme(data.theme);
-          reset(data);
-          return 'Apariencia actualizada';
-        },
-        error: 'Error al actualizar',
-      }
-    );
+  useEffect(() => {
+    reset(appearanceConfig);
+  }, [appearanceConfig, reset]);
+
+  const onSubmit = async (data: AppearanceFormValues) => {
+    try {
+      await actualizarConfiguracion({
+        colorPrincipal: data.primaryColor
+      });
+      setAppearanceConfig(data);
+      setTheme(data.theme);
+      reset(data);
+      toast.success('Apariencia actualizada');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al actualizar apariencia');
+    }
   };
 
   return (

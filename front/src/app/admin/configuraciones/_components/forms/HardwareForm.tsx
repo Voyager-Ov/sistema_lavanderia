@@ -164,6 +164,14 @@ export default function HardwareForm() {
     setIsDirty(isDirty);
   }, [isDirty, setIsDirty]);
 
+  useEffect(() => {
+    reset({
+      imprimirTicketAutomatico: hardwareConfig.imprimirTicketAutomatico,
+      mensajeTicket: hardwareConfig.mensajeTicket,
+      showQr: hardwareConfig.showQr,
+    });
+  }, [hardwareConfig, reset]);
+
   const insertVariable = (variableKey: string) => {
     if (!textareaRef.current) return;
     const start = textareaRef.current.selectionStart;

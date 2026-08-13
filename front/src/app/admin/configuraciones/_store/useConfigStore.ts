@@ -175,6 +175,10 @@ export const useConfigStore = create<ConfigState>((set) => ({
       whatsappEnabled: data.whatsappActivo ?? state.notificationsConfig.whatsappEnabled,
       whatsappTemplate: data.whatsappMensajeListo ?? state.notificationsConfig.whatsappTemplate,
       whatsappMensajeManual: data.whatsappMensajeManual ?? state.notificationsConfig.whatsappMensajeManual,
+    },
+    appearanceConfig: {
+      ...state.appearanceConfig,
+      primaryColor: data.colorPrincipal ?? state.appearanceConfig.primaryColor,
     }
   })),
 }));

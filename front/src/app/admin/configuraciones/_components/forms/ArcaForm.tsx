@@ -50,6 +50,10 @@ export default function ArcaForm() {
     setIsDirty(isDirty || certificadoFile !== null || llaveFile !== null);
   }, [isDirty, certificadoFile, llaveFile, setIsDirty]);
 
+  useEffect(() => {
+    reset(arcaConfig);
+  }, [arcaConfig, reset]);
+
   // Animate error fields
   useEffect(() => {
     const errorKeys = Object.keys(errors);

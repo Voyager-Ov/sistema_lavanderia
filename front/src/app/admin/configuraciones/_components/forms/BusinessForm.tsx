@@ -42,6 +42,11 @@ export default function BusinessForm() {
     setIsDirty(isDirty);
   }, [isDirty, setIsDirty]);
 
+  // Sync form values when businessConfig loads asynchronously from backend
+  useEffect(() => {
+    reset(businessConfig);
+  }, [businessConfig, reset]);
+
   // Animate fields with errors on submit attempt
   useEffect(() => {
     const errorKeys = Object.keys(errors);
