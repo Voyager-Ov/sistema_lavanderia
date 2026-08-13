@@ -165,13 +165,27 @@ class CajasService {
         const limit = parseInt(query.limit) || 20;
         const offset = parseInt(query.offset) || 0;
 
-        const { count, rows } = await Caja.findAndCountAll({
-            include: [{ model: MovimientoCaja, as: "movimientos" }],
-            limit,
-            offset,
-            order: [["idCaja", "DESC"]],
-            distinct: true
-        });
+        let count = 0;
+        let rows = [];
+
+        try {
+            const res = await Caja.findAndCountAll({
+                include: [{ model: MovimientoCaja, as: "movimientos" }],
+                limit,
+                offset,
+                order: [["idCaja", "DESC"]]
+            });
+            count = res.count;
+            rows = res.rows;
+        } catch (err) {
+            count = await Caja.count();
+            rows = await Caja.findAll({
+                include: [{ model: MovimientoCaja, as: "movimientos" }],
+                limit,
+                offset,
+                order: [["idCaja", "DESC"]]
+            });
+        }
 
         const items = rows.map(c => this._formatCaja(c));
 
