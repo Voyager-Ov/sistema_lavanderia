@@ -128,14 +128,14 @@ export default function AdminDashboardPage() {
     "var(--color-brand-red)",
   ]
 
-  const chartData = stats.ventasPorDia.map((d, index) => ({
+  const chartData = (stats?.ventasPorDia || []).map((d, index) => ({
     name: d.name,
-    ventas: d.ventas,
+    ventas: d.ventas || 0,
     isSolid: index % 2 === 0, // Alternate solid vs striped
     color: barChartColors[index % barChartColors.length]
   }))
 
-  const recentOrdersList: DashboardListItem[] = stats.ultimosPedidos.map(p => ({
+  const recentOrdersList: DashboardListItem[] = (stats?.ultimosPedidos || []).map(p => ({
     id: p.id,
     title: p.title,
     subtitle: p.subtitle,
@@ -143,7 +143,7 @@ export default function AdminDashboardPage() {
     badgeColor: p.badgeColor,
   }))
 
-  const topClientesList: DashboardListItem[] = stats.topClientes.map((c, i) => ({
+  const topClientesList: DashboardListItem[] = (stats?.topClientes || []).map((c, i) => ({
     id: c.id,
     avatar: `https://i.pravatar.cc/150?u=client${c.id}`,
     title: c.nombre,
@@ -153,10 +153,15 @@ export default function AdminDashboardPage() {
   }))
 
   // Calculations
-  const incrementPedidos = stats.pedidosDelDia.hoy - stats.pedidosDelDia.ayer
-  const incrementIngresos = stats.ingresos.hoyCobrado - stats.ingresos.ayerCobrado
-  const progresoActual = stats.pedidosActivos.ENTREGADO + stats.pedidosActivos.PAGADO
-  const metaDiaria = stats.pedidosDelDia.hoy > 0 ? stats.pedidosDelDia.hoy : 1 // avoid div by zero
+  const hoyPedidos = stats?.pedidosDelDia?.hoy || 0
+  const ayerPedidos = stats?.pedidosDelDia?.ayer || 0
+  const hoyCobrado = stats?.ingresos?.hoyCobrado || 0
+  const ayerCobrado = stats?.ingresos?.ayerCobrado || 0
+
+  const incrementPedidos = hoyPedidos - ayerPedidos
+  const incrementIngresos = hoyCobrado - ayerCobrado
+  const progresoActual = (stats?.pedidosActivos?.ENTREGADO || 0) + (stats?.pedidosActivos?.PAGADO || 0)
+  const metaDiaria = hoyPedidos > 0 ? hoyPedidos : 1 // avoid div by zero
 
   return (
     <div ref={containerRef} className="flex flex-col gap-6 w-full pb-10 min-h-screen">

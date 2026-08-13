@@ -30,7 +30,6 @@ graph TD
 | **Portal Admin & Finanzas** | **CU-24: Auditar Movimientos de Caja en Vivo** | `caja:apertura`<br>`caja:cierre`<br>`gasto:registrado` | Servidor Backend (al abrir/cerrar turno o egreso) | Administrador / Gerente | Notificación toast y actualización inmediata de KPIs de efectivo en caja. |
 | **Live Tracking Público** | **CU-50: Live Tracking del Cliente Final** | `tracking:actualizado` | Servidor Backend (al cambiar estado a LISTO) | Cliente Final (en `/tracking/[negocioId]/[codigo]`) | Barra de progreso dinámica que avisa al cliente cuando su ropa está lista para retirar. |
 | **Notificaciones Push** | **CU-51: Avisos por WhatsApp** | `whatsapp:enviado` | Servidor Backend (al emitir aviso por WhatsApp) | Empleado de Mostrador | Feedback visual confirmando que el cliente fue notificado. |
-| **Notificaciones Globales** | **CU-52: Alerta de Stock de Insumos** | `insumo:stock_bajo` | Servidor Backend (al reducir insumos) | Administrador | Alerta push cuando el detergente/suavizante baja del umbral mínimo. |
 
 ---
 
@@ -102,4 +101,3 @@ getIO().to(`tracking_${pedido.codigoSeguimiento}`).emit("tracking:actualizado", 
 1. **Portal del Empleado (POS & Terminal de Planta):** Sincronización instantánea de recepción de prendas y cambios de estado en las lavadoras/secadoras.
 2. **Portal del Administrador (Dashboard & Finanzas):** Notificación de egresos, movimientos de caja e indicadores de rendimiento en tiempo real.
 3. **Portal del Cliente Final (Public Live Tracking):** Notificación en vivo sin necesidad de que el cliente refresque la página para saber si su ropa fue lavada.
-4. **Alertas de Sistema y Control de Stock:** Disparadores automáticos por insumos bajos o intentos de apertura/cierre fuera de horario.

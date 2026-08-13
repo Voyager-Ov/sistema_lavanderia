@@ -107,7 +107,7 @@ export default function PosDashboardPage() {
   }
 
   // --- Transform Data for UI ---
-  const recentOrdersList: DashboardListItem[] = stats.ultimosPedidos.map(p => ({
+  const recentOrdersList: DashboardListItem[] = (stats?.ultimosPedidos || []).map(p => ({
     id: p.id,
     title: p.title,
     subtitle: p.subtitle,
@@ -116,9 +116,11 @@ export default function PosDashboardPage() {
   }))
 
   // Calculations for employee productivity
-  const incrementPedidos = stats.pedidosDelDia.hoy - stats.pedidosDelDia.ayer
-  const listosYEntregados = stats.pedidosActivos.LISTO_PARA_RETIRAR + stats.pedidosActivos.ENTREGADO + stats.pedidosActivos.PAGADO
-  const metaDiaria = stats.pedidosDelDia.hoy > 0 ? stats.pedidosDelDia.hoy : 1
+  const hoyPedidos = stats?.pedidosDelDia?.hoy || 0
+  const ayerPedidos = stats?.pedidosDelDia?.ayer || 0
+  const incrementPedidos = hoyPedidos - ayerPedidos
+  const listosYEntregados = (stats?.pedidosActivos?.LISTO_PARA_RETIRAR || 0) + (stats?.pedidosActivos?.ENTREGADO || 0) + (stats?.pedidosActivos?.PAGADO || 0)
+  const metaDiaria = hoyPedidos > 0 ? hoyPedidos : 1
 
   return (
     <div ref={containerRef} className="flex flex-col gap-6 w-full pb-10 min-h-screen">

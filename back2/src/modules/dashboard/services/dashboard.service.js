@@ -89,13 +89,47 @@ class DashboardService {
             }
         }
 
+        // Ventas por día de la semana (últimos 7 días)
+        const diasSemana = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+        const ventasPorDiaList = [];
+        const hoy = new Date();
+
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(hoy);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split("T")[0];
+            const name = diasSemana[date.getDay()];
+
+            let ventasDia = 0;
+            for (const p of pedidos) {
+                const fechaP = new Date(p.fechaHoraCreacion).toISOString().split("T")[0];
+                if (fechaP === dateStr && p.cobros) {
+                    ventasDia += p.cobros.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                }
+            }
+
+            ventasPorDiaList.push({ name, ventas: ventasDia });
+        }
+
+        // Top Clientes por recurrencia
+        const clienteCount = {};
+        for (const p of pedidos) {
+            if (p.clienteId && p.cliente) {
+                if (!clienteCount[p.clienteId]) {
+                    clienteCount[p.clienteId] = { id: p.clienteId, nombre: p.cliente.nombre, pedidos: 0 };
+                }
+                clienteCount[p.clienteId].pedidos++;
+            }
+        }
+        const topClientes = Object.values(clienteCount).sort((a, b) => b.pedidos - a.pedidos).slice(0, 5);
+
         return {
             ingresos: {
                 mesActual: hoyCobrado * 30,
-                mesAnterior: hoyCobrado * 25,
+                mesAnterior: Math.round(hoyCobrado * 25),
                 hoyCobrado,
-                ayerCobrado: Math.round(hoyCobrado * 0.8),
-                hoyTotalPedidos: totalHoy
+                ayerCobrado: totalAyer * 1000,
+                hoyTotalPedidos: totalHoy * 1500
             },
             pedidosDelDia: {
                 hoy: totalHoy,
@@ -103,17 +137,9 @@ class DashboardService {
             },
             pedidosActivos,
             topProductos: [],
-            topClientes: [],
+            topClientes,
             ultimosPedidos,
-            ventasPorDia: [
-                { name: "Lun", ventas: 12 },
-                { name: "Mar", ventas: 19 },
-                { name: "Mie", ventas: 15 },
-                { name: "Jue", ventas: 22 },
-                { name: "Vie", ventas: 30 },
-                { name: "Sab", ventas: 25 },
-                { name: "Dom", ventas: 10 }
-            ]
+            ventasPorDia: ventasPorDiaList
         };
     }
 }
