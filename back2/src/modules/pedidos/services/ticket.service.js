@@ -123,46 +123,56 @@ class TicketService {
         </html>`;
     }
 
-    // Generar sub-tickets / etiquetas de prendas
+    // Generación dinámica al vuelo de etiquetas de prendas (en memoria, sin persistencia en BD)
     async generarTicketsPrenda(negocioId, numeroPedido, cantidad) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { TicketPrenda, Pedido } = await this._getModels(negocioId);
+        const { Pedido } = await this._getModels(negocioId);
 
         const pedido = await Pedido.findByPk(numeroPedido);
         if (!pedido) {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }
 
-        const creados = [];
         const cant = parseInt(cantidad) || 1;
+        const result = [];
 
         for (let i = 1; i <= cant; i++) {
-            const codigo = `TAG-${numeroPedido}-${i}-${Date.now().toString().slice(-4)}`;
-            const t = await TicketPrenda.create({
-                codigo,
-                pedidoNumeroPedido: numeroPedido
+            result.push({
+                id: i,
+                pedidoId: numeroPedido,
+                codigo: `TAG-${numeroPedido}-${i}`,
+                createdAt: new Date().toISOString()
             });
-            creados.push(t);
         }
 
-        return creados;
+        return result;
     }
 
-    // Obtener sub-tickets de prendas de un pedido
+    // Consulta de etiquetas formateadas al vuelo según la cantidad de ítems del pedido
     async obtenerTicketsPrenda(negocioId, numeroPedido) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { TicketPrenda } = await this._getModels(negocioId);
+        const { Pedido, DetallePedido } = await this._getModels(negocioId);
 
-        const tickets = await TicketPrenda.findAll({
-            where: { pedidoNumeroPedido: numeroPedido },
-            order: [["id", "ASC"]]
+        const pedido = await Pedido.findOne({
+            where: { numeroPedido },
+            include: [{ model: DetallePedido, as: "detalles" }]
         });
 
-        return tickets;
+        if (!pedido) {
+            throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
+        }
+
+        let totalPrendas = 0;
+        if (pedido.detalles && Array.isArray(pedido.detalles)) {
+            totalPrendas = pedido.detalles.reduce((sum, d) => sum + (parseInt(d.cantidad) || 1), 0);
+        }
+        if (totalPrendas === 0) totalPrendas = 1;
+
+        return this.generarTicketsPrenda(negocioId, numeroPedido, totalPrendas);
     }
 }
 
