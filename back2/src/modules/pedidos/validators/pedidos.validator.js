@@ -11,9 +11,13 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 export const validateCrearPedido = [
-    body("detalles")
-        .isArray({ min: 1 })
-        .withMessage("El pedido debe incluir al menos un ítem o servicio"),
+    body().custom((value, { req }) => {
+        const items = req.body.items || req.body.detalles;
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new Error("El pedido debe incluir al menos un ítem o servicio");
+        }
+        return true;
+    }),
     handleValidationErrors
 ];
 

@@ -24,6 +24,7 @@ import reportesRoutes from "./modules/reportes/reportes.routes.js";
 import superadminRoutes from "./modules/superadmin/superadmin.routes.js";
 import configuracionRoutes from "./modules/configuracion/configuracion.routes.js";
 import trackingRoutes from "./modules/pedidos/tracking.routes.js";
+import cajasRoutes from "./modules/finanzas/cajas.routes.js";
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use("/api/reportes", reportesRoutes);
 app.use("/api/superadmin", superadminRoutes);
 app.use("/api/configuracion", configuracionRoutes);
 app.use("/api/tracking", trackingRoutes);
+app.use("/api/cajas", cajasRoutes);
 
 // Health Check
 app.get("/api/health", (req, res) => {
