@@ -4,7 +4,7 @@ import QRCode from "react-qr-code"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { useConfigStore } from "@/app/admin/configuraciones/_store/useConfigStore"
-import { formatCurrency } from "@/shared/lib/utils"
+import { formatCurrency, safeFormatDate } from "@/shared/lib/utils"
 import { DEFAULT_TICKET_TEMPLATE } from "@/app/admin/configuraciones/_components/forms/HardwareForm"
 
 interface TicketPrintTemplateProps {
@@ -90,8 +90,8 @@ export const TicketPrintTemplate = React.forwardRef<HTMLDivElement, TicketPrintT
           const parsedText = activeTemplate
             .replace(/\{\{razonSocial\}\}/g, (businessConfig.razonSocial || 'LAVANDERÍA').toUpperCase())
             .replace(/\{\{cliente\}\}/g, pedido.cliente?.nombre || 'Consumidor Final')
-            .replace(/\{\{fecha\}\}/g, format(new Date(pedido.createdAt), "dd/MM/yyyy"))
-            .replace(/\{\{hora\}\}/g, format(new Date(pedido.createdAt), "HH:mm"))
+            .replace(/\{\{fecha\}\}/g, safeFormatDate(pedido.createdAt || (pedido as any).fechaHoraCreacion, "dd/MM/yyyy"))
+            .replace(/\{\{hora\}\}/g, safeFormatDate(pedido.createdAt || (pedido as any).fechaHoraCreacion, "HH:mm"))
             .replace(/\{\{total\}\}/g, formatCurrency(pedido.total))
             .replace(/\{\{nro_pedido\}\}/g, `#${pedido.codigoSeguimiento}`)
             .replace(/\{\{bulto\}\}/g, `${index + 1} de ${tickets.length}`)

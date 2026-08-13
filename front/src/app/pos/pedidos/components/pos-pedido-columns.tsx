@@ -8,6 +8,7 @@ import { useConfigStore } from "@/app/admin/configuraciones/_store/useConfigStor
 import { Eye, MessageCircle, XCircle, Printer, MoreHorizontal, Banknote, CheckCircle2, AlertTriangle, ArrowUpDown } from "lucide-react"
 import { format, isBefore, addDays } from "date-fns"
 import { es } from "date-fns/locale"
+import { safeFormatDate } from "@/shared/lib/utils"
 import { StatusDropdown, StatusOption } from "@/shared/ui/data-display/status-dropdown"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/overlays/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/overlays/dropdown-menu"
@@ -80,7 +81,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
     header: "Fecha",
     cell: ({ row }) => (
       <div className="text-gray-600 dark:text-neutral-400 font-medium transition-colors">
-        {format(new Date(row.original.createdAt), "dd MMM HH:mm", { locale: es })}
+        {safeFormatDate(row.original.createdAt, "dd MMM HH:mm")}
       </div>
     ),
   },
@@ -165,7 +166,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
       let isUrgent = false
       let isOverdue = false
 
-      if (row.original.estado === "PENDIENTE" || row.original.estado === "EN_PROCESO") {
+      if (!isNaN(fechaEst.getTime()) && (row.original.estado === "PENDIENTE" || row.original.estado === "EN_PROCESO")) {
         isOverdue = isBefore(fechaEst, hoy)
         isUrgent = !isOverdue && isBefore(fechaEst, addDays(hoy, 1))
       }
@@ -173,7 +174,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
       return (
         <div className="flex flex-col gap-1">
           <span className="text-gray-900 dark:text-neutral-50 font-medium whitespace-nowrap transition-colors">
-            {format(fechaEst, "dd MMM HH:mm", { locale: es })}
+            {safeFormatDate(row.original.fechaEntregaEstimada, "dd MMM HH:mm", "No def.")}
           </span>
           {isOverdue && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
