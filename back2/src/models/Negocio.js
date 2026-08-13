@@ -15,18 +15,70 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
+			direccion: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			telefonoContacto: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
 			colorPrincipal: {
 				type: DataTypes.STRING,
 				allowNull: true,
+				defaultValue: "#2563eb",
 			},
 			colorSecundario: {
 				type: DataTypes.STRING,
 				allowNull: true,
+				defaultValue: "#1e40af",
+			},
+			logoUrl: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			simboloMoneda: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "$",
+			},
+			zonaHoraria: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "America/Argentina/Buenos_Aires",
+			},
+			mensajeTicket: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			imprimirTicketAutomatico: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			mostrarQrTicket: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
 			},
 			facturacionHabilitada: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,
 				defaultValue: false,
+			},
+			afipActivo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			afipModoFacturacion: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "DESACTIVADO",
+			},
+			afipPuntoVenta: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
 			},
 			certificadoAfipPath: {
 				type: DataTypes.STRING,
@@ -36,7 +88,38 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
+			whatsappActivo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			whatsappEstadoConexion: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "DESCONECTADO",
+			},
+			whatsappMensajeListo: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			whatsappMensajeManual: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
 			tokenMercadoPago: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			mercadopagoPublicKey: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			mpModoCobro: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				defaultValue: "DIRECTO",
+			},
+			aliasMp: {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
