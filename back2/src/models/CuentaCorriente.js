@@ -7,6 +7,11 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
+			saldo: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
 			fechaCreacion: {
 				type: DataTypes.DATE,
 				allowNull: false,
