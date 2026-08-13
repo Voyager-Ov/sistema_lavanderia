@@ -8,18 +8,18 @@ class PagosService {
         return tenantDb.models;
     }
 
-    // Métodos de pago por defecto para sembrar si no existen
+    // Métodos de pago base iniciales sugeridos por tenant
     _getMetodosBase(negocioId) {
         return [
-            { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: true, negocioId },
-            { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: true, negocioId },
-            { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
-            { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
-            { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: true, negocioId }
+            { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: false, negocioId },
+            { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: false, negocioId },
+            { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: false, negocioId },
+            { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: false, negocioId },
+            { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: false, negocioId }
         ];
     }
 
-    // Listar métodos de pago y autosembrar los fijos por defecto
+    // Listar métodos de pago del negocio
     async obtenerMetodosPago(negocioId) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
@@ -27,9 +27,10 @@ class PagosService {
         const { MetodoPago } = await this._getModels(negocioId);
 
         let metodos = await MetodoPago.findAll({
-            order: [["esFijo", "DESC"], ["id", "ASC"]]
+            order: [["id", "ASC"]]
         });
 
+        // Si el negocio aún no tiene métodos de pago configurados, sembramos los métodos iniciales sugeridos
         if (metodos.length === 0) {
             const base = this._getMetodosBase(negocioId);
             for (const m of base) {
@@ -39,14 +40,14 @@ class PagosService {
                 });
             }
             metodos = await MetodoPago.findAll({
-                order: [["esFijo", "DESC"], ["id", "ASC"]]
+                order: [["id", "ASC"]]
             });
         }
 
         return metodos;
     }
 
-    // Crear método de pago personalizado
+    // Crear método de pago personalizado por el Admin del negocio
     async crearMetodoPago(negocioId, data) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
@@ -68,6 +69,27 @@ class PagosService {
         return nuevoMetodo;
     }
 
+    // Actualizar nombre/icono del método de pago
+    async actualizarMetodoPago(negocioId, id, data) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { MetodoPago } = await this._getModels(negocioId);
+
+        const metodo = await MetodoPago.findByPk(id);
+        if (!metodo) {
+            throw new AppError("Método de pago no encontrado.", 404, "PAYMENT_METHOD_NOT_FOUND");
+        }
+
+        const updateFields = {};
+        if (data.nombre !== undefined && data.nombre.trim() !== "") updateFields.nombre = data.nombre.trim();
+        if (data.icono !== undefined) updateFields.icono = data.icono;
+        if (data.activo !== undefined) updateFields.activo = !!data.activo;
+
+        await metodo.update(updateFields);
+        return metodo;
+    }
+
     // Activar / Desactivar método de pago
     async toggleMetodoPago(negocioId, id) {
         if (!negocioId) {
@@ -84,7 +106,7 @@ class PagosService {
         return metodo;
     }
 
-    // Eliminar método de pago personalizado
+    // Eliminar método de pago del negocio
     async eliminarMetodoPago(negocioId, id) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
@@ -94,10 +116,6 @@ class PagosService {
         const metodo = await MetodoPago.findByPk(id);
         if (!metodo) {
             throw new AppError("Método de pago no encontrado.", 404, "PAYMENT_METHOD_NOT_FOUND");
-        }
-
-        if (metodo.esFijo) {
-            throw new AppError("No se puede eliminar un método de pago fijo del sistema.", 400, "CANNOT_DELETE_FIXED_METHOD");
         }
 
         await metodo.destroy();
@@ -141,6 +159,13 @@ class PagosService {
             }
         }
 
+        // Obtener el método de pago especificado o tomar el primero activo del negocio
+        let metodoId = params.metodoPagoId;
+        if (!metodoId) {
+            const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]] });
+            if (metodoDefault) metodoId = metodoDefault.id;
+        }
+
         // Buscar caja abierta para asociar movimiento
         const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
 
@@ -161,7 +186,7 @@ class PagosService {
             vueltoEntregado: vuelto,
             fechaHora: new Date(),
             pedidoNumeroPedido: pedido.numeroPedido,
-            metodoPagoId: params.metodoPagoId || 1,
+            metodoPagoId: metodoId,
             movimientoCajaId
         });
 

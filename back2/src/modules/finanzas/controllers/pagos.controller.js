@@ -30,6 +30,16 @@ export const crearMetodoPago = async (req, res, next) => {
     }
 };
 
+export const actualizarMetodoPago = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const metodo = await pagosService.actualizarMetodoPago(negocioId, req.params.id, req.body);
+        return successResponse(res, 200, "Método de pago actualizado exitosamente", metodo);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const toggleMetodoPago = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
