@@ -7,12 +7,50 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
+			codigoSeguimiento: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			estado: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "PENDIENTE",
+			},
+			cobrado: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
+			},
+			total: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			subtotal: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			descuento: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
+			costoEnvio: {
+				type: DataTypes.DOUBLE,
+				allowNull: false,
+				defaultValue: 0,
+			},
 			fechaHoraCreacion: {
 				type: DataTypes.DATE,
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
 			fechaHoraEntregaEstimada: {
+				type: DataTypes.DATE,
+				allowNull: true,
+			},
+			fechaEntregaEstimada: {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
@@ -23,6 +61,7 @@ export default (sequelize, DataTypes) => {
 			origen: {
 				type: DataTypes.STRING,
 				allowNull: false,
+				defaultValue: "MOSTRADOR",
 			},
 			nombreClienteFactura: {
 				type: DataTypes.STRING,
@@ -35,11 +74,6 @@ export default (sequelize, DataTypes) => {
 			direccionEntrega: {
 				type: DataTypes.STRING,
 				allowNull: true,
-			},
-			costoEnvio: {
-				type: DataTypes.DOUBLE,
-				allowNull: false,
-				defaultValue: 0,
 			},
 			ticketImpreso: {
 				type: DataTypes.BOOLEAN,

@@ -132,7 +132,14 @@ class PedidosService {
         }
 
         // Ordenamiento
-        const sortBy = query.sortBy === "id" ? "numeroPedido" : (query.sortBy || "numeroPedido");
+        let sortBy = "numeroPedido";
+        if (query.sortBy === "id" || query.sortBy === "numeroPedido") sortBy = "numeroPedido";
+        else if (query.sortBy === "fechaEntregaEstimada" || query.sortBy === "fechaHoraEntregaEstimada") sortBy = "fechaHoraEntregaEstimada";
+        else if (query.sortBy === "createdAt" || query.sortBy === "fechaHoraCreacion") sortBy = "createdAt";
+        else if (query.sortBy === "total") sortBy = "total";
+        else if (query.sortBy === "estado") sortBy = "estado";
+        else if (query.sortBy === "codigoSeguimiento") sortBy = "codigoSeguimiento";
+
         const sortOrder = (query.sortOrder || "DESC").toUpperCase();
 
         const { count, rows } = await Pedido.findAndCountAll({

@@ -11,11 +11,11 @@ class PagosService {
     // Métodos de pago base iniciales sugeridos por tenant
     _getMetodosBase(negocioId) {
         return [
-            { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: false, negocioId },
-            { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: false, negocioId },
-            { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: false, negocioId },
-            { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: false, negocioId },
-            { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: false, negocioId }
+            { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: true, negocioId },
+            { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: true, negocioId },
+            { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+            { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+            { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: true, negocioId }
         ];
     }
 
@@ -116,6 +116,10 @@ class PagosService {
         const metodo = await MetodoPago.findByPk(id);
         if (!metodo) {
             throw new AppError("Método de pago no encontrado.", 404, "PAYMENT_METHOD_NOT_FOUND");
+        }
+
+        if (metodo.esFijo) {
+            throw new AppError("No se puede eliminar un método de pago fijo del sistema.", 400, "CANNOT_DELETE_FIXED_PAYMENT_METHOD");
         }
 
         await metodo.destroy();
