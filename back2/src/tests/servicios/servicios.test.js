@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "@jest/globals";
 import { connectionManager } from "../../models/connectionManager.js";
 import { serviciosService } from "../../modules/servicios/services/servicios.service.js";
+import { categoriasService } from "../../modules/servicios/services/categorias.service.js";
 
 describe("Módulo de Servicios y Categorías", () => {
     const negocioId = 1;
@@ -13,7 +14,7 @@ describe("Módulo de Servicios y Categorías", () => {
     });
 
     it("1. Debe crear una nueva categoría de servicios", async () => {
-        const categoria = await serviciosService.crearCategoria(negocioId, {
+        const categoria = await categoriasService.crearCategoria(negocioId, {
             nombre: "Lavado General Test",
             descripcion: "Categoría para prendas comunes",
             icono: "Shirt",
@@ -28,7 +29,7 @@ describe("Módulo de Servicios y Categorías", () => {
     });
 
     it("2. Debe listar las categorías activas del negocio", async () => {
-        const result = await serviciosService.listarCategorias(negocioId);
+        const result = await categoriasService.listarCategorias(negocioId);
 
         expect(result.items).toBeDefined();
         expect(Array.isArray(result.items)).toBe(true);

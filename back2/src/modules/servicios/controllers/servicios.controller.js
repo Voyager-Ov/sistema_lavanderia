@@ -1,4 +1,5 @@
 import { serviciosService } from "../services/servicios.service.js";
+import { categoriasService } from "../services/categorias.service.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -81,7 +82,7 @@ export const eliminarServicio = async (req, res, next) => {
 export const listarCategorias = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await serviciosService.listarCategorias(negocioId);
+        const result = await categoriasService.listarCategorias(negocioId);
         return successResponse(res, 200, "Categorías recuperadas exitosamente", result);
     } catch (error) {
         next(error);
@@ -91,7 +92,7 @@ export const listarCategorias = async (req, res, next) => {
 export const crearCategoria = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const categoria = await serviciosService.crearCategoria(negocioId, req.body);
+        const categoria = await categoriasService.crearCategoria(negocioId, req.body);
         return successResponse(res, 201, "Categoría creada exitosamente", categoria);
     } catch (error) {
         next(error);
@@ -101,7 +102,7 @@ export const crearCategoria = async (req, res, next) => {
 export const actualizarCategoria = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const categoria = await serviciosService.actualizarCategoria(negocioId, req.params.id, req.body);
+        const categoria = await categoriasService.actualizarCategoria(negocioId, req.params.id, req.body);
         return successResponse(res, 200, "Categoría actualizada exitosamente", categoria);
     } catch (error) {
         next(error);
@@ -111,7 +112,7 @@ export const actualizarCategoria = async (req, res, next) => {
 export const eliminarCategoria = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await serviciosService.eliminarCategoria(negocioId, req.params.id);
+        const result = await categoriasService.eliminarCategoria(negocioId, req.params.id);
         return successResponse(res, 200, "Categoría eliminada exitosamente", result);
     } catch (error) {
         next(error);

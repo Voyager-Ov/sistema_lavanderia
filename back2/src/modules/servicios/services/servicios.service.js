@@ -4,7 +4,6 @@ import { AppError } from "../../../utils/appError.js";
 
 class ServiciosService {
 
-    // Helper para obtener modelos del tenant activo
     async _getModels(negocioId) {
         const tenantDb = await connectionManager.getTenantDb(negocioId);
         return tenantDb.models;
@@ -12,6 +11,9 @@ class ServiciosService {
 
     // Listar servicios / productos con paginación, filtros y ordenamiento
     async listarServicios(negocioId, query) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
         const page = parseInt(query.page) || 1;
@@ -72,13 +74,15 @@ class ServiciosService {
 
     // Estadísticas rápidas para el dashboard de servicios
     async obtenerEstadisticas(negocioId) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
         const total = await Servicio.count({ where: { activo: true } });
         const activos = await Servicio.count({ where: { activo: true, disponible: true } });
         const categoriasCount = await CategoriaServicio.count({ where: { activo: true } });
 
-        // Servicio más solicitado (placeholder o primer servicio disponible)
         const primerServicio = await Servicio.findOne({
             where: { activo: true, disponible: true },
             order: [["id", "ASC"]]
@@ -94,6 +98,9 @@ class ServiciosService {
 
     // Obtener servicio por ID
     async obtenerServicioPorId(negocioId, id) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
         const servicio = await Servicio.findOne({
@@ -113,13 +120,15 @@ class ServiciosService {
 
     // Crear nuevo servicio
     async crearServicio(negocioId, data, imagenPath = null) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
         if (!data.nombre || !data.precioActual || !data.categoriaId) {
             throw new AppError("Nombre, precio y categoría son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
         }
 
-        // Verificar categoría existente
         const categoria = await CategoriaServicio.findByPk(data.categoriaId);
         if (!categoria) {
             throw new AppError("La categoría seleccionada no existe.", 400, "INVALID_CATEGORY");
@@ -143,6 +152,9 @@ class ServiciosService {
 
     // Actualizar servicio existente
     async actualizarServicio(negocioId, id, data, imagenPath = null) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio } = await this._getModels(negocioId);
 
         const servicio = await Servicio.findOne({ where: { id, activo: true } });
@@ -167,6 +179,9 @@ class ServiciosService {
 
     // Eliminar servicio (soft delete)
     async eliminarServicio(negocioId, id) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
         const { Servicio } = await this._getModels(negocioId);
 
         const servicio = await Servicio.findOne({ where: { id } });
@@ -176,73 +191,6 @@ class ServiciosService {
 
         await servicio.update({ activo: false, disponible: false });
         return { message: "Servicio eliminado correctamente." };
-    }
-
-    // ─── GESTIÓN DE CATEGORÍAS ───
-
-    async listarCategorias(negocioId) {
-        const { CategoriaServicio, Servicio } = await this._getModels(negocioId);
-
-        const categorias = await CategoriaServicio.findAll({
-            where: { activo: true },
-            order: [["nombre", "ASC"]],
-            include: [{
-                model: Servicio,
-                as: "servicios",
-                where: { activo: true },
-                required: false,
-                attributes: ["id"]
-            }]
-        });
-
-        return { items: categorias };
-    }
-
-    async crearCategoria(negocioId, data) {
-        const { CategoriaServicio } = await this._getModels(negocioId);
-
-        if (!data.nombre) {
-            throw new AppError("El nombre de la categoría es requerido.", 400, "MISSING_CATEGORY_NAME");
-        }
-
-        return await CategoriaServicio.create({
-            nombre: data.nombre,
-            descripcion: data.descripcion || null,
-            icono: data.icono || "Tag",
-            color: data.color || "#2563eb",
-            activo: true,
-            negocioId
-        });
-    }
-
-    async actualizarCategoria(negocioId, id, data) {
-        const { CategoriaServicio } = await this._getModels(negocioId);
-
-        const categoria = await CategoriaServicio.findByPk(id);
-        if (!categoria) {
-            throw new AppError("Categoría no encontrada.", 404, "CATEGORY_NOT_FOUND");
-        }
-
-        await categoria.update({
-            nombre: data.nombre !== undefined ? data.nombre : categoria.nombre,
-            descripcion: data.descripcion !== undefined ? data.descripcion : categoria.descripcion,
-            icono: data.icono !== undefined ? data.icono : categoria.icono,
-            color: data.color !== undefined ? data.color : categoria.color
-        });
-
-        return categoria;
-    }
-
-    async eliminarCategoria(negocioId, id) {
-        const { CategoriaServicio } = await this._getModels(negocioId);
-
-        const categoria = await CategoriaServicio.findByPk(id);
-        if (!categoria) {
-            throw new AppError("Categoría no encontrada.", 404, "CATEGORY_NOT_FOUND");
-        }
-
-        await categoria.update({ activo: false });
-        return { message: "Categoría eliminada correctamente." };
     }
 }
 

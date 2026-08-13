@@ -1,4 +1,5 @@
 import { pedidosService } from "../services/pedidos.service.js";
+import { trazabilidadService } from "../services/trazabilidad.service.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -54,8 +55,9 @@ export const cambiarEstado = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
         const { estado } = req.body;
-        const pedido = await pedidosService.cambiarEstado(negocioId, req.params.id, estado);
-        return successResponse(res, 200, "Estado del pedido actualizado exitosamente", pedido);
+        await trazabilidadService.cambiarEstado(negocioId, req.params.id, estado);
+        const pedidoActualizado = await pedidosService.obtenerPedidoPorNumero(negocioId, req.params.id);
+        return successResponse(res, 200, "Estado del pedido actualizado exitosamente", pedidoActualizado);
     } catch (error) {
         next(error);
     }
@@ -64,7 +66,7 @@ export const cambiarEstado = async (req, res, next) => {
 export const marcarTicketImpreso = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await pedidosService.marcarTicketImpreso(negocioId, req.params.id);
+        const result = await trazabilidadService.marcarTicketImpreso(negocioId, req.params.id);
         return successResponse(res, 200, "Ticket marcado como impreso exitosamente", result);
     } catch (error) {
         next(error);

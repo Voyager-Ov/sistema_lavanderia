@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll } from "@jest/globals";
 import { connectionManager } from "../../models/connectionManager.js";
 import { pedidosService } from "../../modules/pedidos/services/pedidos.service.js";
+import { trazabilidadService } from "../../modules/pedidos/services/trazabilidad.service.js";
 import { serviciosService } from "../../modules/servicios/services/servicios.service.js";
+import { categoriasService } from "../../modules/servicios/services/categorias.service.js";
 
 describe("Módulo de Pedidos y Trazabilidad de Estados", () => {
     const negocioId = 1;
@@ -13,7 +15,7 @@ describe("Módulo de Pedidos y Trazabilidad de Estados", () => {
         await connectionManager.initCentral();
 
         // Crear servicio base para pruebas
-        const cat = await serviciosService.crearCategoria(negocioId, { nombre: "Lavado Test Pedidos" });
+        const cat = await categoriasService.crearCategoria(negocioId, { nombre: "Lavado Test Pedidos" });
         const srv = await serviciosService.crearServicio(negocioId, {
             nombre: "Lavado Camisas Test",
             precioActual: 4500.00,
@@ -62,14 +64,16 @@ describe("Módulo de Pedidos y Trazabilidad de Estados", () => {
     });
 
     it("4. Debe avanzar la trazabilidad del estado del pedido a EN_PROCESO", async () => {
-        const actualizado = await pedidosService.cambiarEstado(negocioId, numeroPedido, "EN_PROCESO");
+        await trazabilidadService.cambiarEstado(negocioId, numeroPedido, "EN_PROCESO");
+        const actualizado = await pedidosService.obtenerPedidoPorNumero(negocioId, numeroPedido);
 
         expect(actualizado.estadoActual).toBe("EN_PROCESO");
         expect(actualizado.cambiosEstado.length).toBe(2);
     });
 
     it("5. Debe avanzar la trazabilidad del estado del pedido a LISTO", async () => {
-        const actualizado = await pedidosService.cambiarEstado(negocioId, numeroPedido, "LISTO");
+        await trazabilidadService.cambiarEstado(negocioId, numeroPedido, "LISTO");
+        const actualizado = await pedidosService.obtenerPedidoPorNumero(negocioId, numeroPedido);
 
         expect(actualizado.estadoActual).toBe("LISTO");
     });
@@ -83,7 +87,7 @@ describe("Módulo de Pedidos y Trazabilidad de Estados", () => {
     });
 
     it("7. Debe marcar el ticket del pedido como impreso", async () => {
-        const res = await pedidosService.marcarTicketImpreso(negocioId, numeroPedido);
+        const res = await trazabilidadService.marcarTicketImpreso(negocioId, numeroPedido);
         expect(res.message).toContain("impreso");
 
         const pedido = await pedidosService.obtenerPedidoPorNumero(negocioId, numeroPedido);

@@ -1,4 +1,6 @@
 import { configuracionService } from "../services/configuracion.service.js";
+import { afipService } from "../services/afip.service.js";
+import { mercadopagoService } from "../services/mercadopago.service.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -46,7 +48,8 @@ export const subirCertificadosAfip = async (req, res, next) => {
             }
         }
 
-        const config = await configuracionService.guardarCertificadosAfip(negocioId, certPath, keyPath);
+        await afipService.guardarCertificadosAfip(negocioId, certPath, keyPath);
+        const config = await configuracionService.getConfiguracion(negocioId);
         return successResponse(res, 200, "Certificados de AFIP guardados exitosamente", config);
     } catch (error) {
         next(error);
@@ -70,7 +73,7 @@ export const validarMercadoPagoToken = async (req, res, next) => {
         const negocioId = getTenantId(req);
         const token = req.body.tokenMercadoPago || req.body.token;
 
-        const result = await configuracionService.validarMercadoPagoToken(negocioId, token);
+        const result = await mercadopagoService.validarMercadoPagoToken(negocioId, token);
         return successResponse(res, 200, "Credenciales de Mercado Pago validadas exitosamente", result);
     } catch (error) {
         next(error);
