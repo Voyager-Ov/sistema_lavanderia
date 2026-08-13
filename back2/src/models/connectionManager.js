@@ -97,19 +97,23 @@ class ConnectionManager {
         const schemaNameArg = !isTest ? `tenant_${negocioId}` : null;
         const tenantModels = this._initModels(tenantDb, schemaNameArg);
 
-        // Solo sincronizamos las tablas y creamos dummy data en Tests o cuando registramos al usuario
-        if (isTest || forceSync) {
-            await tenantDb.sync();
+        // Sincronizar esquemas de tenant para asegurar que todas las columnas existan
+        if (isTest || forceSync || process.env.NODE_ENV === "development") {
+            await tenantDb.sync(isTest ? {} : { alter: true });
             
             if (isTest) {
                 await tenantDb.query("PRAGMA foreign_keys = OFF;");
             }
 
-            // Insertar un Negocio dummy para satisfacer las Foreign Keys locales
-            await tenantModels.Negocio.findOrCreate({
-                where: { id: negocioId },
-                defaults: { id: negocioId, nombre: "Tenant Virtual", estadoSuscripcion: "ACTIVA" }
-            });
+            // Insertar un Negocio dummy para satisfacer las Foreign Keys locales si no existe
+            try {
+                await tenantModels.Negocio.findOrCreate({
+                    where: { id: negocioId },
+                    defaults: { id: negocioId, nombre: "Tenant Virtual", estadoSuscripcion: "ACTIVA" }
+                });
+            } catch (e) {
+                // Si el negocio ya existe o en concurrencia
+            }
             
             console.log(`🔵 Base de Datos Tenant conectada y sincronizada (Negocio ID: ${negocioId}).`);
         }
