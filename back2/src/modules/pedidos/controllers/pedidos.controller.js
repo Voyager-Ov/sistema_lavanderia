@@ -1,5 +1,9 @@
 import { pedidosService } from "../services/pedidos.service.js";
 import { trazabilidadService } from "../services/trazabilidad.service.js";
+import { cancelacionService } from "../services/cancelacion.service.js";
+import { facturacionService } from "../services/facturacion.service.js";
+import { ticketService } from "../services/ticket.service.js";
+import { trackingService } from "../services/tracking.service.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -54,10 +58,41 @@ export const crearPedido = async (req, res, next) => {
 export const cambiarEstado = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const { estado } = req.body;
-        await trazabilidadService.cambiarEstado(negocioId, req.params.id, estado);
+        const { estado, motivoCancelacion, descripcionCancelacion, accionDinero } = req.body;
+
+        if (estado === "CANCELADO") {
+            await cancelacionService.cancelarPedido(negocioId, req.params.id, {
+                motivoCancelacion,
+                descripcionCancelacion,
+                accionDinero
+            });
+        } else {
+            await trazabilidadService.cambiarEstado(negocioId, req.params.id, estado);
+        }
+
         const pedidoActualizado = await pedidosService.obtenerPedidoPorNumero(negocioId, req.params.id);
         return successResponse(res, 200, "Estado del pedido actualizado exitosamente", pedidoActualizado);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const generarFactura = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await facturacionService.generarFactura(negocioId, req.params.id);
+        return successResponse(res, 200, "Factura generada exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerTicketHTML = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const html = await ticketService.obtenerTicketHTML(negocioId, req.params.id);
+        res.setHeader("Content-Type", "text/html");
+        return res.status(200).send(html);
     } catch (error) {
         next(error);
     }
@@ -68,6 +103,37 @@ export const marcarTicketImpreso = async (req, res, next) => {
         const negocioId = getTenantId(req);
         const result = await trazabilidadService.marcarTicketImpreso(negocioId, req.params.id);
         return successResponse(res, 200, "Ticket marcado como impreso exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const generarTicketsPrenda = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const cantidad = req.body.cantidad || 1;
+        const tickets = await ticketService.generarTicketsPrenda(negocioId, req.params.id, cantidad);
+        return successResponse(res, 201, "Tickets de prendas generados exitosamente", tickets);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerTicketsPrenda = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const tickets = await ticketService.obtenerTicketsPrenda(negocioId, req.params.id);
+        return successResponse(res, 200, "Tickets de prendas recuperados exitosamente", tickets);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerTrackingPublico = async (req, res, next) => {
+    try {
+        const { negocioId, codigo } = req.params;
+        const info = await trackingService.obtenerTrackingPublico(negocioId, codigo);
+        return successResponse(res, 200, "Información de seguimiento recuperada exitosamente", info);
     } catch (error) {
         next(error);
     }

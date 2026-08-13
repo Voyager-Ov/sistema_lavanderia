@@ -21,6 +21,7 @@ import MovimientoCuentaModel from "./MovimientoCuenta.js";
 import MovimientoCajaModel from "./MovimientoCaja.js";
 import CobroModel from "./Cobro.js";
 import FacturaModel from "./Factura.js";
+import TicketPrendaModel from "./TicketPrenda.js";
 
 class ConnectionManager {
     constructor() {
@@ -144,6 +145,7 @@ class ConnectionManager {
             MovimientoCaja: MovimientoCajaModel(sequelizeInstance, DataTypes),
             Cobro: CobroModel(sequelizeInstance, DataTypes),
             Factura: FacturaModel(sequelizeInstance, DataTypes),
+            TicketPrenda: TicketPrendaModel(sequelizeInstance, DataTypes),
         };
 
         // En Postgres, debemos indicar a cada modelo a qué esquema pertenece ANTES de asociar

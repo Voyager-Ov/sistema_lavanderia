@@ -1,0 +1,88 @@
+import { connectionManager } from "../../../models/connectionManager.js";
+import { AppError } from "../../../utils/appError.js";
+
+class TrackingService {
+
+    async _getModels(negocioId) {
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        return tenantDb.models;
+    }
+
+    async obtenerTrackingPublico(negocioId, codigo) {
+        if (!negocioId) {
+            throw new AppError("Negocio no especificado para tracking.", 400, "MISSING_TENANT_ID");
+        }
+        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = await this._getModels(negocioId);
+
+        // Extraer número de pedido del código (ej: LAV-123 o 123)
+        let numeroPedido = parseInt(codigo);
+        if (isNaN(numeroPedido) && codigo.includes("-")) {
+            const parts = codigo.split("-");
+            numeroPedido = parseInt(parts[1]);
+        }
+
+        if (isNaN(numeroPedido)) {
+            throw new AppError("Código de seguimiento inválido.", 400, "INVALID_TRACKING_CODE");
+        }
+
+        const pedido = await Pedido.findOne({
+            where: { numeroPedido },
+            include: [
+                { model: Cliente, as: "cliente", attributes: ["nombre"] },
+                {
+                    model: DetallePedido,
+                    as: "detalles",
+                    include: [{ model: Servicio, as: "servicio", attributes: ["nombre"] }]
+                },
+                {
+                    model: CambioEstadoPedido,
+                    as: "cambiosEstado",
+                    include: [{ model: Estado, as: "estado", attributes: ["nombre"] }]
+                },
+                { model: Cobro, as: "cobros" }
+            ]
+        });
+
+        if (!pedido) {
+            throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
+        }
+
+        let estadoActual = "PENDIENTE";
+        if (pedido.cambiosEstado && pedido.cambiosEstado.length > 0) {
+            const u = pedido.cambiosEstado[pedido.cambiosEstado.length - 1];
+            if (u.estado) estadoActual = u.estado.nombre;
+        }
+
+        let subtotal = 0;
+        const items = [];
+        if (pedido.detalles && Array.isArray(pedido.detalles)) {
+            for (const d of pedido.detalles) {
+                const srv = d.servicio ? d.servicio.nombre : "Servicio";
+                const cant = d.cantidad || 1;
+                const p = parseFloat(d.precioHistorico) || 0;
+                subtotal += p * cant;
+                items.push({ nombre: srv, cantidad: cant });
+            }
+        }
+        const total = subtotal + (parseFloat(pedido.costoEnvio) || 0);
+
+        let cobradoTotal = 0;
+        if (pedido.cobros) {
+            cobradoTotal = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.monto) || 0), 0);
+        }
+
+        return {
+            ticketCodigo: `LAV-${pedido.numeroPedido}`,
+            pedidoId: pedido.numeroPedido,
+            estado: estadoActual,
+            cobrado: cobradoTotal >= total && total > 0,
+            clienteNombre: pedido.cliente ? pedido.cliente.nombre : "Cliente",
+            total,
+            fechaRecepcion: pedido.fechaHoraCreacion,
+            fechaEntregaEstimada: pedido.fechaHoraEntregaEstimada,
+            items
+        };
+    }
+}
+
+export const trackingService = new TrackingService();
