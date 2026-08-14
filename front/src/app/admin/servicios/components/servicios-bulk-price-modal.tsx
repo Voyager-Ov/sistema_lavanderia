@@ -33,6 +33,13 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
       selectedServices.forEach(s => { prices[s.id] = String(s.precioActual) })
       setIndividualPrices(prices)
       setPercentage("")
+    } else {
+      // Safe cleanup for Radix overlay pointer-events desync
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = ""
+        document.body.style.overflow = ""
+      }, 150)
+      return () => clearTimeout(timer)
     }
   }, [open, selectedServices, initialMode])
 
@@ -63,8 +70,10 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
         await apiClient.put("/productos/bulk/precios", { updates })
         toast.success(`Precios actualizados para ${updates.length} servicio(s)`)
       }
-      onSuccess()
       onOpenChange(false)
+      setTimeout(() => {
+        onSuccess()
+      }, 100)
     } catch (error: any) {
       toast.error(`Error al actualizar precios: ${error.message}`)
     } finally {

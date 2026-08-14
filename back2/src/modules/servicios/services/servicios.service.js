@@ -270,24 +270,26 @@ class ServiciosService {
             if (!servicio) continue;
 
             const nuevoPrecio = parseFloat(u.precioActual);
-            if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
+            if (nuevoPrecio !== undefined && nuevoPrecio !== parseFloat(servicio.precioActual)) {
                 await servicio.update({ precioActual: nuevoPrecio });
 
-                // Registrar en historial
-                try {
-                    await HistorialPrecioServicio.update(
-                        { fechaHasta: ahora },
-                        { where: { servicioId: u.id, negocioId, fechaHasta: null } }
-                    );
-                    await HistorialPrecioServicio.create({
-                        servicioId: u.id,
-                        precio: nuevoPrecio,
-                        fechaDesde: ahora,
-                        fechaHasta: null,
-                        motivo: "Ajuste Masivo de Precios",
-                        negocioId
-                    });
-                } catch (e) {}
+                // Registrar en historial si la tabla y modelo existen
+                if (HistorialPrecioServicio) {
+                    try {
+                        await HistorialPrecioServicio.update(
+                            { fechaHasta: ahora },
+                            { where: { servicioId: u.id, negocioId, fechaHasta: null } }
+                        );
+                        await HistorialPrecioServicio.create({
+                            servicioId: u.id,
+                            precio: nuevoPrecio,
+                            fechaDesde: ahora,
+                            fechaHasta: null,
+                            motivo: "Ajuste Masivo de Precios",
+                            negocioId
+                        });
+                    } catch (e) {}
+                }
             }
             resultados.push(servicio);
         }

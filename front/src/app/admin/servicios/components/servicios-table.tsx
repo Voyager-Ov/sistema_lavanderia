@@ -11,6 +11,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false)
   const [bulkPriceMode, setBulkPriceMode] = useState<"percentage" | "individual">("percentage")
   const [selectedForBulk, setSelectedForBulk] = useState<any[]>([])
+  const [clearSelectionFn, setClearSelectionFn] = useState<(() => void) | null>(null)
 
   const columns = useMemo(() => getServicioColumns({
     onView,
@@ -28,19 +29,25 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
         {
           label: "Subir / Bajar por %",
           icon: Percent,
-          onClick: (rows: any) => {
+          onClick: (rows: any, clearSelection: any) => {
             setSelectedForBulk(rows)
+            setClearSelectionFn(() => clearSelection)
             setBulkPriceMode("percentage")
-            setBulkPriceOpen(true)
+            setTimeout(() => {
+              setBulkPriceOpen(true)
+            }, 100)
           },
         },
         {
           label: "Precio individual",
           icon: DollarSign,
-          onClick: (rows: any) => {
+          onClick: (rows: any, clearSelection: any) => {
             setSelectedForBulk(rows)
+            setClearSelectionFn(() => clearSelection)
             setBulkPriceMode("individual")
-            setBulkPriceOpen(true)
+            setTimeout(() => {
+              setBulkPriceOpen(true)
+            }, 100)
           },
         },
       ],
@@ -136,7 +143,11 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
         onOpenChange={setBulkPriceOpen}
         selectedServices={selectedForBulk}
         initialMode={bulkPriceMode}
-        onSuccess={() => { data.fetchServicios(); data.fetchStats() }}
+        onSuccess={() => {
+          if (clearSelectionFn) clearSelectionFn();
+          data.fetchServicios();
+          data.fetchStats();
+        }}
       />
     </div>
   )

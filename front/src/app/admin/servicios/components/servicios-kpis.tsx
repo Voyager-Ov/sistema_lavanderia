@@ -31,8 +31,8 @@ export function ServiciosKpis({ stats, isLoading }: { stats: any, isLoading: boo
       <DashboardKpi 
         isLoading={isLoading} 
         title="Más Solicitado" 
-        value={stats?.masSolicitado ? stats.masSolicitado.nombre : "N/A"} 
-        description={stats?.masSolicitado ? `${stats.masSolicitado.cantidad} ventas este mes` : "Sin datos"} 
+        value={typeof stats?.masSolicitado === "object" ? (stats.masSolicitado?.nombre || "N/A") : (stats?.masSolicitado || "N/A")} 
+        description={typeof stats?.masSolicitado === "object" && stats.masSolicitado?.cantidad ? `${stats.masSolicitado.cantidad} ventas este mes` : "Servicio más popular"} 
         backMessage="Ver historial" 
         colorVariant="orange" 
       />
