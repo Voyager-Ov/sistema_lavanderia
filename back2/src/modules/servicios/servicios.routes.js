@@ -10,6 +10,10 @@ import {
     obtenerServicioPorId,
     crearServicio,
     actualizarServicio,
+    cambiarDisponibilidad,
+    actualizarPreciosMasivo,
+    actualizarDisponibilidadMasiva,
+    obtenerHistorialPrecios,
     eliminarServicio
 } from "./controllers/servicios.controller.js";
 import { validateServicio } from "./validators/servicios.validator.js";
@@ -44,8 +48,21 @@ const router = Router();
 // Estadísticas de productos / servicios
 router.get("/stats", verificarToken, obtenerEstadisticas);
 
+// Acciones masivas (Deben ir ANTES de /:id para evitar choques de parámetros)
+router.put("/bulk/precios", verificarToken, actualizarPreciosMasivo);
+router.patch("/bulk/precios", verificarToken, actualizarPreciosMasivo);
+router.put("/bulk/disponibilidad", verificarToken, actualizarDisponibilidadMasiva);
+router.patch("/bulk/disponibilidad", verificarToken, actualizarDisponibilidadMasiva);
+
 // Listar servicios
 router.get("/", verificarToken, listarServicios);
+
+// Obtener historial de precios por ID
+router.get("/:id/historial", verificarToken, obtenerHistorialPrecios);
+
+// Cambiar disponibilidad individual
+router.patch("/:id/disponibilidad", verificarToken, cambiarDisponibilidad);
+router.put("/:id/disponibilidad", verificarToken, cambiarDisponibilidad);
 
 // Obtener por ID
 router.get("/:id", verificarToken, obtenerServicioPorId);

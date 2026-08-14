@@ -17,8 +17,22 @@ Todas las modificaciones notables realizadas al backend se documentarán en este
     - **Total No Cobrado**: Suma del `total` de `Pedidos` que no están cobrados (`cobrado = false`) y no están cancelados (`estado != 'CANCELADO'`).
   - Se implementó `getMovimientos`:
     - Combina y pagina `Cobros` (como ingresos) y `Gastos` (como egresos).
-    - Mapea el campo `registradoPor` buscando primero la relación directa con `Empleado` agregada a los modelos. Si no existe, recurre a buscar a través de `MovimientoCaja -> Caja -> Empleado` para asegurar trazabilidad.
+## [Fecha: 2026-08-14] - Implementación Completa de Servicios y Auditoría de Precios
+### Nuevos Modelos
+- **`src/models/HistorialPrecioServicio.js`**: Modelo para registrar el historial auditado de precios de cada servicio (`fechaDesde`, `fechaHasta`, `precio`, `motivo`, `servicioId`, `negocioId`).
 
-### Modificaciones en Rutas
-- **`src/modules/finanzas/finanzas.routes.js`**: 
-  - Se agregaron las rutas `GET /kpis` y `GET /movimientos` protegidas con el middleware `verificarToken`.
+### Modificaciones en Servicios
+- **`src/modules/servicios/services/servicios.service.js`**:
+  - Al crear o actualizar un servicio se genera de forma transparente una nueva entrada en `HistorialPrecioServicio`, cerrando el intervalo previo (`fechaHasta = NOW`).
+  - **`cambiarDisponibilidad`**: Permite alternar la disponibilidad (`disponible`) de un servicio para ser ofrecido en el POS.
+  - **`actualizarPreciosMasivo`**: Procesa actualizaciones masivas de precios de forma atómica y audita cada cambio en la tabla de historial.
+  - **`actualizarDisponibilidadMasiva`**: Permite activar/desactivar múltiples servicios en lote.
+  - **`obtenerHistorialPrecios`**: Devuelve la línea de tiempo de cambios de precio para ser graficado en el detalle del servicio.
+
+### Modificaciones en Controladores y Rutas
+- **`servicios.controller.js`**: Se agregaron los controladores para las acciones masivas, alternancia de disponibilidad e historial.
+- **`servicios.routes.js`**:
+  - `PUT /bulk/precios`
+  - `PUT /bulk/disponibilidad`
+  - `PATCH /:id/disponibilidad` y `PUT /:id/disponibilidad`
+  - `GET /:id/historial`

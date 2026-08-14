@@ -74,9 +74,19 @@ classDiagram
         +String nombre
         +String descripcion
         +String imagenUrl
-        +Double costo
-        +Double precio
+        +Double costoEstimado
+        +Double precioActual
         +Boolean disponible
+        +Boolean activo
+    }
+
+    class HistorialPrecioServicio {
+        +Integer id (PK)
+        +Integer servicioId
+        +Double precio
+        +DateTime fechaDesde
+        +DateTime fechaHasta
+        +String motivo
     }
 
     class Pedido {

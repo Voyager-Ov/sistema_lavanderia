@@ -67,6 +67,46 @@ export const actualizarServicio = async (req, res, next) => {
     }
 };
 
+export const cambiarDisponibilidad = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const servicio = await serviciosService.cambiarDisponibilidad(negocioId, req.params.id, req.body.disponible);
+        return successResponse(res, 200, "Disponibilidad del servicio actualizada exitosamente", servicio);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const actualizarPreciosMasivo = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await serviciosService.actualizarPreciosMasivo(negocioId, req.body.updates);
+        return successResponse(res, 200, "Precios actualizados masivamente exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const actualizarDisponibilidadMasiva = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await serviciosService.actualizarDisponibilidadMasiva(negocioId, req.body.ids, req.body.disponible);
+        return successResponse(res, 200, "Disponibilidad masiva actualizada exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerHistorialPrecios = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const historial = await serviciosService.obtenerHistorialPrecios(negocioId, req.params.id);
+        return successResponse(res, 200, "Historial de precios recuperado exitosamente", historial);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const eliminarServicio = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);

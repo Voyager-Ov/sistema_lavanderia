@@ -1,117 +1,114 @@
-# Especificación del Módulo de Catálogo de Servicios y Productos (Servicios)
+# Módulo de Servicios y Catálogo (Portal Admin & POS)
 
-Este documento detalla la lógica operativa, contratos de API, flujos de datos, modelos de base de datos y diseño técnico del **Módulo de Catálogo de Servicios y Productos (`servicios`)** para la plataforma de lavandería SaaS Multi-Tenant.
-
----
-
-## 1. Alcance y Objetivos del Módulo
-
-El módulo de Servicios y Productos es un subsistema **autónomo e independiente de alta cohesión** encargado de administrar la oferta comercial de la lavandería: catálogo de servicios de lavado, secado, planchado, tintorería, limpieza de acolchados/alfombras y la venta minorista de insumos (detergentes, suavizantes, bolsas de lavandería), junto con la parametrización de precios por kg/unidad.
-
-### Casos de Uso del Módulo:
-*   **CU-01: Registrar Servicio / Producto** (AP: Administrador de Negocio). Alta de nuevos ítems en el catálogo comercial.
-*   **CU-02: Modificar Precio y Parámetros del Servicio** (AP: Administrador de Negocio). Actualización del tarifario y precios vigentes.
-*   **CU-03: Consultar Catálogo Comercial** (AP: Empleado Operativo, Administrador). Listado y filtro predictivo por categoría para la venta en mostrador.
-*   **CU-04: Desactivar Servicio / Producto** (AP: Administrador de Negocio). Deshabilitación lógica para impedir su selección en nuevas órdenes.
+Este documento especifica los endpoints, modelos y lógica de negocio del módulo de Servicios en `back2`.
 
 ---
 
-## 2. Modelos de Base de Datos Vinculados
+## 1. Modelo de Datos
 
-El módulo interactúa con los modelos comerciales del esquema tenant (`tenant_{id}`).
-
-### A. Modelo `Servicio` (o `Producto`)
-*   `id` (DataTypes.INTEGER, **PK**, autoIncrement): Identificador único del ítem comercial.
-*   `nombre` (DataTypes.STRING, allowNull: false): Nombre del servicio o producto (ej: "Lavado General por Kilo", "Planchado de Camisa", "Acolchado 2 Plazas").
-*   `descripcion` (DataTypes.TEXT, allowNull: true): Detalle de la prestación o producto.
-*   `precioUnitario` (DataTypes.DOUBLE, allowNull: false): Precio de lista vigente.
-*   `unidadMedida` (DataTypes.STRING, defaultValue: "Unidad"): Unidad de tarificación ("Kilo", "Unidad", "Prenda").
-*   `activo` (DataTypes.BOOLEAN, defaultValue: true): Flag de baja lógica (Soft Delete).
-*   `categoriaId` (DataTypes.INTEGER, allowNull: false): FK hacia `CategoriaServicio`.
-*   `negocioId` (DataTypes.INTEGER, allowNull: false): Llave tenant.
+### Modelo `HistorialPrecioServicio`
+Representa el registro auditado de cambios de precio de un servicio a lo largo del tiempo.
+- `id`: Identificador único (INTEGER, PK).
+- `servicioId`: FK del Servicio.
+- `precio`: Precio configurado (DECIMAL 10,2).
+- `fechaDesde`: Fecha y hora en la que entró en vigencia el precio.
+- `fechaHasta`: Fecha y hora en la que dejó de estar vigente el precio (`null` indica el precio actual activo).
+- `motivo`: Motivo del cambio ("Precio Inicial", "Edición de precio", "Ajuste Masivo de Precios").
+- `negocioId`: Inquilino/Negocio al que pertenece.
 
 ---
 
-### B. Modelo `CategoriaServicio`
-*   `id` (DataTypes.INTEGER, **PK**, autoIncrement): Código de la categoría.
-*   `nombre` (DataTypes.STRING, allowNull: false): Nombre de la categoría (ej: "Lavandería", "Tintorería", "Planchado", "Insumos").
-*   `descripcion` (DataTypes.STRING, allowNull: true): Alcance.
-*   `negocioId` (DataTypes.INTEGER, allowNull: false): Llave tenant.
+## 2. Endpoints
 
----
-
-## 3. Contratos de API (JSON Payloads)
-
-### 1. Consultar Catálogo Comercial Activo
-*   **Endpoint:** `GET /api/v1/servicios`
-*   **Headers:** `Authorization: Bearer <token_jwt>`
-*   **Responses:**
-    *   `200 OK` ➔ Retorna la lista del catálogo ordenado por categoría.
-        ```json
-        {
-          "status": "success",
-          "message": null,
-          "data": [
-            {
-              "id": 1,
-              "nombre": "Lavado Completo por Kilo",
-              "precioUnitario": 1200.00,
-              "unidadMedida": "Kilo",
-              "categoria": { "id": 1, "nombre": "Lavandería" },
-              "activo": true
-            }
-          ]
-        }
-        ```
-
----
-
-### 2. Registrar Servicio en Catálogo
-*   **Endpoint:** `POST /api/v1/servicios`
-*   **Headers:** `Authorization: Bearer <token_jwt>`
-*   **Roles Permitidos:** `admin` *(Exclusivo)*
-*   **Request Body:**
-    ```json
-    {
-      "nombre": "Limpieza de Acolchado Pluma 21/2 Plazas",
-      "precioUnitario": 8500.00,
-      "unidadMedida": "Unidad",
-      "categoriaId": 2
+### A. Listar Servicios
+- **Ruta:** `GET /api/productos` o `GET /api/servicios`
+- **Autenticación:** Requerida (Bearer Token JWT)
+- **Query Params:** `page`, `limit`, `search`, `categoriaId`, `disponible`, `sortBy`, `sortOrder`.
+- **Respuesta (200 OK):**
+```json
+{
+  "status": "success",
+  "data": {
+    "items": [ ...servicios... ],
+    "meta": {
+      "totalItems": 12,
+      "totalPages": 2,
+      "currentPage": 1,
+      "itemsPerPage": 10
     }
-    ```
-*   **Responses:**
-    *   `201 Created` ➔ Servicio creado en catálogo.
-    *   `403 Forbidden` ➔ Intento de ejecución con rol de `empleado`.
-
----
-
-## 4. Algoritmos de Negocio y Lógica en los Servicios
-
-### Algoritmo de Actualización de Tarifario con Validación de Inmutabilidad
-
-Garantiza que la modificación de un precio en el catálogo no altere los precios cobrados en pedidos históricos (snapshot `precioHistorico` en `DetallePedido`):
-
-```javascript
-export const actualizarPrecioServicio = async (negocioId, servicioId, nuevoPrecio) => {
-    const servicio = await models.Servicio.findOne({
-        where: { id: servicioId, negocioId }
-    });
-
-    if (!servicio) throw new AppError("Servicio no encontrado", 404);
-
-    if (nuevoPrecio <= 0) throw new AppError("El precio debe ser mayor a 0", 400);
-
-    // Actualiza únicamente la tarifa vigente del catálogo.
-    // Los pedidos existentes conservan su snapshot `precioHistorico` en DetallePedido.
-    await servicio.update({ precioUnitario: nuevoPrecio });
-
-    return servicio;
-};
+  }
+}
 ```
 
 ---
 
-## 5. Middlewares y Filtros de Seguridad Involucrados
+### B. Estadísticas Rápidas
+- **Ruta:** `GET /api/productos/stats`
+- **Respuesta (200 OK):**
+```json
+{
+  "status": "success",
+  "data": {
+    "total": 15,
+    "activos": 12,
+    "categorias": 4,
+    "masSolicitado": "Lavado por Kilo"
+  }
+}
+```
 
-### `verificarRol(["admin"])`
-*   Protege la creación, edición y deshabilitación de ítems del catálogo comercial para asegurar el control de precios exclusivamente por parte del dueño o gerente.
+---
+
+### C. Cambiar Disponibilidad Individual
+- **Ruta:** `PATCH /api/productos/:id/disponibilidad`
+- **Body:** `{ "disponible": true }`
+- **Respuesta (200 OK):** Servicio actualizado.
+
+---
+
+### D. Ajuste Masivo de Precios
+- **Ruta:** `PUT /api/productos/bulk/precios`
+- **Body:**
+```json
+{
+  "updates": [
+    { "id": 1, "precioActual": 1800.00 },
+    { "id": 2, "precioActual": 2500.00 }
+  ]
+}
+```
+- **Lógica:** Cierra el registro previo en `HistorialPrecioServicio` (`fechaHasta = NOW`) para cada servicio y genera una nueva entrada activa (`fechaHasta = null`, `motivo: "Ajuste Masivo de Precios"`).
+
+---
+
+### E. Ajuste Masivo de Disponibilidad
+- **Ruta:** `PATCH /api/productos/bulk/disponibilidad` o `PUT /api/productos/bulk/disponibilidad`
+- **Body:** `{ "ids": [1, 2, 3], "disponible": false }`
+- **Respuesta (200 OK):** Cantidad de registros modificados.
+
+---
+
+### F. Historial de Precios de un Servicio
+- **Ruta:** `GET /api/productos/:id/historial`
+- **Respuesta (200 OK):**
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1,
+      "precio": 1500.00,
+      "fechaCambio": "2026-08-01T10:00:00.000Z",
+      "fechaHasta": "2026-08-14T19:00:00.000Z",
+      "motivo": "Precio Inicial"
+    },
+    {
+      "id": 2,
+      "precio": 1800.00,
+      "fechaCambio": "2026-08-14T19:00:00.000Z",
+      "fechaHasta": null,
+      "motivo": "Ajuste Masivo de Precios"
+    }
+  ]
+}
+```

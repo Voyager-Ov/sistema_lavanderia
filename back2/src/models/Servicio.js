@@ -62,6 +62,7 @@ export default (sequelize, DataTypes) => {
 	Servicio.associate = (models) => {
 		Servicio.belongsTo(models.CategoriaServicio, { foreignKey: "categoriaId", as: "categoria", constraints: false });
 		Servicio.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
+		Servicio.hasMany(models.HistorialPrecioServicio, { foreignKey: "servicioId", as: "historialPrecios", constraints: false });
 	};
 
 	return Servicio;
