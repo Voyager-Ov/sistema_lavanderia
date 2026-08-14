@@ -42,16 +42,16 @@ export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisPr
         isLoading={isLoading} 
         title="Clientes Con Deuda" 
         value={stats.conDeuda.toString()} 
-        description="Pedidos impagos activos" 
-        backMessage="Clientes con saldo pendiente" 
+        description="Pedidos entregados sin cobrar" 
+        backMessage="Clientes con entregas pendientes de cobro" 
         colorVariant="orange" 
       />
       <DashboardKpi 
         isLoading={isLoading} 
         title="Deuda Total" 
         value={`$${stats.deudaTotal.toLocaleString("es-AR")}`} 
-        description="Por cobrar en cuenta corriente" 
-        backMessage="Monto acumulado a cobrar" 
+        description="Suma de pedidos entregados impagos" 
+        backMessage="Monto acumulado por cobrar" 
         colorVariant="red" 
       />
       <DashboardKpi 

@@ -91,6 +91,16 @@ export default function ClienteDetailPage() {
     return est.toString().toUpperCase().includes("CANCELAD")
   }
 
+  // Regla Única de Deuda de Cliente: Solamente los pedidos ENTREGADOS que no han sido cobrados
+  function isPedidoEntregadoEImpago(p: any) {
+    if (!p || p.cobrado) return false
+    const est = typeof p.estado === "object" ? p.estado?.nombre : p.estado
+    if (!est) return false
+    const estUpper = est.toString().toUpperCase()
+    if (estUpper.includes("CANCELAD")) return false
+    return estUpper.includes("ENTREGADO") || estUpper.includes("COMPLETADO")
+  }
+
   // KPIs de consumo (excluye pedidos cancelados)
   const { totalGastado, totalPedidos, pedidosActivos, ticketPromedio } = useMemo(() => {
     if (!cliente) return { totalGastado: 0, totalPedidos: 0, pedidosActivos: 0, ticketPromedio: 0 }
@@ -105,11 +115,21 @@ export default function ClienteDetailPage() {
     return { totalGastado: totalG, totalPedidos: totalP, pedidosActivos: activos, ticketPromedio: ticket }
   }, [cliente])
 
-  // Pedidos impagos activos (excluye cancelados y cobrados)
+  // Pedidos que constituyen Deuda Única (Entregados y no cobrados)
   const pedidosImpagos = useMemo(() => {
     if (!cliente?.pedidos) return []
-    return cliente.pedidos.filter((p: any) => !p.cobrado && !isPedidoCancelado(p))
+    return cliente.pedidos.filter((p: any) => isPedidoEntregadoEImpago(p))
   }, [cliente])
+
+  // Pedidos impagos que están en proceso en taller (no son deuda hasta ser entregados)
+  const pedidosEnTallerImpagos = useMemo(() => {
+    if (!cliente?.pedidos) return []
+    return cliente.pedidos.filter((p: any) => !p.cobrado && !isPedidoCancelado(p) && !isPedidoEntregadoEImpago(p))
+  }, [cliente])
+
+  const montoEnTaller = useMemo(() => {
+    return pedidosEnTallerImpagos.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
+  }, [pedidosEnTallerImpagos])
 
   const saldoDeuda = useMemo(() => {
     if (typeof cliente?.saldoDeuda === "number") {
@@ -260,6 +280,13 @@ export default function ClienteDetailPage() {
 
         {/* Derecha: Deuda Status + Botones de Acción */}
         <div className="flex flex-wrap items-center gap-3 ml-auto">
+          {montoEnTaller > 0 && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 px-3.5 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+              <Package className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>En taller: ${montoEnTaller.toLocaleString("es-AR")}</span>
+            </div>
+          )}
+
           {saldoDeuda > 0 ? (
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
@@ -467,9 +494,17 @@ export default function ClienteDetailPage() {
                           <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-bold uppercase border bg-gray-100 text-gray-500 border-gray-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">
                             N/A (Cancelado)
                           </span>
+                        ) : p.cobrado ? (
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-black uppercase border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400">
+                            Cobrado
+                          </span>
+                        ) : isPedidoEntregadoEImpago(p) ? (
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-black uppercase border bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400">
+                            Deuda Pendiente
+                          </span>
                         ) : (
-                          <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-black uppercase border ${p.cobrado ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400'}`}>
-                            {p.cobrado ? "Cobrado" : "Impago"}
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-bold uppercase border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400">
+                            En Taller (Impago)
                           </span>
                         )}
                       </td>

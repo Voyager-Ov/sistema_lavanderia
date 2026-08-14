@@ -36,3 +36,10 @@ Todas las modificaciones notables realizadas al backend se documentarán en este
   - `PUT /bulk/disponibilidad`
   - `PATCH /:id/disponibilidad` y `PUT /:id/disponibilidad`
   - `GET /:id/historial`
+
+## [Fecha: 2026-08-14] - Alineación de Regla Única de Deuda de Clientes y Cuenta Corriente
+### Modificaciones en Módulo de Clientes
+- **`src/modules/clientes/services/clientes.service.js`**:
+  - Se implementó la regla de negocio contable **única**: `saldoDeuda` surge exclusivamente de los pedidos que están **`ENTREGADOS`** (o `COMPLETADO`) y **no han sido cobrados** (`cobrado === false`).
+  - Los pedidos impagos que aún permanecen en proceso en taller (`PENDIENTE`, `EN_PROCESO`, `LISTO_PARA_RETIRAR`) no radican deuda para el cliente hasta su entrega formal. Se contabilizan de forma separada como `montoEnTaller`.
+  - Se actualizó `obtenerPedidosImpagosCliente` para marcar `esDeuda: true/false` en cada pedido devuelto.

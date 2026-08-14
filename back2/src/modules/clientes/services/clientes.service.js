@@ -9,6 +9,16 @@ function isPedidoCancelado(p) {
     return est.toString().toUpperCase().includes("CANCELAD");
 }
 
+// Regla de Negocio Única: Un pedido es DEUDA únicamente si fue ENTREGADO y NO FUE COBRADO
+function isPedidoEntregadoEImpago(p) {
+    if (!p || p.cobrado) return false;
+    const est = typeof p.estado === "object" ? p.estado?.nombre : p.estado;
+    if (!est) return false;
+    const estUpper = est.toString().toUpperCase();
+    if (estUpper.includes("CANCELAD")) return false;
+    return estUpper.includes("ENTREGADO") || estUpper.includes("COMPLETADO");
+}
+
 class ClientesService {
 
     async _getModels(negocioId) {
@@ -72,9 +82,10 @@ class ClientesService {
 
         const formattedItems = rows.map(cl => {
             const plain = cl.get({ plain: true });
-            const pedidosImpagos = (plain.pedidos || []).filter(p => !p.cobrado && !isPedidoCancelado(p));
+            // Deuda Única: Solo pedidos entregados e impagos
+            const pedidosDeuda = (plain.pedidos || []).filter(p => isPedidoEntregadoEImpago(p));
             
-            const totalDeudaImpaga = pedidosImpagos.reduce((acc, p) => {
+            const totalDeudaImpaga = pedidosDeuda.reduce((acc, p) => {
                 let subtotalItems = 0;
                 if (p.detalles && Array.isArray(p.detalles)) {
                     subtotalItems = p.detalles.reduce((sub, d) => {
@@ -92,7 +103,7 @@ class ClientesService {
                 ...plain,
                 activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
                 saldoDeuda: totalDeudaImpaga,
-                pedidosImpagosCount: pedidosImpagos.length,
+                pedidosImpagosCount: pedidosDeuda.length,
                 cuentaCorriente: {
                     saldo: totalDeudaImpaga
                 }
@@ -163,16 +174,21 @@ class ClientesService {
             };
         });
         
-        // Buscar todos sus pedidos impagos no cancelados para la deuda exacta
-        const impagosActivos = pedidosFormatted.filter(p => !p.cobrado && !isPedidoCancelado(p));
-        const totalDeuda = impagosActivos.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+        // Deuda Única: Pedidos entregados e impagos
+        const pedidosDeuda = pedidosFormatted.filter(p => isPedidoEntregadoEImpago(p));
+        const totalDeuda = pedidosDeuda.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+
+        // Importe de pedidos impagos aún en taller (para información del local sin radicar deuda)
+        const impagosTaller = pedidosFormatted.filter(p => !p.cobrado && !isPedidoCancelado(p) && !isPedidoEntregadoEImpago(p));
+        const totalTaller = impagosTaller.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
 
         return {
             ...plain,
             pedidos: pedidosFormatted,
             activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
             saldoDeuda: totalDeuda,
-            pedidosImpagosCount: impagosActivos.length,
+            montoEnTaller: totalTaller,
+            pedidosImpagosCount: pedidosDeuda.length,
             cuentaCorriente: {
                 saldo: totalDeuda
             }
@@ -222,6 +238,7 @@ class ClientesService {
                 }
                 const costoEnvio = parseFloat(p.costoEnvio) || 0;
                 const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+                const esEntregado = isPedidoEntregadoEImpago(p);
 
                 return {
                     id: p.numeroPedido,
@@ -229,6 +246,7 @@ class ClientesService {
                     codigoSeguimiento: `LAV-${p.numeroPedido}`,
                     total: finalTotal,
                     estado: p.estado,
+                    esDeuda: esEntregado,
                     fechaRecepcion: p.fechaHoraPedido || p.fechaHoraCreacion || p.createdAt,
                     createdAt: p.fechaHoraCreacion || p.createdAt,
                     detalles: p.detalles,
@@ -236,12 +254,14 @@ class ClientesService {
                 };
             });
 
-        const totalDeuda = impagosFormatted.reduce((sum, p) => sum + p.total, 0);
+        const totalDeudaExigible = impagosFormatted.filter(p => p.esDeuda).reduce((sum, p) => sum + p.total, 0);
+        const totalImpagos = impagosFormatted.reduce((sum, p) => sum + p.total, 0);
 
         return {
             clienteId: parseInt(clienteId),
             clienteNombre: `${cliente.nombre} ${cliente.apellido || ""}`.trim(),
-            totalDeuda,
+            totalDeuda: totalDeudaExigible,
+            totalImpagos,
             pedidosImpagos: impagosFormatted
         };
     }

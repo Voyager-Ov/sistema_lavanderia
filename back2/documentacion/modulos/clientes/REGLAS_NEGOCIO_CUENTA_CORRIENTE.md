@@ -4,39 +4,26 @@ Este documento define la **norma contable unificada** para el cálculo y clasifi
 
 ---
 
-## 1. Definición Unificada de Deuda de Cliente
+## 1. Definición Única de Deuda de Cliente
 
-La deuda de un cliente surge exclusivamente de sus **Pedidos impagos activos**. No existen saldos globales ficticios ni asientos manuales desvinculados de un comprobante de servicio.
+La deuda de un cliente surge **exclusivamente de los Pedidos ENTREGADOS que aún NO han sido cobrados**.
 
-$$\text{Saldo Deuda Total Cliente} = \sum_{p \in \text{Pedidos Impagos Activos}} p.\text{total}$$
+$$\text{Saldo Deuda Cliente} = \sum_{p \in \text{Pedidos Entregados Impagos}} p.\text{total}$$
 
-Donde un pedido $p$ es **Impago Activo** si y solo si:
-1. `p.cobrado === false` (El pedido no ha sido saldado).
-2. `p.estado !== 'CANCELADO'` (El pedido está activo en taller, mostrador o entregado).
+Donde un pedido $p$ genera **Deuda** si y solo si cumple:
+1. `p.estado === 'ENTREGADO'` (o `COMPLETADO` al entregar en mostrador o a domicilio).
+2. `p.cobrado === false` (El cliente retiró/recibió la prenda sin abonar).
 
 ---
 
-## 2. Las 3 Formas de Visualizar la Deuda (Clasificación por Estado)
+## 2. Clasificación Operativa de Pedidos
 
-Para responder a las necesidades operativas de la lavandería, el sistema contempla **3 perspectivas contables del saldo**:
-
-### A. Deuda Total Acumulada (`saldoDeuda`)
-* **Qué representa**: La suma del importe total de **TODOS** los pedidos impagos activos del cliente (tanto los que están en proceso en taller como los entregados sin abonar).
-* **Dónde se utiliza**:
-  * En la tabla general de clientes (`/admin/clientes`) en la columna **Saldo / Cuenta Corriente**.
-  * En la tarjeta KPI **Deuda Total Acumulada** del encabezado de clientes.
-  * En la API: `Cliente.saldoDeuda`.
-* **Módulo responsable**: `clientes.service.js` (`listarClientes` y `obtenerClientePorId`).
-
-### B. Deuda Exigible (`deudaExigible`)
-* **Qué representa**: La suma de los pedidos que ya fueron **ENTREGADOS** al cliente pero **NO FUERON COBRADOS** (`p.cobrado === false` && `p.estado === 'ENTREGADO'`).
-* **Regla de Negocio**: El cliente se llevó la prenda/servicio del local sin pagar. Constituye la deuda morosa inmediata por cobrar.
-* **Módulo responsable**: `pagos.service.js` (`obtenerEstadoCuentaCliente`).
-
-### C. Deuda en Taller / En Proceso (`deudaNoExigible`)
-* **Qué representa**: La suma de los pedidos impagos que aún están siendo lavados, secados o doblados (`estado` en `PENDIENTE`, `EN_PROCESO`, `LISTO_PARA_RETIRAR`).
-* **Regla de Negocio**: El cliente abonará al retirar en mostrador o mediante cobro a domicilio.
-* **Módulo responsable**: `pagos.service.js` (`obtenerEstadoCuentaCliente`).
+| Estado del Pedido | `cobrado` | ¿Constituye Deuda? | Concepto Contable |
+|---|---|---|---|
+| `ENTREGADO` / `COMPLETADO` | `false` | 🔴 **SÍ (Deuda Única)** | Deuda exigible por cobrar al cliente. |
+| `PENDIENTE` / `EN_PROCESO` / `LISTO` | `false` | 🟡 **NO** | Activos / Trabajos en proceso en taller. Se cobran al entregar. |
+| Cualquiera | `true` | 🟢 **NO** | Pedido saldado. |
+| `CANCELADO` | `false` / `true` | ⚪ **NO** | Anulado. Si tenía cobro, genera crédito a favor o devolución. |
 
 ---
 
