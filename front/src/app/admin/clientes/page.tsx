@@ -48,6 +48,9 @@ export default function ClientesPage() {
     onEdit: (cliente) => {
       router.push(`/admin/clientes/${cliente.id}/editar`)
     },
+    onCobrarDeuda: (cliente) => {
+      router.push(`/admin/clientes/${cliente.id}`)
+    },
     onDesactivar: (cliente) => {
       modalsProps.setClienteToDesactivar(cliente)
       modalsProps.setIsDesactivarOpen(true)

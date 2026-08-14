@@ -46,32 +46,62 @@ class PedidosService {
         // Calcular total cobrado
         let totalCobrado = 0;
         if (plain.cobros && Array.isArray(plain.cobros)) {
-            totalCobrado = plain.cobros.reduce((sum, cobro) => sum + (parseFloat(cobro.monto) || 0), 0);
+            totalCobrado = plain.cobros.reduce((sum, cobro) => sum + (parseFloat(cobro.montoAbonado || cobro.monto) || 0), 0);
         }
 
-        const saldoPendiente = Math.max(0, total - totalCobrado);
-        const cobrado = totalCobrado >= total && total > 0;
+        const isCobradoFlag = !!plain.cobrado;
+        const cobrado = isCobradoFlag || (totalCobrado >= total && total > 0);
         let estadoPago = "NO_PAGADO";
         if (cobrado) {
             estadoPago = "PAGADO";
+            if (totalCobrado === 0) totalCobrado = total;
         } else if (totalCobrado > 0) {
             estadoPago = "PARCIAL";
         }
 
-        // Estado actual (último cambio de estado)
+        // Estado actual (último cambio de estado) e historial mapeado para el frontend
         let estadoActual = "PENDIENTE";
-        if (plain.cambiosEstado && plain.cambiosEstado.length > 0) {
+        const historialFormatted = [];
+
+        if (plain.cambiosEstado && Array.isArray(plain.cambiosEstado) && plain.cambiosEstado.length > 0) {
             const ultimoCambio = plain.cambiosEstado[plain.cambiosEstado.length - 1];
             if (ultimoCambio.estado) {
                 estadoActual = ultimoCambio.estado.nombre || estadoActual;
             }
+
+            for (let i = 0; i < plain.cambiosEstado.length; i++) {
+                const ce = plain.cambiosEstado[i];
+                const prev = i > 0 ? plain.cambiosEstado[i - 1] : null;
+                historialFormatted.push({
+                    id: ce.id,
+                    estadoAnterior: prev && prev.estado ? prev.estado.nombre : null,
+                    estadoNuevo: ce.estado ? ce.estado.nombre : "PENDIENTE",
+                    comentario: ce.comentario || `Estado cambiado a ${ce.estado ? ce.estado.nombre : "PENDIENTE"}`,
+                    createdAt: ce.fechaHoraInicio || ce.createdAt || plain.fechaHoraCreacion
+                });
+            }
+        } else {
+            historialFormatted.push({
+                id: 1,
+                estadoAnterior: null,
+                estadoNuevo: estadoActual,
+                comentario: "Pedido recepcionado en sistema",
+                createdAt: plain.fechaHoraCreacion || plain.createdAt
+            });
         }
+
+        const fechaPedidoVal = plain.fechaHoraPedido || plain.fechaHoraCreacion || plain.createdAt;
 
         return {
             id: plain.numeroPedido,
             numeroPedido: plain.numeroPedido,
             codigoSeguimiento: `LAV-${plain.numeroPedido}`,
-            fechaRecepcion: plain.fechaHoraCreacion,
+            fechaHoraCreacion: plain.fechaHoraCreacion || plain.createdAt,
+            fechaHoraPedido: fechaPedidoVal,
+            fechaPedido: fechaPedidoVal,
+            fechaRecepcion: fechaPedidoVal,
+            fecha: fechaPedidoVal,
+            createdAt: plain.fechaHoraCreacion || plain.createdAt,
             fechaEntregaEstimada: plain.fechaHoraEntregaEstimada,
             observaciones: plain.observaciones,
             notas: plain.observaciones,
@@ -80,7 +110,7 @@ class PedidosService {
             subtotalItems,
             total,
             totalCobrado,
-            saldoPendiente,
+            saldoPendiente: cobrado ? 0 : Math.max(0, total - totalCobrado),
             cobrado,
             estadoPago,
             estado: estadoActual,
@@ -91,6 +121,7 @@ class PedidosService {
             items: itemsFormatted,
             detalles: plain.detalles,
             cambiosEstado: plain.cambiosEstado,
+            historial: historialFormatted,
             cobros: plain.cobros,
             factura: plain.factura
         };
@@ -273,6 +304,9 @@ class PedidosService {
             clienteId = nuevoCliente.id;
         }
 
+        const fechaPedidoRaw = data.fechaHoraPedido || data.fechaPedido || data.fechaRecepcion;
+        const fechaHoraPedido = fechaPedidoRaw ? new Date(fechaPedidoRaw) : new Date();
+
         // Crear registro principal del pedido
         const nuevoPedido = await Pedido.create({
             clienteId: clienteId || null,
@@ -280,6 +314,8 @@ class PedidosService {
             observaciones: data.observaciones || data.notas || null,
             direccionEntrega: data.direccionEntrega || null,
             costoEnvio: parseFloat(data.costoEnvio || 0),
+            fechaHoraCreacion: new Date(),
+            fechaHoraPedido: fechaHoraPedido,
             fechaHoraEntregaEstimada: data.fechaEntregaEstimada || data.fechaHoraEntregaEstimada ? new Date(data.fechaEntregaEstimada || data.fechaHoraEntregaEstimada) : null,
             ticketImpreso: false,
             negocioId

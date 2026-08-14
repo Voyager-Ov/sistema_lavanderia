@@ -29,9 +29,11 @@ export function usePedidosActions({ pedidos, setPedidos, fetchStats, fetchOrders
       fetchStats()
     } catch (error: any) {
       console.error("Error al cambiar estado:", error)
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message || "Transición de estado no permitida"
+      toast.error(errorMsg)
       setRowErrors(prev => ({ 
         ...prev, 
-        [rowId]: error.response?.data?.message || "Error al cambiar el estado" 
+        [rowId]: errorMsg 
       }))
     } finally {
       setLoadingRowIds(prev => prev.filter(id => id !== rowId))
@@ -68,7 +70,7 @@ export function usePedidosActions({ pedidos, setPedidos, fetchStats, fetchOrders
       if (res.status === "rejected") {
         const pId = selectedRows[index].id
         failedIds.push(pId)
-        const errorMessage = res.reason?.message || res.reason?.toString() || "Error al actualizar estado"
+        const errorMessage = res.reason?.response?.data?.message || res.reason?.response?.data?.error || res.reason?.message || res.reason?.toString() || "Error al actualizar estado"
         newErrors[pId.toString()] = errorMessage
       }
     })

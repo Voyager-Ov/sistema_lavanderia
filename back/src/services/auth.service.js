@@ -24,16 +24,16 @@ export const registerAdmin = async (data) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        const codigoGenerado = generarCodigoVerificacionEmail();
+        const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
         admin = await models.Usuario.create({
-            negocioId: negocio.id,
-            nombre: usuarioNombre,
             email,
-            passwordHash,
-            rol: "ADMIN",
-            activo: true,
-            emailVerificado: false,
-            verificationCode: generarCodigoVerificacionEmail(),
-            verificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+            password: passwordHash,
+            tokenConfirmacion: codigoGenerado,
+            tokenConfirmacionExpires: tokenExpires,
+            emailConfirmado: false,
+            activo: true
         }, { transaction });
 
         await transaction.commit();
@@ -57,7 +57,9 @@ export const registerAdmin = async (data) => {
 
         // Enviar correo de verificación de forma asincrónica, pero hacer AWAIT 
         // para que Vercel Serverless no mate el proceso antes de enviarlo.
-        await emailService.enviarCodigoVerificacion(admin.email, admin.nombre, admin.verificationCode).catch(console.error);
+        const nombreAdmin = usuarioNombre || data.nombre || data.usuarioNombre || admin.email.split("@")[0];
+        const codigoAdmin = String(admin.tokenConfirmacion || admin.verificationCode || "").trim();
+        await emailService.enviarCodigoVerificacion(admin.email, nombreAdmin, codigoAdmin).catch(console.error);
 
         return { 
             mensaje: "Registro exitoso. Revisa tu correo para verificar tu cuenta.",
@@ -109,34 +111,48 @@ export const login = async (email, password) => {
 };
 
 export const verificarEmail = async (email, code) => {
-    const usuario = await models.Usuario.findOne({ where: { email } });
-    if (!usuario) throw new AppError("Usuario no encontrado.", 404);
-    if (usuario.emailVerificado) throw new AppError("El email ya está verificado.", 400);
+    let cleanEmail = (email || "").trim().toLowerCase();
+    if (!cleanEmail) throw new AppError("Debes proporcionar tu correo electrónico.", 400);
 
-    if (usuario.verificationCode !== code) {
+    let usuario = await models.Usuario.findOne({ where: { email: cleanEmail } });
+    if (!usuario && cleanEmail.includes(" ")) {
+        usuario = await models.Usuario.findOne({ where: { email: cleanEmail.replace(/\s+/g, "+") } });
+    }
+
+    if (!usuario) throw new AppError("Usuario no encontrado.", 404);
+    if (usuario.emailVerificado || usuario.emailConfirmado) return { mensaje: "El email ya está verificado." };
+
+    const codigoIngresado = String(code || "").trim();
+    const codeGuardado = String(usuario.tokenConfirmacion || usuario.verificationCode || "").trim();
+    if (!codeGuardado || codeGuardado !== codigoIngresado) {
         throw new AppError("Código de verificación incorrecto.", 400);
     }
 
-    if (new Date() > usuario.verificationExpires) {
+    if (usuario.tokenConfirmacionExpires && new Date() > new Date(usuario.tokenConfirmacionExpires)) {
         throw new AppError("El código de verificación ha expirado. Solicita uno nuevo.", 400);
     }
 
     usuario.emailVerificado = true;
+    usuario.emailConfirmado = true;
     usuario.verificationCode = null;
-    usuario.verificationExpires = null;
+    usuario.tokenConfirmacion = null;
+    usuario.tokenConfirmacionExpires = null;
     await usuario.save();
 
     return { mensaje: "Email verificado correctamente. Ya puedes iniciar sesión." };
 };
 
 export const reenviarCodigoVerificacion = async (email) => {
-    const usuario = await models.Usuario.findOne({ where: { email } });
+    let cleanEmail = (email || "").trim().toLowerCase();
+    const usuario = await models.Usuario.findOne({ where: { email: cleanEmail } });
     if (!usuario) throw new AppError("Usuario no encontrado.", 404);
-    if (usuario.emailVerificado) throw new AppError("El email ya está verificado.", 400);
+    if (usuario.emailVerificado || usuario.emailConfirmado) throw new AppError("El email ya está verificado.", 400);
 
     const nuevoCodigo = generarCodigoVerificacionEmail();
+    usuario.tokenConfirmacion = nuevoCodigo;
     usuario.verificationCode = nuevoCodigo;
-    usuario.verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    usuario.tokenConfirmacionExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    usuario.verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await usuario.save();
 
     // Enviar correo y esperar a que termine para que Vercel no aborte

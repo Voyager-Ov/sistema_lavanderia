@@ -125,25 +125,39 @@ class ServiciosService {
         }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
-        if (!data.nombre || !data.precioActual || !data.categoriaId) {
-            throw new AppError("Nombre, precio y categoría son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
+        const precioFinal = data.precioActual !== undefined ? data.precioActual : data.precio;
+        if (!data.nombre || precioFinal === undefined || precioFinal === null) {
+            throw new AppError("Nombre y precio son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
         }
 
-        const categoria = await CategoriaServicio.findByPk(data.categoriaId);
-        if (!categoria) {
-            throw new AppError("La categoría seleccionada no existe.", 400, "INVALID_CATEGORY");
+        let catId = data.categoriaId ? parseInt(data.categoriaId) : null;
+        if (catId) {
+            const categoria = await CategoriaServicio.findByPk(catId);
+            if (!categoria) {
+                let defaultCat = await CategoriaServicio.findOne({ where: { activo: true } });
+                if (!defaultCat) {
+                    defaultCat = await CategoriaServicio.create({ nombre: "General", activo: true });
+                }
+                catId = defaultCat.id;
+            }
+        } else {
+            let defaultCat = await CategoriaServicio.findOne({ where: { activo: true } });
+            if (!defaultCat) {
+                defaultCat = await CategoriaServicio.create({ nombre: "General", activo: true });
+            }
+            catId = defaultCat.id;
         }
 
         const nuevoServicio = await Servicio.create({
             nombre: data.nombre,
             descripcion: data.descripcion || null,
-            precioActual: parseFloat(data.precioActual),
+            precioActual: parseFloat(precioFinal),
             costoEstimado: parseFloat(data.costoEstimado || 0),
             tiempoEstimadoMinutos: parseInt(data.tiempoEstimadoMinutos || 0),
-            disponible: data.disponible === "true" || data.disponible === true,
+            disponible: data.disponible === "true" || data.disponible === true || data.disponible === undefined,
             activo: true,
             imagenUrl: imagenPath || data.imagenUrl || null,
-            categoriaId: parseInt(data.categoriaId),
+            categoriaId: catId,
             negocioId
         });
 

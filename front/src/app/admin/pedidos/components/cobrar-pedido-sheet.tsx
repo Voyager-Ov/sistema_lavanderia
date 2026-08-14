@@ -116,6 +116,12 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
   const handleCobrar = async () => {
     if (!pedido) return
 
+    const estUpper = (pedido.estado || "").toString().toUpperCase()
+    if (estUpper.includes("CANCELAD")) {
+      toast.error("No se puede cobrar un pedido que se encuentra cancelado.")
+      return
+    }
+
     if (remanenteAPagar > 0 && !selectedMetodo) {
       toast.error("Seleccione un método de pago para el saldo restante.")
       return

@@ -32,6 +32,7 @@ export default function CrearPedidoPage() {
   const [activeCategoryId, setActiveCategoryId] = useState<number | "ALL">("ALL")
   const [cart, setCart] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fechaHoraPedido, setFechaHoraPedido] = useState<Date | undefined>(undefined)
   const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState<Date | undefined>(undefined)
 
   // Fetch initial data
@@ -80,6 +81,7 @@ export default function CrearPedidoPage() {
     try {
       await crearPedido({
         clienteId: selectedClient.id,
+        fechaHoraPedido: fechaHoraPedido ? fechaHoraPedido.toISOString() : undefined,
         fechaEntregaEstimada: fechaEntregaEstimada ? fechaEntregaEstimada.toISOString() : undefined,
         items: cart.map(c => ({ productoId: c.producto.id, cantidad: c.cantidad }))
       })
@@ -180,6 +182,8 @@ export default function CrearPedidoPage() {
             cart={cart}
             setCart={setCart}
             selectedClient={selectedClient}
+            fechaHoraPedido={fechaHoraPedido}
+            setFechaHoraPedido={setFechaHoraPedido}
             fechaEntregaEstimada={fechaEntregaEstimada}
             setFechaEntregaEstimada={setFechaEntregaEstimada}
             onCheckout={handleCreateOrder}

@@ -18,9 +18,7 @@ import { AuthFormWrapper, animateFormError } from "../_components/auth-form-wrap
 import { AuthHeader } from "../_components/auth-header";
 
 const resetSchema = z.object({
-  password: z.string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .regex(/^[a-zA-Z0-9]+$/, "Debe ser estrictamente alfanumérica"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden",

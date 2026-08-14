@@ -7,29 +7,39 @@ class EmailService {
     }
 
     init() {
-        if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+        const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+        const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+        const host = process.env.SMTP_HOST || "smtp.gmail.com";
+        const port = parseInt(process.env.SMTP_PORT || "465");
+        const secure = process.env.SMTP_SECURE === "false" ? false : (port === 465);
+
+        if (user && pass) {
             this.transporter = nodemailer.createTransport({
-                host: process.env.SMTP_HOST,
-                port: parseInt(process.env.SMTP_PORT || "587"),
-                secure: process.env.SMTP_SECURE === "true",
+                host,
+                port,
+                secure,
                 auth: {
-                    user: process.env.SMTP_USER,
-                    pass: process.env.SMTP_PASS,
+                    user,
+                    pass,
                 },
             });
+            console.log(`📧 [Email] Transporter SMTP configurado activamente para: ${user}`);
         }
     }
 
     async enviarCodigoVerificacion(email, nombre, codigo) {
+        const nombreLimpio = (nombre && nombre !== "undefined") ? nombre : (email ? email.split("@")[0] : "Usuario");
+        const codigoLimpio = (codigo && codigo !== "undefined") ? String(codigo).trim() : "";
+
         const asunto = "Verifica tu cuenta - Sistema Lavandería";
-        const text = `Hola ${nombre || ""},\n\nTu código de verificación para completar tu registro es: ${codigo}\n\nEste código expira en 24 horas.`;
+        const text = `Hola ${nombreLimpio},\n\nTu código de verificación para completar tu registro es: ${codigoLimpio}\n\nEste código expira en 24 horas.`;
         const html = `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                 <h2>¡Bienvenido a Lavandería SaaS!</h2>
-                <p>Hola <strong>${nombre || email}</strong>,</p>
+                <p>Hola <strong>${nombreLimpio}</strong>,</p>
                 <p>Tu código de verificación es:</p>
                 <div style="background: #f4f4f5; padding: 15px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #2563eb;">
-                    ${codigo}
+                    ${codigoLimpio}
                 </div>
                 <p style="margin-top: 20px; font-size: 12px; color: #666;">Este código es válido por 24 horas.</p>
             </div>

@@ -132,7 +132,8 @@ export const obtenerTicketsPrenda = async (req, res, next) => {
 export const obtenerTrackingPublico = async (req, res, next) => {
     try {
         const { negocioId, codigo } = req.params;
-        const info = await trackingService.obtenerTrackingPublico(negocioId, codigo);
+        const token = req.query.token;
+        const info = await trackingService.obtenerTrackingPublico(negocioId, codigo, token);
         return successResponse(res, 200, "Información de seguimiento recuperada exitosamente", info);
     } catch (error) {
         next(error);

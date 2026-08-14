@@ -25,5 +25,5 @@ export function useClienteDetail(id: number) {
     }
   }, [id])
 
-  return { cliente, isLoading, refresh: fetchCliente }
+  return { cliente, isLoading, refresh: fetchCliente, fetchCliente }
 }

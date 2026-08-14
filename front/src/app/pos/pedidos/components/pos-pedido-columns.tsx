@@ -199,8 +199,14 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
           <StatusDropdown
             currentStatus={row.original.estado}
             options={ESTADOS}
-            onChange={(newStatus) => actions.onChangeStatus(row.original.id, newStatus)}
-            disabled={row.original.estado === "ENTREGADO" || row.original.estado === "CANCELADO"}
+            onChange={(newStatus) => {
+              if (newStatus === "CANCELADO") {
+                actions.onCancel(row.original)
+              } else {
+                actions.onChangeStatus(row.original.id, newStatus)
+              }
+            }}
+            disabled={row.original.estado === "CANCELADO"}
           />
         </div>
         
@@ -315,19 +321,19 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
                     variant="ghost"
                     size="icon"
                     className={
-                      pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"
+                      pedido.estado === "CANCELADO"
                         ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full"
                         : "h-8 w-8 text-gray-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-transform hover:scale-110"
                     }
                     onClick={() => actions.onCancel(pedido)}
-                    disabled={pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"}
+                    disabled={pedido.estado === "CANCELADO"}
                   >
                     <XCircle className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent 
                   className={
-                    pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"
+                    pedido.estado === "CANCELADO"
                       ? "bg-white dark:bg-neutral-900 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 font-semibold shadow-md"
                       : "bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 font-semibold shadow-md"
                   }
@@ -366,7 +372,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={() => actions.onCancel(pedido)}
-                    disabled={pedido.estado === "CANCELADO" || pedido.estado === "ENTREGADO"}
+                    disabled={pedido.estado === "CANCELADO"}
                     className="text-brand-red focus:text-brand-red focus:bg-red-50"
                   >
                     <XCircle className="mr-2 h-4 w-4" />

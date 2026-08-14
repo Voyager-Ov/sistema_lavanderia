@@ -5,35 +5,58 @@ import { useParams, useRouter } from "next/navigation"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import {
-  ArrowLeft, Edit, Activity, Phone, Mail,
-  ShoppingBag, TrendingUp, AlertCircle, CheckCircle2, Clock,
-  ExternalLink, Package
+  ArrowLeft, Edit, Phone, Mail,
+  ShoppingBag, AlertCircle, CheckCircle2, Clock,
+  ExternalLink, Package, MessageCircle, Banknote, RefreshCw, Eye
 } from "lucide-react"
-import { format, parseISO, formatDistanceToNow } from "date-fns"
+import { parseISO, formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer
-} from "recharts"
 
 import { useClienteDetail } from "../hooks/useClienteDetail"
+import { getPedidosImpagosCliente } from "@/domains/clientes/api"
 import { Button } from "@/shared/ui/forms/button"
+import { Checkbox } from "@/shared/ui/forms/checkbox"
 import { KpiCard as DashboardKpi } from "@/shared/ui/data-display/kpi-card"
-import { CuentaCorrienteTab } from "../components/CuentaCorrienteTab"
-import { Wallet } from "lucide-react"
+import { CobrarPedidosClienteSheet } from "../components/cobrar-pedidos-cliente-sheet"
+import { DataTableBulkActions, BulkAction } from "@/shared/ui/data-display/data-table-bulk-actions"
+import { safeFormatDate } from "@/shared/lib/utils"
+import { toast } from "sonner"
 
-// ── Estado del pedido: chip visual ─────────────────────────────────────────
-const PEDIDO_ESTADO: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  PENDIENTE:           { label: "Pendiente",          color: "bg-blue-50 text-blue-700 border-blue-100",    icon: Clock },
-  EN_PROCESO:          { label: "En Proceso",          color: "bg-amber-50 text-amber-700 border-amber-100", icon: Clock },
-  LISTO_PARA_RETIRAR:  { label: "Listo",               color: "bg-emerald-50 text-emerald-700 border-emerald-100", icon: CheckCircle2 },
-  ENTREGADO:           { label: "Entregado",           color: "bg-slate-50 text-slate-500 border-slate-100", icon: Package },
-  CANCELADO:           { label: "Cancelado",           color: "bg-red-50 text-red-500 border-red-100",      icon: AlertCircle },
+function renderEstadoBadge(estadoRaw: any) {
+  if (!estadoRaw) return null
+  const estadoStr = typeof estadoRaw === "object" ? (estadoRaw?.nombre || estadoRaw?.estado || "") : estadoRaw.toString()
+  if (!estadoStr) return null
+  const estadoUpper = estadoStr.toUpperCase()
+
+  let colorClass = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800"
+  let Icon = Clock
+
+  if (estadoUpper.includes("CANCELAD")) {
+    colorClass = "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800"
+    Icon = AlertCircle
+  } else if (estadoUpper.includes("ENTREGADO") || estadoUpper.includes("COMPLETADO")) {
+    colorClass = "bg-slate-100 text-slate-700 border-slate-200 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700"
+    Icon = Package
+  } else if (estadoUpper.includes("LISTO") || estadoUpper.includes("FINALIZADO")) {
+    colorClass = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
+    Icon = CheckCircle2
+  } else if (estadoUpper.includes("PROCESO") || estadoUpper.includes("LAVADO") || estadoUpper.includes("SECADO") || estadoUpper.includes("DOBLADO")) {
+    colorClass = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
+    Icon = Clock
+  }
+
+  const labelFormatted = estadoStr.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${colorClass}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {labelFormatted}
+    </span>
+  )
 }
 
-// ── Loading skeleton ────────────────────────────────────────────────────────
 function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse bg-gray-100 rounded-2xl ${className}`} />
+  return <div className={`animate-pulse bg-gray-100 dark:bg-neutral-800 rounded-2xl ${className}`} />
 }
 
 export default function ClienteDetailPage() {
@@ -41,334 +64,471 @@ export default function ClienteDetailPage() {
   const router = useRouter()
   const clienteId = Number(params.id)
 
-  const [activeTab, setActiveTab] = useState<"resumen" | "cuenta_corriente">("resumen")
-  const { cliente, isLoading } = useClienteDetail(clienteId)
+  const { cliente, isLoading, fetchCliente } = useClienteDetail(clienteId)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Selección de pedidos impagos para cobrar
+  const [selectedPedidoIds, setSelectedPedidoIds] = useState<number[]>([])
+  const [modalCobroOpen, setModalCobroOpen] = useState(false)
+  const [pedidosParaCobroSheet, setPedidosParaCobroSheet] = useState<any[]>([])
+  const [isLoadingCobro, setIsLoadingCobro] = useState(false)
 
   gsap.registerPlugin(useGSAP)
   useGSAP(() => {
     if (!isLoading && cliente) {
       gsap.fromTo(
         ".stagger-in",
-        { opacity: 0, y: 28 },
-        { opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: "power3.out", clearProps: "transform" }
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.06, ease: "power2.out", clearProps: "transform" }
       )
     }
   }, { scope: containerRef, dependencies: [isLoading, !!cliente] })
 
-  // ── KPIs & chart data ─────────────────────────────────────────────────────
-  const { totalGastado, totalPedidos, pedidosActivos, ticketPromedio, chartData } = useMemo(() => {
-    if (!cliente) return { totalGastado: 0, totalPedidos: 0, pedidosActivos: 0, ticketPromedio: 0, chartData: [] }
+  function isPedidoCancelado(p: any) {
+    if (!p) return false
+    const est = typeof p.estado === "object" ? p.estado?.nombre : p.estado
+    if (!est) return false
+    return est.toString().toUpperCase().includes("CANCELAD")
+  }
 
-    const pedidos = cliente.pedidos || []
+  // KPIs de consumo (excluye pedidos cancelados)
+  const { totalGastado, totalPedidos, pedidosActivos, ticketPromedio } = useMemo(() => {
+    if (!cliente) return { totalGastado: 0, totalPedidos: 0, pedidosActivos: 0, ticketPromedio: 0 }
+    const pedidos = (cliente.pedidos || []).filter((p: any) => !isPedidoCancelado(p))
     const totalP = pedidos.length
-    const totalG = pedidos.reduce((acc, p) => acc + parseFloat(p.total || "0"), 0)
-    const activos = pedidos.filter((p) => !["ENTREGADO", "CANCELADO"].includes(p.estado)).length
+    const totalG = pedidos.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
+    const activos = pedidos.filter((p: any) => {
+      const est = (typeof p.estado === "object" ? p.estado?.nombre : p.estado)?.toString()?.toUpperCase() || ""
+      return !est.includes("ENTREGADO") && !est.includes("COMPLETADO") && !est.includes("CANCELAD")
+    }).length
     const ticket = totalP > 0 ? totalG / totalP : 0
-
-    // Agrupar por mes/día para el chart — ascendente
-    const dataMap: Record<string, number> = {}
-    ;[...pedidos].reverse().forEach((p) => {
-      const key = format(parseISO(p.createdAt), "dd/MM", { locale: es })
-      dataMap[key] = (dataMap[key] || 0) + parseFloat(p.total || "0")
-    })
-    const cData = Object.entries(dataMap).map(([fecha, total]) => ({ fecha, total }))
-
-    return { totalGastado: totalG, totalPedidos: totalP, pedidosActivos: activos, ticketPromedio: ticket, chartData: cData }
+    return { totalGastado: totalG, totalPedidos: totalP, pedidosActivos: activos, ticketPromedio: ticket }
   }, [cliente])
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // Pedidos impagos activos (excluye cancelados y cobrados)
+  const pedidosImpagos = useMemo(() => {
+    if (!cliente?.pedidos) return []
+    return cliente.pedidos.filter((p: any) => !p.cobrado && !isPedidoCancelado(p))
+  }, [cliente])
+
+  const saldoDeuda = useMemo(() => {
+    if (typeof cliente?.saldoDeuda === "number") {
+      return cliente.saldoDeuda
+    }
+    return pedidosImpagos.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
+  }, [cliente, pedidosImpagos])
+
+  // Objetos de pedidos actualmente seleccionados para el cobro
+  const pedidosSeleccionadosParaCobro = useMemo(() => {
+    if (!cliente?.pedidos) return []
+    return cliente.pedidos.filter((p: any) => selectedPedidoIds.includes(p.id || p.numeroPedido))
+  }, [cliente, selectedPedidoIds])
+
+  const montoSeleccionado = useMemo(() => {
+    return pedidosSeleccionadosParaCobro.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
+  }, [pedidosSeleccionadosParaCobro])
+
+  const toggleSelectPedido = (id: number) => {
+    setSelectedPedidoIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAllImpagos = () => {
+    if (selectedPedidoIds.length === pedidosImpagos.length) {
+      setSelectedPedidoIds([])
+    } else {
+      setSelectedPedidoIds(pedidosImpagos.map((p: any) => p.id || p.numeroPedido))
+    }
+  }
+
+  // Consulta en tiempo real al backend de los pedidos impagos antes de abrir el SideSheet de cobro
+  const abrirCobroVerificadoServidor = async (idsFiltro?: number[]) => {
+    setIsLoadingCobro(true)
+    try {
+      const res = await getPedidosImpagosCliente(clienteId)
+      const impagosServidor = res.pedidosImpagos || []
+
+      if (idsFiltro && idsFiltro.length > 0) {
+        const filtrados = impagosServidor.filter((p: any) => idsFiltro.includes(p.id || p.numeroPedido))
+        setPedidosParaCobroSheet(filtrados)
+      } else {
+        setPedidosParaCobroSheet(impagosServidor)
+        setSelectedPedidoIds(impagosServidor.map((p: any) => p.id || p.numeroPedido))
+      }
+
+      setModalCobroOpen(true)
+    } catch (error: any) {
+      toast.error("Error al consultar deudas en tiempo real con el servidor.")
+    } finally {
+      setIsLoadingCobro(false)
+    }
+  }
+
+  // Acciones masivas para la barra flotante estandarizada DataTableBulkActions
+  const bulkActions = useMemo<BulkAction<any>[]>(() => [
+    {
+      label: `Cobrar ($${montoSeleccionado.toLocaleString("es-AR")})`,
+      icon: Banknote,
+      colorClass: "bg-green-600 hover:bg-green-700 text-white font-bold",
+      onClick: () => abrirCobroVerificadoServidor(selectedPedidoIds)
+    }
+  ], [montoSeleccionado, selectedPedidoIds])
+
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 sm:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="space-y-4">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-32" />
+      <div className="flex-1 p-6 space-y-6">
+        <Skeleton className="h-28 w-full" />
+        <div className="grid grid-cols-4 gap-4">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
         </div>
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-36" />
-            <Skeleton className="h-36" />
-            <Skeleton className="h-36" />
-            <Skeleton className="h-36" />
-          </div>
-          <Skeleton className="h-72" />
-        </div>
+        <Skeleton className="h-96 w-full" />
       </div>
     )
   }
 
   if (!cliente) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mb-4">
-          <AlertCircle className="w-10 h-10 text-red-300" />
+      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
-        <h2 className="text-2xl font-black text-gray-900">Cliente no encontrado</h2>
-        <p className="text-gray-500 mt-2 mb-6">El cliente que buscas no existe o fue eliminado.</p>
-        <Button onClick={() => router.push("/admin/clientes")} className="rounded-full px-8">
-          Volver al listado
+        <h2 className="text-xl font-extrabold text-gray-900 dark:text-neutral-100">Cliente no encontrado</h2>
+        <p className="text-gray-500 text-sm mt-1 mb-6">El cliente especificado no existe o ha sido desactivado.</p>
+        <Button onClick={() => router.push("/admin/clientes")} className="rounded-full px-6">
+          Volver a Clientes
         </Button>
       </div>
     )
   }
 
+  const rawTel = cliente.telefono ? cliente.telefono.replace(/\D/g, "") : ""
+  const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.trim()
+  const inicial = nombreCompleto.charAt(0).toUpperCase()
+
   return (
-    <div ref={containerRef} className="flex-1 flex flex-col overflow-y-auto">
-      {/* ── Top Bar ─────────────────────────────────────────────── */}
-      <div className="stagger-in flex items-center justify-between px-4 sm:px-8 pt-6 pb-4 border-b border-gray-100 bg-white/80 backdrop-blur sticky top-0 z-20">
-        <div className="flex items-center gap-3">
+    <div ref={containerRef} className="flex-1 flex flex-col gap-6 p-4 sm:p-6 lg:p-8 w-full relative pb-28">
+      
+      {/* ── UNIFIED SINGLE-ROW HEADER BAR ────────────────────────── */}
+      <div className="stagger-in flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-neutral-900 p-4 sm:p-6 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm w-full">
+        {/* Izquierda: Volver + Avatar + Nombre + Estado + Contacto */}
+        <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={() => router.push("/admin/clientes")}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-900"
+            className="p-2.5 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-neutral-100 shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</p>
-            <h1 className="text-xl font-black text-gray-900 leading-none">{cliente.nombre}</h1>
+
+          <div className="w-12 h-12 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-xl font-black shadow-md shrink-0">
+            {inicial}
+          </div>
+
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-neutral-100 tracking-tight leading-tight">{nombreCompleto}</h1>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${cliente.activo !== false ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-400'}`}>
+                {cliente.activo !== false ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500 dark:text-neutral-400 mt-1">
+              {cliente.telefono && (
+                <a
+                  href={`https://wa.me/${rawTel}?text=${encodeURIComponent(`Hola ${cliente.nombre}, te escribimos de la lavandería.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 hover:underline"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 fill-green-600/10" />
+                  <span>{cliente.telefono}</span>
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </a>
+              )}
+              {cliente.email && (
+                <div className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{cliente.email}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Derecha: Deuda Status + Botones de Acción */}
+        <div className="flex flex-wrap items-center gap-3 ml-auto">
+          {saldoDeuda > 0 ? (
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <div>
+                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Deuda Pendiente</span>
+                <span className="text-lg font-black text-red-600 font-mono">${saldoDeuda.toLocaleString("es-AR")}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Estado de Cuenta</span>
+                <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">Al día ($0)</span>
+              </div>
+            </div>
+          )}
+
+          {saldoDeuda > 0 && (
+            <Button
+              onClick={() => abrirCobroVerificadoServidor()}
+              disabled={isLoadingCobro}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold h-11 px-5 rounded-2xl shadow-md gap-2 text-xs"
+            >
+              <Banknote className="w-4 h-4" />
+              {isLoadingCobro ? "Consultando..." : `Cobrar Deuda ($${saldoDeuda.toLocaleString("es-AR")})`}
+            </Button>
+          )}
+
           <Button
             variant="outline"
-            className="rounded-full h-9 px-4 text-sm font-bold shadow-sm"
-            onClick={() => router.push(`/admin/clientes/${cliente.id}/editar`)}
+            size="sm"
+            onClick={() => fetchCliente()}
+            className="rounded-2xl h-11 px-3.5 gap-1.5 text-xs font-bold"
           >
-            <Edit className="w-3.5 h-3.5 mr-1.5" />
+            <RefreshCw className="w-4 h-4" />
+            Actualizar
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/admin/clientes/${cliente.id}/editar`)}
+            className="rounded-2xl h-11 px-4 gap-1.5 text-xs font-bold shadow-sm"
+          >
+            <Edit className="w-4 h-4" />
             Editar
           </Button>
         </div>
       </div>
 
-      {/* ── Body ────────────────────────────────────────────────── */}
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+      {/* ── TARJETAS KPI DE CONSUMO (4 Tarjetas) ───────────────── */}
+      <div className="stagger-in grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+        <DashboardKpi
+          title="Total Gastado"
+          value={`$${totalGastado.toLocaleString("es-AR")}`}
+          backMessage="Suma acumulada de pedidos"
+          colorVariant="blue"
+        />
+        <DashboardKpi
+          title="Pedidos Totales"
+          value={totalPedidos}
+          backMessage="Tickets generados"
+          colorVariant="purple"
+        />
+        <DashboardKpi
+          title="Ticket Promedio"
+          value={`$${ticketPromedio.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+          backMessage="Valor medio por servicio"
+          colorVariant="orange"
+        />
+        <DashboardKpi
+          title="Pedidos Activos"
+          value={pedidosActivos}
+          backMessage="En proceso o taller"
+          colorVariant={pedidosActivos > 0 ? "green" : "blue"}
+        />
+      </div>
 
-        {/* ── LEFT: Profile Card ─────────────────────────── */}
-        <div className="stagger-in lg:col-span-1 space-y-4">
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-7 flex flex-col items-center text-center overflow-hidden relative group">
-            <div className="absolute -top-16 -right-16 w-40 h-40 bg-indigo-50 rounded-full group-hover:scale-125 transition-transform duration-700 z-0" />
-            <div className="relative z-10 w-24 h-24 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-[1.75rem] flex items-center justify-center text-4xl font-black shadow-lg mb-5 rotate-3 group-hover:rotate-0 transition-transform duration-300">
-              {cliente.nombre.charAt(0).toUpperCase()}
-            </div>
-            <h2 className="relative z-10 text-2xl font-black text-gray-900">{cliente.nombre}</h2>
-            <span className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border
-              ${cliente.activo ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
-              <Activity className="w-3 h-3" />
-              {cliente.activo ? "Cuenta Activa" : "Cuenta Inactiva"}
-            </span>
-
-            <div className="mt-5 w-full space-y-2">
-              {cliente.telefono && (
-                <a
-                  href={`https://wa.me/${cliente.telefono.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-gray-600 font-medium bg-gray-50 hover:bg-green-50 hover:text-green-700 p-3 rounded-2xl transition-colors group/link"
-                >
-                  <div className="p-2 bg-white rounded-xl shadow-sm shrink-0"><Phone className="w-4 h-4 text-indigo-500" /></div>
-                  <span className="text-sm truncate">{cliente.telefono}</span>
-                  <ExternalLink className="w-3 h-3 ml-auto opacity-0 group-hover/link:opacity-100 transition-opacity" />
-                </a>
-              )}
-              {cliente.email && (
-                <div className="flex items-center gap-3 text-gray-600 font-medium bg-gray-50 p-3 rounded-2xl">
-                  <div className="p-2 bg-white rounded-xl shadow-sm shrink-0"><Mail className="w-4 h-4 text-indigo-500" /></div>
-                  <span className="text-sm truncate">{cliente.email}</span>
-                </div>
-              )}
+      {/* ── ÚNICA TABLA UNIFICADA: PEDIDOS DEL CLIENTE ──────────────── */}
+      <div className="stagger-in bg-white dark:bg-neutral-900 rounded-3xl border border-gray-100 dark:border-neutral-800 shadow-sm overflow-hidden w-full">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-neutral-800">
+          <div className="flex items-center gap-3">
+            <ShoppingBag className="w-5 h-5 text-brand-blue" />
+            <div>
+              <h3 className="text-base font-extrabold text-gray-900 dark:text-neutral-100">Historial Comercial de Pedidos</h3>
+              <p className="text-xs text-gray-500 dark:text-neutral-400">Selecciona los pedidos impagos que deseas abonar</p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs font-bold text-brand-blue hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full px-4"
+            onClick={() => {
+              sessionStorage.setItem('pedidos_state', JSON.stringify({
+                searchTerm: cliente.nombre,
+                activeFilter: "TODOS",
+                pagination: { pageIndex: 0, pageSize: 50 },
+                sorting: []
+              }));
+              router.push('/admin/pedidos');
+            }}
+          >
+            Ver en pedidos generales &rarr;
+          </Button>
         </div>
 
-        {/* ── RIGHT: Tabs & Content ─────────────────────── */}
-        <div className="stagger-in lg:col-span-2 space-y-5 flex flex-col">
-          
-          {/* Selector de Pestañas */}
-          <div className="flex items-center gap-2 p-1.5 bg-slate-100/80 rounded-2xl w-fit border border-slate-200/60 shadow-inner">
-            <button
-              onClick={() => setActiveTab("resumen")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "resumen"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              Resumen & Historial
-            </button>
-            <button
-              onClick={() => setActiveTab("cuenta_corriente")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "cuenta_corriente"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              Cuenta Corriente & Saldos
-            </button>
-          </div>
-
-          {activeTab === "cuenta_corriente" ? (
-            <CuentaCorrienteTab
-              clienteId={cliente.id}
-              clienteNombre={cliente.nombre}
-            />
-          ) : (
-            <div className="space-y-5">
-              {/* KPIs row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <DashboardKpi
-                  title="Total Gastado"
-                  value={`$${totalGastado.toLocaleString("es-AR")}`}
-                  backMessage="Suma histórica de todos sus pedidos"
-                  colorVariant="blue"
-                />
-                <DashboardKpi
-                  title="Pedidos Totales"
-                  value={totalPedidos}
-                  backMessage="Cantidad de tickets generados en total"
-                  colorVariant="purple"
-                />
-                <DashboardKpi
-                  title="Ticket Promedio"
-                  value={`$${ticketPromedio.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
-                  backMessage="Valor promedio por pedido"
-                  colorVariant="orange"
-                />
-                <DashboardKpi
-                  title="Pedidos Activos"
-                  value={pedidosActivos}
-                  backMessage="Pedidos pendientes o en proceso"
-                  colorVariant={pedidosActivos > 0 ? "green" : "blue"}
-                />
-              </div>
-
-              {/* Chart */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-                <div className="flex items-center gap-2 mb-5">
-                  <TrendingUp className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-base font-bold text-gray-900">Consumo a lo largo del tiempo</h3>
-                </div>
-                <div className="h-[200px]">
-                  {chartData.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94a3b8" }} dy={8} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={(v) => `$${v}`} />
-                        <RechartsTooltip
-                          contentStyle={{ borderRadius: "1rem", border: "none", boxShadow: "0 10px 25px -5px rgb(0 0 0 / 0.1)", fontSize: 13 }}
-                          formatter={(value: any) => [`$${Number(value).toLocaleString("es-AR")}`, "Monto"]}
-                          labelStyle={{ fontWeight: "bold", color: "#0f172a", marginBottom: 4 }}
-                        />
-                        <Area type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#gradTotal)" dot={false} activeDot={{ r: 5, strokeWidth: 0 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                      <ShoppingBag className="w-10 h-10 text-gray-200 mb-2" />
-                      <p className="text-sm font-medium">Sin suficientes datos para graficar</p>
-                    </div>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 dark:bg-neutral-800/60 text-gray-500 dark:text-neutral-400 text-xs font-bold uppercase tracking-wider border-b border-gray-100 dark:border-neutral-800">
+              <tr>
+                <th className="px-6 py-4 w-10">
+                  {pedidosImpagos.length > 0 && (
+                    <Checkbox
+                      checked={selectedPedidoIds.length > 0 && selectedPedidoIds.length === pedidosImpagos.length}
+                      onCheckedChange={toggleSelectAllImpagos}
+                      aria-label="Seleccionar todos los impagos"
+                    />
                   )}
-                </div>
-              </div>
+                </th>
+                <th className="px-6 py-4">Ticket</th>
+                <th className="px-6 py-4">Servicios / Ítems</th>
+                <th className="px-6 py-4">Fecha Pedido</th>
+                <th className="px-6 py-4">Estado Servicio</th>
+                <th className="px-6 py-4">Estado Cobro</th>
+                <th className="px-6 py-4">Monto Total</th>
+                <th className="px-6 py-4 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
+              {(cliente.pedidos || []).length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-16 text-center text-gray-400 dark:text-neutral-500">
+                    <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm font-semibold">Sin pedidos registrados para este cliente</p>
+                  </td>
+                </tr>
+              ) : (
+                (cliente.pedidos || []).map((p: any, idx: number) => {
+                  const pId = p.id || p.numeroPedido
+                  const isCancelado = isPedidoCancelado(p)
+                  const isImpago = !p.cobrado && !isCancelado
+                  const isSelected = selectedPedidoIds.includes(pId)
 
-              {/* Pedidos Table */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="w-4 h-4 text-indigo-600" />
-                    <h3 className="text-sm font-bold text-gray-900">Historial de Pedidos ({(cliente.pedidos || []).length})</h3>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-full px-4"
-                    onClick={() => {
-                      sessionStorage.setItem('pedidos_state', JSON.stringify({
-                        searchTerm: cliente.nombre,
-                        activeFilter: "TODOS",
-                        pagination: { pageIndex: 0, pageSize: 50 },
-                        sorting: []
-                      }));
-                      router.push('/admin/pedidos');
-                    }}
-                  >
-                    Ver en pedidos &rarr;
-                  </Button>
-                </div>
+                  // Detalle de servicios de las prendas
+                  const itemsDetalle = (p.detalles || [])
+                    .map((d: any) => d.servicio?.nombre || d.descripcion || d.nombre)
+                    .filter(Boolean)
+                    .join(", ")
 
-                <div className="overflow-auto max-h-[360px]">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr className="text-left">
-                        <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Código</th>
-                        <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Estado</th>
-                        <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Pago</th>
-                        <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Total</th>
-                        <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide">Fecha</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {(cliente.pedidos || []).length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="py-12 text-center text-gray-400">
-                            <ShoppingBag className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                            <p className="text-sm font-medium">Sin pedidos registrados</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        (cliente.pedidos || []).map((p: any, idx: number) => {
-                          const estadoInfo = PEDIDO_ESTADO[p.estado] || { label: p.estado, color: "bg-gray-50 text-gray-500 border-gray-100", icon: Package }
-                          const EstadoIcon = estadoInfo.icon
-                          return (
-                            <tr
-                              key={p.id || p.numeroPedido || idx}
-                              className="hover:bg-gray-50/80 cursor-pointer transition-colors group"
-                              onClick={() => router.push(`/admin/pedidos/${p.id || p.numeroPedido}`)}
+                  const fechaMostrar = p.fechaHoraPedido || p.fechaRecepcion || p.createdAt
+
+                  return (
+                    <tr
+                      key={pId || idx}
+                      className={`transition-colors ${
+                        isSelected
+                          ? "bg-green-50/60 dark:bg-green-950/20"
+                          : "hover:bg-gray-50/80 dark:hover:bg-neutral-800/40"
+                      }`}
+                    >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        {isImpago ? (
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelectPedido(pId)}
+                            aria-label={`Seleccionar pedido #${p.codigoSeguimiento}`}
+                          />
+                        ) : (
+                          <span className="text-gray-300 dark:text-neutral-700 text-xs">—</span>
+                        )}
+                      </td>
+
+                      <td
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => router.push(`/admin/pedidos/${pId}`)}
+                      >
+                        <span className="font-extrabold text-brand-blue hover:underline font-mono text-xs">
+                          #{p.codigoSeguimiento || p.numeroPedido || p.id}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 max-w-xs">
+                        {itemsDetalle ? (
+                          <span className="text-xs font-medium text-gray-700 dark:text-neutral-300 truncate block" title={itemsDetalle}>
+                            {itemsDetalle}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-neutral-500 font-medium">
+                            {p.detallesCount ? `${p.detallesCount} servicio(s)` : "Servicios lavandería"}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 text-xs font-semibold text-gray-600 dark:text-neutral-400">
+                        {safeFormatDate(fechaMostrar)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {renderEstadoBadge(p.estado)}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {isCancelado ? (
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-bold uppercase border bg-gray-100 text-gray-500 border-gray-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">
+                            N/A (Cancelado)
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-[11px] font-black uppercase border ${p.cobrado ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400'}`}>
+                            {p.cobrado ? "Cobrado" : "Impago"}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 font-black font-mono text-gray-900 dark:text-neutral-100">
+                        ${parseFloat(p.total || "0").toLocaleString("es-AR")}
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded-full"
+                            onClick={() => router.push(`/admin/pedidos/${pId}`)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+
+                          {isImpago && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
+                              onClick={() => abrirCobroVerificadoServidor([pId])}
                             >
-                              <td className="px-5 py-3.5">
-                                <span className="font-bold text-indigo-600 group-hover:underline font-mono text-xs">
-                                  #{p.codigoSeguimiento || p.numeroPedido || p.id}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${estadoInfo.color}`}>
-                                  <EstadoIcon className="w-3 h-3" />
-                                  {estadoInfo.label}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border w-fit ${p.cobrado ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
-                                  {p.cobrado ? "Cobrado" : "Pendiente"}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5 font-bold text-gray-800">
-                                ${parseFloat(p.total || "0").toLocaleString("es-AR")}
-                              </td>
-                              <td className="px-5 py-3.5 text-gray-400 text-xs">
-                                {p.createdAt ? formatDistanceToNow(parseISO(p.createdAt), { addSuffix: true, locale: es }) : "-"}
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+                              <Banknote className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* ── BOTTOM ISLAND ESTANDARIZADA (DataTableBulkActions) ──────── */}
+      <DataTableBulkActions
+        selectedRows={pedidosSeleccionadosParaCobro}
+        actions={bulkActions}
+        onClearSelection={() => setSelectedPedidoIds([])}
+      />
+
+      {/* ── SIDESHEET RESPONSIVO DE COBRO DE PEDIDOS ───────────────── */}
+      <CobrarPedidosClienteSheet
+        open={modalCobroOpen}
+        onOpenChange={setModalCobroOpen}
+        clienteId={cliente.id}
+        clienteNombre={nombreCompleto}
+        pedidosSeleccionados={pedidosParaCobroSheet}
+        onSuccess={() => {
+          setSelectedPedidoIds([])
+          fetchCliente()
+        }}
+      />
     </div>
   )
 }

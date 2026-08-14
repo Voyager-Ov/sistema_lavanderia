@@ -37,17 +37,20 @@ export default function AdminDashboardPage() {
   gsap.registerPlugin(useGSAP)
 
   useGSAP(() => {
-    if (!isLoading) {
-      gsap.fromTo(".fade-up", 
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power3.out"
-        }
-      )
+    if (!isLoading && containerRef.current) {
+      const targets = containerRef.current.querySelectorAll(".fade-up");
+      if (targets.length > 0) {
+        gsap.fromTo(targets, 
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: "power3.out"
+          }
+        )
+      }
     }
   }, { scope: containerRef, dependencies: [isLoading] })
 

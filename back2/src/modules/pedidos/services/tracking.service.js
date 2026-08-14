@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -8,7 +9,7 @@ class TrackingService {
         return tenantDb.models;
     }
 
-    async obtenerTrackingPublico(negocioId, codigo) {
+    async obtenerTrackingPublico(negocioId, codigo, token) {
         if (!negocioId) {
             throw new AppError("Negocio no especificado para tracking.", 400, "MISSING_TENANT_ID");
         }
@@ -45,6 +46,17 @@ class TrackingService {
 
         if (!pedido) {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
+        }
+
+        // Validación estricta de Token Criptográfico por pedido
+        const expectedToken = crypto
+            .createHmac("sha256", "SECRET_TRACKING_KEY")
+            .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
+            .digest("hex")
+            .substring(0, 16);
+
+        if (!token || token.trim().toLowerCase() !== expectedToken.toLowerCase()) {
+            throw new AppError("Acceso denegado: Token de seguimiento inválido o ausente. Escanee el código QR del ticket físico.", 403, "INVALID_TRACKING_TOKEN");
         }
 
         let estadoActual = "PENDIENTE";

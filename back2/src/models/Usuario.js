@@ -53,9 +53,9 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Usuario.associate = (models) => {
-		Usuario.belongsTo(models.Empleado, { foreignKey: "empleadoId", as: "personaFisica", constraints: false });
-		Usuario.belongsToMany(models.Rol, { through: "UsuarioRoles", foreignKey: "usuarioEmail", otherKey: "rolId", constraints: false });
-		Usuario.hasMany(models.Sesion, { foreignKey: "usuarioEmail", as: "sesiones", constraints: false });
+		if (models.Empleado) Usuario.belongsTo(models.Empleado, { foreignKey: "empleadoId", as: "personaFisica", constraints: false });
+		if (models.Rol) Usuario.belongsToMany(models.Rol, { through: "UsuarioRoles", foreignKey: "usuarioEmail", otherKey: "rolId", as: "Roles", constraints: false });
+		if (models.Sesion) Usuario.hasMany(models.Sesion, { foreignKey: "usuarioEmail", as: "sesiones", constraints: false });
 	};
 
 	return Usuario;

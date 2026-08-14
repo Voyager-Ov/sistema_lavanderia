@@ -164,6 +164,7 @@ classDiagram
         +Double montoAbonado
         +Double montoRecibidoEfectivo
         +Double vueltoEntregado
+        +Integer empleadoId
     }
 
     class Gasto {
@@ -176,6 +177,7 @@ classDiagram
         +Double impuestos
         +Double percepciones
         +String estadoGasto
+        +Integer empleadoId
     }
 
     class CategoriaGasto {

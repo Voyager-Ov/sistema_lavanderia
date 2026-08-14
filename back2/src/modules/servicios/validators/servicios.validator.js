@@ -16,11 +16,15 @@ export const validateServicio = [
         .notEmpty()
         .withMessage("El nombre del servicio es obligatorio"),
     body("precioActual")
-        .notEmpty()
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("El precio debe ser un número mayor o igual a 0"),
+    body("precio")
+        .optional()
         .isFloat({ min: 0 })
         .withMessage("El precio debe ser un número mayor o igual a 0"),
     body("categoriaId")
-        .notEmpty()
+        .optional()
         .isInt({ min: 1 })
         .withMessage("Debes seleccionar una categoría válida"),
     handleValidationErrors

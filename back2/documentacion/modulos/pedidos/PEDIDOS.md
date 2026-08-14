@@ -1,6 +1,6 @@
 # Especificación del Módulo de Pedidos y Trazabilidad (`pedidos`)
 
-Este documento especifica la arquitectura, modelos, lógica de negocio, endpoints y funcionamiento de cada subpantalla del **Módulo de Pedidos (`pedidos`)** en el backend `back2`.
+Este documento especifica la arquitectura, modelos, lógica de negocio, endpoints y funcionamiento del **Módulo de Pedidos (`pedidos`)** en el backend `back2`.
 
 ---
 
@@ -8,23 +8,9 @@ Este documento especifica la arquitectura, modelos, lógica de negocio, endpoint
 
 El módulo de Pedidos es el núcleo operativo de la lavandería. Gobierna la recepción de artículos, la selección de servicios, la generación de comprobantes/tickets, la trazabilidad de estados en tiempo real (mostrador y taller), el seguimiento online por QR y la liquidación de saldos.
 
-### Pantallas y Subpantallas en el Frontend:
-1. **Nuevo Pedido / Punto de Venta (`/admin/pedidos/nuevo` & `/pos/terminal`):**
-   * Búsqueda o creación rápida de cliente.
-   * Selección de servicios en grilla interactiva por categoría.
-   * Carrito de compras con cantidades, precios históricos y costo de envío.
-   * Fecha de entrega estimada y observaciones especiales de lavado.
-   * Emisión del pedido e impresión de ticket térmico.
-
-2. **Listado de Pedidos (`/admin/pedidos`):**
-   * Tabla paginada con filtros por número de pedido, cliente, rango de fechas y estado actual.
-   * Ordenamiento dinámico de columnas (número, cliente, total, fecha, estado).
-   * Indicadores de estado de pago (PAGADO, PARCIAL, NO_PAGADO) y avance operativo.
-
-3. **Detalle y Trazabilidad (`/admin/pedidos/[id]`):**
-   * Ficha completa del pedido, cliente e ítems contratados.
-   * Timeline de trazabilidad histórica de cambios de estado (`PENDIENTE` ➔ `EN_PROCESO` ➔ `LISTO_PARA_RETIRAR` ➔ `ENTREGADO` / `CANCELADO`).
-   * Botones de acción directa para cambiar estado, reimprimir ticket o facturar.
+### Distinción de Marcas de Tiempo en Pedidos:
+- **`fechaHoraCreacion` (Creación en Sistema)**: Marca de tiempo inmutable indicando el instante exacto en que la orden fue registrada en la base de datos PostgreSQL.
+- **`fechaHoraPedido` (Recepción Real)**: Marca de tiempo representativa del ingreso físico de las prendas al local. Permite a los administradores registrar pedidos de forma retroactiva (fechas pasadas) o programada (fechas futuras), sin perder la auditoría de cuándo fue cargado realmente en el sistema.
 
 ---
 
@@ -34,7 +20,8 @@ El módulo opera dentro del esquema del inquilino activo (`tenant_{id}`):
 
 * **`Pedido` (`src/models/Pedido.js`):**
   * `numeroPedido` (PK, INTEGER, autoIncrement): Identificador único del pedido.
-  * `fechaHoraCreacion` (DATE): Fecha de emisión.
+  * `fechaHoraCreacion` (DATE, default: NOW): Fecha/Hora auditada de alta en sistema.
+  * `fechaHoraPedido` (DATE, default: NOW): Fecha/Hora de ingreso o recepción real del pedido.
   * `fechaHoraEntregaEstimada` (DATE): Fecha comprometida de retiro.
   * `observaciones` (TEXT): Notas especiales de lavado o prendas sensibles.
   * `origen` (STRING): "MOSTRADOR", "DELIVERY", "ONLINE".
@@ -64,10 +51,10 @@ El módulo opera dentro del esquema del inquilino activo (`tenant_{id}`):
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `GET` | `/api/pedidos` | Listado paginado de pedidos con búsqueda por cliente/número y filtros. |
+| `GET` | `/api/pedidos` | Listado paginado de pedidos con búsqueda por cliente/número y filtros de fecha. |
 | `GET` | `/api/pedidos/stats` | Métricas generales (pendientes, en proceso, listos, entregados). |
 | `GET` | `/api/pedidos/:id` | Detalle completo de un pedido con cliente e ítems. |
-| `POST` | `/api/pedidos` | Creación de pedido con ítems y asignación de estado inicial PENDIENTE. |
+| `POST` | `/api/pedidos` | Creación de pedido con fecha de recepción personalizable (`fechaHoraPedido`). |
 | `PATCH` | `/api/pedidos/:id/estado` | Cambio de estado con registro en la trazabilidad. |
 | `POST` | `/api/pedidos/:id/ticket` | Marca el ticket como impreso. |
 
@@ -75,7 +62,7 @@ El módulo opera dentro del esquema del inquilino activo (`tenant_{id}`):
 
 ## 4. Lógica de Negocio y Flujo de Estados
 
-1. **Recepción:** Al ingresar un pedido en `/admin/pedidos/nuevo`, el sistema calcula el total de los servicios seleccionados y registra automáticamente el primer registro en `CambioEstadoPedido` con `Estado.nombre = "PENDIENTE"`.
-2. **Lavado / Taller:** El personal cambia el estado a `EN_PROCESO` desde la tabla o el detalle. El backend cierra la fecha del estado anterior (`fechaHoraFin = now()`) y crea el nuevo tramo.
-3. **Control de Calidad:** Al finalizar, pasa a `LISTO_PARA_RETIRAR` o `LISTO`. Si WhatsApp está activo, se notifica al cliente.
+1. **Recepción:** Al ingresar un pedido en `/admin/pedidos/nuevo`, el usuario puede elegir la `fechaHoraPedido` (por defecto la fecha actual, o una fecha retroactiva/futura). Se calcula el total y se asigna el estado inicial `PENDIENTE`.
+2. **Lavado / Taller:** El personal cambia el estado a `EN_PROCESO`. El backend asigna `fechaHoraFin = now()` al estado anterior y crea la nueva entrada auditada.
+3. **Control de Calidad:** Al finalizar pasa a `LISTO_PARA_RETIRAR`.
 4. **Entrega:** El cliente retira la prenda y el estado pasa a `ENTREGADO`.

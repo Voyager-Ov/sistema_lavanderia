@@ -34,8 +34,14 @@ export function BulkChargeModal({ open, onOpenChange, pedidos, onSuccess, setRow
   const [selectedMetodo, setSelectedMetodo] = useState<string>("")
   const [loading, setLoading] = useState(false)
 
-  // Solo considerar pedidos no cobrados
-  const pedidosAPagar = pedidos.filter(p => !p.cobrado)
+  // Solo considerar pedidos no cobrados y no cancelados
+  const isPedidoCancelado = (p: Pedido) => {
+    if (!p) return false
+    const est = typeof p.estado === "object" ? (p.estado as any)?.nombre : p.estado
+    return est?.toString()?.toUpperCase()?.includes("CANCELAD") || false
+  }
+
+  const pedidosAPagar = pedidos.filter(p => !p.cobrado && !isPedidoCancelado(p))
   const totalACobrar = pedidosAPagar.reduce((acc, p) => acc + parseFloat(p.total as any), 0)
 
   // Cargar métodos de pago

@@ -21,6 +21,7 @@ import MovimientoCuentaModel from "./MovimientoCuenta.js";
 import MovimientoCajaModel from "./MovimientoCaja.js";
 import CobroModel from "./Cobro.js";
 import FacturaModel from "./Factura.js";
+import MotivoCancelacionModel from "./MotivoCancelacion.js";
 
 class ConnectionManager {
     constructor() {
@@ -52,7 +53,24 @@ class ConnectionManager {
             });
         }
 
-        this.centralModels = this._initModels(this.centralDb);
+        // Solo cargar modelos centrales en la conexión central
+        this.centralModels = {
+            Usuario: UsuarioModel(this.centralDb, DataTypes).schema('public'),
+            Negocio: NegocioModel(this.centralDb, DataTypes).schema('public'),
+            Rol: RolModel(this.centralDb, DataTypes).schema('public')
+        };
+        
+        // Asociar modelos centrales
+        Object.values(this.centralModels).forEach((model) => {
+            if (typeof model.associate === "function") {
+                model.associate(this.centralModels);
+            }
+        });
+
+        await this.centralDb.query(`
+            ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS activo boolean DEFAULT true;
+            ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "estadoSuscripcion" varchar(50) DEFAULT 'ACTIVA';
+        `).catch(() => {});
         await this.centralDb.sync();
         console.log("🟢 Base de Datos Central conectada y sincronizada.");
     }
@@ -112,6 +130,16 @@ class ConnectionManager {
                 await tenantDb.sync();
             }
 
+            // ─── AUTO-MIGRACIÓN DE COLUMNAS NUEVAS EN TENANTS EXISTENTES ───
+            if (!isTest && schemaNameArg) {
+                try {
+                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."pedidos" ADD COLUMN IF NOT EXISTS "fechaHoraPedido" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
+                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."clientes" ADD COLUMN IF NOT EXISTS "activo" BOOLEAN DEFAULT true;`);
+                } catch (colErr) {
+                    console.warn(`[Auto-Migration] Error asegurando columnas en ${schemaNameArg}:`, colErr.message);
+                }
+            }
+
             // Insertar un Negocio dummy para satisfacer las Foreign Keys locales si no existe
             try {
                 await tenantModels.Negocio.findOrCreate({
@@ -121,7 +149,41 @@ class ConnectionManager {
             } catch (e) {
                 // Si el negocio ya existe o en concurrencia
             }
-            
+
+            // ─── SIEMBRA DE ESTADOS DEL SISTEMA ───
+            try {
+                const estadosBase = [
+                    { nombre: "PENDIENTE", descripcion: "Pedido recepcionado, a la espera de procesar", ambito: "Pedido" },
+                    { nombre: "EN_PROCESO", descripcion: "Pedido en proceso de lavado, secado o planchado", ambito: "Pedido" },
+                    { nombre: "LISTO_PARA_RETIRAR", descripcion: "Pedido finalizado, listo para entregar o retirar", ambito: "Pedido" },
+                    { nombre: "ENTREGADO", descripcion: "Pedido entregado al cliente", ambito: "Pedido" },
+                    { nombre: "CANCELADO", descripcion: "Pedido cancelado", ambito: "Pedido" }
+                ];
+                for (const est of estadosBase) {
+                    await tenantModels.Estado.findOrCreate({
+                        where: { nombre: est.nombre },
+                        defaults: est
+                    });
+                }
+            } catch (e) {}
+
+            // ─── SIEMBRA DE MOTIVOS DE CANCELACIÓN INICIALES ───
+            try {
+                const motivosBase = [
+                    { motivo: "Cliente solicitó cancelación", descripcion: "El cliente solicitó cancelar el pedido", esFijo: true },
+                    { motivo: "Falta de insumos / imposibilidad técnica", descripcion: "Incapacidad técnica o falta de insumos", esFijo: true },
+                    { motivo: "Duplicado / Error de carga", descripcion: "Pedido ingresado por error o duplicado", esFijo: true },
+                    { motivo: "Exceso de demora", descripcion: "Superó el tiempo límite estimado", esFijo: false },
+                    { motivo: "Sin retiro tras vencimiento", descripcion: "No retiró el pedido finalizado", esFijo: false }
+                ];
+                for (const mot of motivosBase) {
+                    await tenantModels.MotivoCancelacion.findOrCreate({
+                        where: { motivo: mot.motivo },
+                        defaults: mot
+                    });
+                }
+            } catch (e) {}
+
             console.log(`🔵 Base de Datos Tenant conectada y sincronizada (Negocio ID: ${negocioId}).`);
 
             const tenantContext = { sequelize: tenantDb, models: tenantModels };
@@ -162,6 +224,7 @@ class ConnectionManager {
             MovimientoCaja: MovimientoCajaModel(sequelizeInstance, DataTypes),
             Cobro: CobroModel(sequelizeInstance, DataTypes),
             Factura: FacturaModel(sequelizeInstance, DataTypes),
+            MotivoCancelacion: MotivoCancelacionModel(sequelizeInstance, DataTypes),
         };
 
         // En Postgres, debemos indicar a cada modelo a qué esquema pertenece ANTES de asociar

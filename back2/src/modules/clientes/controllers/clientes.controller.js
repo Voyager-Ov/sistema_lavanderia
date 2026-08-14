@@ -59,3 +59,53 @@ export const eliminarCliente = async (req, res, next) => {
         next(error);
     }
 };
+
+export const obtenerPedidosImpagosCliente = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await clientesService.obtenerPedidosImpagosCliente(negocioId, req.params.id);
+        return successResponse(res, 200, "Pedidos impagos recuperados exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const cobrarPedidosCliente = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await clientesService.cobrarPedidosCliente(negocioId, req.params.id, req.body);
+        return successResponse(res, 200, "Cobro de pedidos del cliente registrado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerEstadoCuentaCliente = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await clientesService.obtenerEstadoCuenta(negocioId, req.params.id);
+        return successResponse(res, 200, "Estado de cuenta recuperado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerMovimientosCuentaCliente = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await clientesService.obtenerMovimientosCuenta(negocioId, req.params.id);
+        return successResponse(res, 200, "Movimientos de cuenta corriente recuperados exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const ajustarCreditoCliente = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await clientesService.ajustarCreditoCliente(negocioId, req.params.id, req.body);
+        return successResponse(res, 200, "Ajuste de crédito registrado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};

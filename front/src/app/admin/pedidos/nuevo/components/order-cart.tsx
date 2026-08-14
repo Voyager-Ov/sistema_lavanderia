@@ -18,6 +18,8 @@ interface OrderCartProps {
   cart: CartItem[]
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>
   selectedClient: Cliente | null
+  fechaHoraPedido?: Date | undefined
+  setFechaHoraPedido?: (v: Date | undefined) => void
   fechaEntregaEstimada: Date | undefined
   setFechaEntregaEstimada: (v: Date | undefined) => void
   onCheckout: () => void
@@ -28,6 +30,8 @@ export function OrderCart({
   cart,
   setCart,
   selectedClient,
+  fechaHoraPedido,
+  setFechaHoraPedido,
   fechaEntregaEstimada,
   setFechaEntregaEstimada,
   onCheckout,
@@ -93,6 +97,26 @@ export function OrderCart({
       {/* Cart Action Area (Checkout) */}
       <div className="p-5 bg-card border-b border-border shadow-sm z-10 flex-shrink-0 relative flex flex-col gap-4 transition-colors">
         
+        {/* Fecha del Pedido (Ingreso Real) */}
+        {setFechaHoraPedido && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-foreground flex items-center justify-between transition-colors">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-brand-purple" />
+                Fecha Recepción del Pedido
+              </span>
+              <span className="text-[10px] text-muted-foreground font-normal">Por defecto: Ahora</span>
+            </label>
+            <div className="relative group">
+              <DateTimePicker 
+                value={fechaHoraPedido} 
+                onChange={setFechaHoraPedido} 
+                placeholder="Fecha actual (o seleccionar retroactiva/futura)..."
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-3">
           <label className="text-sm font-semibold text-foreground flex items-center gap-1.5 transition-colors">
             <Calendar className="w-4 h-4 text-brand-blue" />

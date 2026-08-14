@@ -2,6 +2,13 @@ import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
 
+function isPedidoCancelado(p) {
+    if (!p) return false;
+    const est = typeof p.estado === "object" ? p.estado?.nombre : p.estado;
+    if (!est) return false;
+    return est.toString().toUpperCase().includes("CANCELAD");
+}
+
 class ClientesService {
 
     async _getModels(negocioId) {
@@ -14,7 +21,7 @@ class ClientesService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Cliente, CuentaCorriente } = await this._getModels(negocioId);
+        const { Cliente, CuentaCorriente, Pedido, DetallePedido } = await this._getModels(negocioId);
 
         const page = parseInt(query.page) || 1;
         const limit = parseInt(query.limit) || 50;
@@ -39,7 +46,23 @@ class ClientesService {
 
         const { count, rows } = await Cliente.findAndCountAll({
             where,
-            include: [{ model: CuentaCorriente, as: "cuentaCorriente", attributes: ["saldo"], required: false }],
+            include: [
+                { model: CuentaCorriente, as: "cuentaCorriente", attributes: ["saldo"], required: false },
+                { 
+                    model: Pedido, 
+                    as: "pedidos", 
+                    attributes: ["numeroPedido", "total", "costoEnvio", "cobrado", "estado"], 
+                    where: { cobrado: false, estado: { [Op.notILike]: "%cancelad%" } }, 
+                    include: [
+                        {
+                            model: DetallePedido,
+                            as: "detalles",
+                            attributes: ["cantidad", "precioHistorico"]
+                        }
+                    ],
+                    required: false 
+                }
+            ],
             limit,
             offset,
             order: [[sortBy, sortOrder]]
@@ -47,8 +70,37 @@ class ClientesService {
 
         const totalPages = Math.ceil(count / limit) || 1;
 
+        const formattedItems = rows.map(cl => {
+            const plain = cl.get({ plain: true });
+            const pedidosImpagos = (plain.pedidos || []).filter(p => !p.cobrado && !isPedidoCancelado(p));
+            
+            const totalDeudaImpaga = pedidosImpagos.reduce((acc, p) => {
+                let subtotalItems = 0;
+                if (p.detalles && Array.isArray(p.detalles)) {
+                    subtotalItems = p.detalles.reduce((sub, d) => {
+                        const precio = parseFloat(d.precioHistorico) || 0;
+                        const cant = parseInt(d.cantidad) || 1;
+                        return sub + (precio * cant);
+                    }, 0);
+                }
+                const costoEnvio = parseFloat(p.costoEnvio) || 0;
+                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+                return acc + finalTotal;
+            }, 0);
+            
+            return {
+                ...plain,
+                activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
+                saldoDeuda: totalDeudaImpaga,
+                pedidosImpagosCount: pedidosImpagos.length,
+                cuentaCorriente: {
+                    saldo: totalDeudaImpaga
+                }
+            };
+        });
+
         return {
-            items: rows,
+            items: formattedItems,
             meta: {
                 totalItems: count,
                 total: count,
@@ -59,18 +111,29 @@ class ClientesService {
         };
     }
 
-    // Obtener cliente por ID
+    // Obtener cliente por ID con deuda calculada y pedidos
     async obtenerClientePorId(negocioId, id) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Cliente, CuentaCorriente, Pedido } = await this._getModels(negocioId);
+        const { Cliente, CuentaCorriente, Pedido, DetallePedido, Servicio } = await this._getModels(negocioId);
 
         const cliente = await Cliente.findOne({
             where: { id },
             include: [
                 { model: CuentaCorriente, as: "cuentaCorriente" },
-                { model: Pedido, as: "pedidos", limit: 10, order: [["numeroPedido", "DESC"]] }
+                { 
+                    model: Pedido, 
+                    as: "pedidos", 
+                    include: [
+                        {
+                            model: DetallePedido,
+                            as: "detalles",
+                            include: [{ model: Servicio, as: "servicio" }]
+                        }
+                    ],
+                    order: [["numeroPedido", "DESC"]] 
+                }
             ]
         });
 
@@ -78,7 +141,166 @@ class ClientesService {
             throw new AppError("Cliente no encontrado", 404, "CLIENT_NOT_FOUND");
         }
 
-        return cliente;
+        const plain = cliente.get({ plain: true });
+
+        // Formatear pedidos asegurando total correcto calculado a partir de detalles si es 0
+        const pedidosFormatted = (plain.pedidos || []).map(p => {
+            let subtotalItems = 0;
+            if (p.detalles && Array.isArray(p.detalles)) {
+                subtotalItems = p.detalles.reduce((acc, d) => {
+                    const precio = parseFloat(d.precioHistorico) || 0;
+                    const cant = parseInt(d.cantidad) || 1;
+                    return acc + (precio * cant);
+                }, 0);
+            }
+            const costoEnvio = parseFloat(p.costoEnvio) || 0;
+            const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+
+            return {
+                ...p,
+                total: finalTotal,
+                detallesCount: p.detalles ? p.detalles.length : 0
+            };
+        });
+        
+        // Buscar todos sus pedidos impagos no cancelados para la deuda exacta
+        const impagosActivos = pedidosFormatted.filter(p => !p.cobrado && !isPedidoCancelado(p));
+        const totalDeuda = impagosActivos.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+
+        return {
+            ...plain,
+            pedidos: pedidosFormatted,
+            activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
+            saldoDeuda: totalDeuda,
+            pedidosImpagosCount: impagosActivos.length,
+            cuentaCorriente: {
+                saldo: totalDeuda
+            }
+        };
+    }
+
+    // Obtener lista de pedidos impagos de un cliente para cobro
+    async obtenerPedidosImpagosCliente(negocioId, clienteId, options = {}) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { Cliente, Pedido, DetallePedido, Servicio } = await this._getModels(negocioId);
+        const t = options.transaction;
+
+        const cliente = await Cliente.findByPk(clienteId, { transaction: t });
+        if (!cliente) {
+            throw new AppError("Cliente no encontrado", 404, "CLIENT_NOT_FOUND");
+        }
+
+        const pedidosImpagosRaw = await Pedido.findAll({
+            where: {
+                clienteId,
+                cobrado: false,
+                estado: { [Op.notILike]: "%cancelad%" }
+            },
+            include: [
+                {
+                    model: DetallePedido,
+                    as: "detalles",
+                    include: [{ model: Servicio, as: "servicio" }]
+                }
+            ],
+            order: [["numeroPedido", "DESC"]],
+            transaction: t
+        });
+
+        const impagosFormatted = pedidosImpagosRaw
+            .filter(p => !p.cobrado && !isPedidoCancelado(p))
+            .map(p => {
+                let subtotalItems = 0;
+                if (p.detalles && Array.isArray(p.detalles)) {
+                    subtotalItems = p.detalles.reduce((acc, d) => {
+                        const precio = parseFloat(d.precioHistorico) || 0;
+                        const cant = parseInt(d.cantidad) || 1;
+                        return acc + (precio * cant);
+                    }, 0);
+                }
+                const costoEnvio = parseFloat(p.costoEnvio) || 0;
+                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+
+                return {
+                    id: p.numeroPedido,
+                    numeroPedido: p.numeroPedido,
+                    codigoSeguimiento: `LAV-${p.numeroPedido}`,
+                    total: finalTotal,
+                    estado: p.estado,
+                    fechaRecepcion: p.fechaHoraPedido || p.fechaHoraCreacion || p.createdAt,
+                    createdAt: p.fechaHoraCreacion || p.createdAt,
+                    detalles: p.detalles,
+                    itemsCount: p.detalles ? p.detalles.length : 0
+                };
+            });
+
+        const totalDeuda = impagosFormatted.reduce((sum, p) => sum + p.total, 0);
+
+        return {
+            clienteId: parseInt(clienteId),
+            clienteNombre: `${cliente.nombre} ${cliente.apellido || ""}`.trim(),
+            totalDeuda,
+            pedidosImpagos: impagosFormatted
+        };
+    }
+
+    // Realizar cobro de pedidos seleccionados del cliente con Transacción ACID
+    async cobrarPedidosCliente(negocioId, clienteId, data) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        const { pagosService } = await import("../../finanzas/services/pagos.service.js");
+        const { pedidosIds, metodoPagoId, observaciones } = data;
+
+        if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
+            throw new AppError("Debe seleccionar al menos un pedido para cobrar.", 400, "MISSING_ORDERS_TO_CHARGE");
+        }
+
+        return await tenantDb.transaction(async (t) => {
+            const { Pedido } = await this._getModels(negocioId);
+
+            // Validar atómicamente antes de procesar cobros
+            const pedidosTarget = await Pedido.findAll({
+                where: { numeroPedido: pedidosIds },
+                transaction: t
+            });
+
+            for (const p of pedidosTarget) {
+                if (isPedidoCancelado(p)) {
+                    throw new AppError(`El pedido #${p.numeroPedido} se encuentra cancelado y no se puede cobrar.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
+                }
+                if (p.cobrado) {
+                    throw new AppError(`El pedido #${p.numeroPedido} ya se encuentra cobrado.`, 400, "ORDER_ALREADY_PAID");
+                }
+            }
+
+            const resultadosCobros = [];
+            let totalCobrado = 0;
+
+            for (const pedidoId of pedidosIds) {
+                const cobroRes = await pagosService.registrarPago(negocioId, {
+                    pedidoId,
+                    metodoPagoId,
+                    observaciones: observaciones || `Cobro Pedidos de Cliente #${clienteId}`
+                }, { transaction: t });
+
+                resultadosCobros.push(cobroRes);
+                totalCobrado += (parseFloat(cobroRes.monto) || 0);
+            }
+
+            const resImpagos = await this.obtenerPedidosImpagosCliente(negocioId, clienteId, { transaction: t });
+
+            return {
+                clienteId: parseInt(clienteId),
+                pedidosCobradosCount: resultadosCobros.length,
+                totalMontoCobrado: totalCobrado,
+                saldoRestanteDeuda: resImpagos.totalDeuda,
+                cobros: resultadosCobros
+            };
+        });
     }
 
     // Crear cliente nuevo
@@ -148,6 +370,78 @@ class ClientesService {
 
         await cliente.destroy();
         return { message: "Cliente eliminado correctamente." };
+    }
+
+    // Obtener Posición Financiera y Estado de Cuenta Corriente (CU-CLI-05)
+    async obtenerEstadoCuenta(negocioId, clienteId) {
+        const impagosData = await this.obtenerPedidosImpagosCliente(negocioId, clienteId);
+        const clienteData = await this.obtenerClientePorId(negocioId, clienteId);
+
+        const pedidosImpagos = impagosData.pedidosImpagos || [];
+        
+        const deudaExigible = pedidosImpagos
+            .filter(p => (typeof p.estado === 'object' ? p.estado?.nombre : p.estado)?.toString()?.toUpperCase()?.includes("ENTREGADO"))
+            .reduce((sum, p) => sum + p.total, 0);
+
+        const deudaNoExigible = pedidosImpagos
+            .filter(p => !(typeof p.estado === 'object' ? p.estado?.nombre : p.estado)?.toString()?.toUpperCase()?.includes("ENTREGADO"))
+            .reduce((sum, p) => sum + p.total, 0);
+
+        const saldoCC = clienteData.saldoCuentaCorriente || 0;
+        const saldoAFavor = saldoCC < 0 ? Math.abs(saldoCC) : 0;
+
+        return {
+            resumen: {
+                deudaTotal: impagosData.totalDeuda,
+                deudaExigible,
+                deudaNoExigible,
+                saldoAFavor
+            },
+            pedidosDeuda: pedidosImpagos,
+            creditosDisponibles: saldoAFavor > 0 ? [{ id: 1, montoDisponible: saldoAFavor }] : [],
+            movimientos: clienteData.movimientos || []
+        };
+    }
+
+    // Obtener Movimientos de Cuenta Corriente (CU-CLI-05)
+    async obtenerMovimientosCuenta(negocioId, clienteId) {
+        const estadoCuenta = await this.obtenerEstadoCuenta(negocioId, clienteId);
+        return {
+            clienteId: parseInt(clienteId),
+            movimientos: estadoCuenta.movimientos
+        };
+    }
+
+    // Ajustar Crédito / Saldo a Favor del Cliente (CU-CLI-07)
+    async ajustarCreditoCliente(negocioId, clienteId, data) {
+        const { CuentaCorriente, MovimientoCuentaCorriente } = await this._getModels(negocioId);
+        const monto = parseFloat(data.monto || 0);
+        const concepto = data.concepto || data.observaciones || "Ajuste manual de crédito";
+
+        if (isNaN(monto) || monto <= 0) {
+            throw new AppError("El monto del ajuste debe ser un valor numérico positivo.", 400, "INVALID_AMOUNT");
+        }
+
+        let cc = await CuentaCorriente.findOne({ where: { clienteId } });
+        if (!cc) {
+            cc = await CuentaCorriente.create({ clienteId, saldo: 0 });
+        }
+
+        // Un crédito a favor reduce la deuda (saldo negativo en ledger)
+        const nuevoSaldo = parseFloat(cc.saldo || 0) - monto;
+        await cc.update({ saldo: nuevoSaldo });
+
+        if (MovimientoCuentaCorriente) {
+            await MovimientoCuentaCorriente.create({
+                cuentaCorrienteId: cc.id,
+                monto: -monto,
+                saldoResultante: nuevoSaldo,
+                concepto,
+                fechaHora: new Date()
+            }).catch(() => {});
+        }
+
+        return this.obtenerEstadoCuenta(negocioId, clienteId);
     }
 }
 

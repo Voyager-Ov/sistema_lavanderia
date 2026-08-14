@@ -1,7 +1,12 @@
 import { Router } from "express";
+import { getKPIs, getMovimientos } from "./controllers/finanzas.controller.js";
+import { verificarToken } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// TODO: Implement cajas, cobros, gastos, facturas, and KPIs endpoints
+router.use(verificarToken);
+
+router.get("/kpis", getKPIs);
+router.get("/movimientos", getMovimientos);
 
 export default router;

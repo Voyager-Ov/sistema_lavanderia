@@ -46,6 +46,11 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
+			fechaHoraPedido: {
+				type: DataTypes.DATE,
+				allowNull: false,
+				defaultValue: DataTypes.NOW,
+			},
 			fechaHoraEntregaEstimada: {
 				type: DataTypes.DATE,
 				allowNull: true,

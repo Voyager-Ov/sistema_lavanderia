@@ -12,17 +12,20 @@ export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisPr
   
   const stats = useMemo(() => {
     let activos = 0
-    let inactivos = 0
-    let conTelefono = 0
+    let conDeuda = 0
+    let deudaTotal = 0
 
     const clientList = clientes || []
     clientList.forEach(c => {
-      if (c.activo) activos++
-      else inactivos++
-      if (c.telefono) conTelefono++
+      if (c.activo !== false) activos++
+      const saldo = c.saldoDeuda || c.cuentaCorriente?.saldo || 0
+      if (saldo > 0) {
+        conDeuda++
+        deudaTotal += saldo
+      }
     })
 
-    return { activos, inactivos, conTelefono }
+    return { activos, conDeuda, deudaTotal }
   }, [clientes])
 
   return (
@@ -37,27 +40,27 @@ export function ClientesKpis({ clientes, totalItems, isLoading }: ClientesKpisPr
       />
       <DashboardKpi 
         isLoading={isLoading} 
+        title="Clientes Con Deuda" 
+        value={stats.conDeuda.toString()} 
+        description="Pedidos impagos activos" 
+        backMessage="Clientes con saldo pendiente" 
+        colorVariant="orange" 
+      />
+      <DashboardKpi 
+        isLoading={isLoading} 
+        title="Deuda Total" 
+        value={`$${stats.deudaTotal.toLocaleString("es-AR")}`} 
+        description="Por cobrar en cuenta corriente" 
+        backMessage="Monto acumulado a cobrar" 
+        colorVariant="red" 
+      />
+      <DashboardKpi 
+        isLoading={isLoading} 
         title="Clientes Activos" 
         value={stats.activos.toString()} 
-        description="En la página actual" 
-        backMessage="Clientes habilitados" 
+        description="Clientes habilitados" 
+        backMessage="Clientes en alta activa" 
         colorVariant="green" 
-      />
-      <DashboardKpi 
-        isLoading={isLoading} 
-        title="Clientes Inactivos" 
-        value={stats.inactivos.toString()} 
-        description="En la página actual" 
-        backMessage="Clientes dados de baja" 
-        colorVariant="yellow" 
-      />
-      <DashboardKpi 
-        isLoading={isLoading} 
-        title="Con Teléfono" 
-        value={stats.conTelefono.toString()} 
-        description="En la página actual" 
-        backMessage="Clientes con contacto registrado" 
-        colorVariant="purple" 
       />
     </div>
   )

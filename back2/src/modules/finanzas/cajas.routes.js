@@ -11,6 +11,7 @@ import { verificarToken } from "../../middlewares/auth.middleware.js";
 const router = Router();
 
 router.get("/actual", verificarToken, obtenerCajaActual);
+router.get("/estado", verificarToken, obtenerCajaActual);
 router.post("/abrir", verificarToken, abrirCaja);
 router.post("/:id/cerrar", verificarToken, cerrarCaja);
 router.get("/", verificarToken, obtenerHistorialCajas);

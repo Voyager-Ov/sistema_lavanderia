@@ -79,3 +79,33 @@ export const validarMercadoPagoToken = async (req, res, next) => {
         next(error);
     }
 };
+
+export const listarMotivosCancelacion = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const motivos = await configuracionService.listarMotivosCancelacion(negocioId);
+        return successResponse(res, 200, "Motivos de cancelación recuperados exitosamente", motivos);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const crearMotivoCancelacion = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const motivo = await configuracionService.crearMotivoCancelacion(negocioId, req.body);
+        return successResponse(res, 201, "Motivo de cancelación creado exitosamente", motivo);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const eliminarMotivoCancelacion = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await configuracionService.eliminarMotivoCancelacion(negocioId, req.params.id);
+        return successResponse(res, 200, "Motivo de cancelación eliminado exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};

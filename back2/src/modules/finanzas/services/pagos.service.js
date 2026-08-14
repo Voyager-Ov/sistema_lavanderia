@@ -127,20 +127,27 @@ class PagosService {
     }
 
     // Registrar pago de pedido
-    async registrarPago(negocioId, params) {
+    async registrarPago(negocioId, params, options = {}) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
         const { Pedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
+        const t = options.transaction;
 
         const pedidoId = params.pedidoId || params.pedidoNumeroPedido;
         if (!pedidoId) {
             throw new AppError("El ID del pedido es obligatorio para registrar un pago.", 400, "MISSING_ORDER_ID");
         }
 
-        const pedido = await Pedido.findOne({ where: { numeroPedido: pedidoId } });
+        const pedido = await Pedido.findOne({ where: { numeroPedido: pedidoId }, transaction: t });
         if (!pedido) {
             throw new AppError("Pedido no encontrado para cobrar.", 404, "ORDER_NOT_FOUND");
+        }
+
+        // VALIDACIÓN ACID DE ESTADO CANCELADO / COBRADO
+        const estUpper = (pedido.estado || "").toString().toUpperCase();
+        if (estUpper.includes("CANCELAD")) {
+            throw new AppError(`No se puede cobrar el pedido #${pedidoId} porque se encuentra cancelado.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
         }
 
         if (pedido.cobrado) {
@@ -166,21 +173,22 @@ class PagosService {
         // Obtener el método de pago especificado o tomar el primero activo del negocio
         let metodoId = params.metodoPagoId;
         if (!metodoId) {
-            const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]] });
+            const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]], transaction: t });
             if (metodoDefault) metodoId = metodoDefault.id;
         }
 
         // Buscar caja abierta para asociar movimiento
-        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
+        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
 
         let movimientoCajaId = null;
         if (cajaAbierta) {
+            const numPed = pedido.numeroPedido || pedido.id;
             const nuevoMovimiento = await MovimientoCaja.create({
                 monto: montoAbonado,
                 tipoMovimiento: "Ingreso por Venta",
-                observacion: `Cobro de Pedido #${pedido.codigoSeguimiento || pedido.numeroPedido}`,
+                observacion: `Cobro Pedido #${numPed}`,
                 cajaIdCaja: cajaAbierta.idCaja
-            });
+            }, { transaction: t });
             movimientoCajaId = nuevoMovimiento.id;
         }
 
@@ -192,16 +200,16 @@ class PagosService {
             pedidoNumeroPedido: pedido.numeroPedido,
             metodoPagoId: metodoId,
             movimientoCajaId
-        });
+        }, { transaction: t });
 
         // Marcar pedido como cobrado
-        await pedido.update({ cobrado: true });
+        await pedido.update({ cobrado: true }, { transaction: t });
 
         // Si se generó saldo a favor, impactar cuenta corriente del cliente
         if (saldoGenerado > 0 && pedido.clienteId) {
-            const cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId } });
+            const cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
             if (cuenta) {
-                await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGenerado });
+                await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGenerado }, { transaction: t });
             }
         }
 

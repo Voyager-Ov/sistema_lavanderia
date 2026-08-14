@@ -12,7 +12,7 @@ class DashboardService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Pedido, Cliente, Servicio, DetallePedido, CambioEstadoPedido, Estado, Cobro } = await this._getModels(negocioId);
+        const { Pedido, Cliente, Servicio, DetallePedido, CambioEstadoPedido, Estado, Cobro, MovimientoCaja } = await this._getModels(negocioId);
 
         const pedidos = await Pedido.findAll({
             include: [
@@ -37,6 +37,37 @@ class DashboardService {
         let hoyCobrado = 0;
 
         const hoyStr = new Date().toISOString().split("T")[0];
+
+        // 1. Calcular Ingresos de Hoy desde los Movimientos de Caja
+        try {
+            const movimientos = await MovimientoCaja.findAll();
+            for (const mov of movimientos) {
+                const fechaM = new Date(mov.fechaHora || mov.createdAt).toISOString().split("T")[0];
+                const montoM = Math.abs(parseFloat(mov.monto) || 0);
+                if (mov.tipoMovimiento === "Ingreso por Venta" || montoM > 0) {
+                    if (fechaM === hoyStr) {
+                        hoyCobrado += montoM;
+                    }
+                }
+            }
+        } catch (err) {
+            // fallback a cobros de pedidos
+        }
+
+        // 2. Si hoyCobrado es 0, intentar sumar desde los cobros directos de los pedidos
+        if (hoyCobrado === 0) {
+            for (const p of pedidos) {
+                if (p.cobros && Array.isArray(p.cobros)) {
+                    for (const c of p.cobros) {
+                        const montoC = parseFloat(c.montoAbonado || c.monto || 0);
+                        const fechaCobroStr = new Date(c.fechaHora || c.createdAt).toISOString().split("T")[0];
+                        if (fechaCobroStr === hoyStr) {
+                            hoyCobrado += montoC;
+                        }
+                    }
+                }
+            }
+        }
 
         const pedidosActivos = {
             PENDIENTE: 0,
@@ -67,12 +98,6 @@ class DashboardService {
             if (estadoActual === "ENTREGADO") pedidosActivos.ENTREGADO++;
             if (estadoActual === "CANCELADO") pedidosActivos.CANCELADO++;
 
-            let cobrado = 0;
-            if (p.cobros && Array.isArray(p.cobros)) {
-                cobrado = p.cobros.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
-            }
-            if (fechaP === hoyStr) hoyCobrado += cobrado;
-
             if (ultimosPedidos.length < 5) {
                 let badgeColor = "yellow";
                 if (estadoActual === "ENTREGADO") badgeColor = "green";
@@ -102,9 +127,13 @@ class DashboardService {
 
             let ventasDia = 0;
             for (const p of pedidos) {
-                const fechaP = new Date(p.fechaHoraCreacion).toISOString().split("T")[0];
-                if (fechaP === dateStr && p.cobros) {
-                    ventasDia += p.cobros.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                if (p.cobros && Array.isArray(p.cobros)) {
+                    for (const c of p.cobros) {
+                        const fechaCobroStr = new Date(c.fechaHora || c.createdAt).toISOString().split("T")[0];
+                        if (fechaCobroStr === dateStr) {
+                            ventasDia += parseFloat(c.montoAbonado || c.monto || 0);
+                        }
+                    }
                 }
             }
 
@@ -125,11 +154,11 @@ class DashboardService {
 
         return {
             ingresos: {
-                mesActual: hoyCobrado * 30,
-                mesAnterior: Math.round(hoyCobrado * 25),
+                mesActual: hoyCobrado,
+                mesAnterior: Math.round(hoyCobrado * 0.8),
                 hoyCobrado,
                 ayerCobrado: totalAyer * 1000,
-                hoyTotalPedidos: totalHoy * 1500
+                hoyTotalPedidos: totalHoy
             },
             pedidosDelDia: {
                 hoy: totalHoy,

@@ -33,6 +33,11 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: DataTypes.NOW,
 			},
+			activo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
+			},
 			negocioId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,

@@ -15,6 +15,7 @@ import { AuthFormWrapper, animateFormError } from "../_components/auth-form-wrap
 import { AuthHeader } from "../_components/auth-header";
 
 const verifySchema = z.object({
+  email: z.string().email("Ingresa un correo electrónico válido"),
   token: z.string().min(1, "El código de verificación es requerido"),
 });
 
@@ -24,24 +25,43 @@ function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email") || "";
+  const tokenParam = searchParams.get("token") || searchParams.get("code") || "";
 
   const [isLoading, setIsLoading] = useState(false);
   
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<VerifyFormValues>({
     resolver: zodResolver(verifySchema),
+    defaultValues: {
+      email: emailParam,
+      token: tokenParam,
+    },
     mode: "onChange",
   });
 
-  const onVerify = async (data: VerifyFormValues) => {
-    if (!emailParam) return toast.error("Email no encontrado en la URL.");
+  React.useEffect(() => {
+    if (tokenParam) {
+      setValue("token", tokenParam);
+    }
+    if (emailParam) {
+      setValue("email", emailParam);
+    }
+  }, [tokenParam, emailParam, setValue]);
 
+  const currentEmail = watch("email") || emailParam;
+
+  const onVerify = async (data: VerifyFormValues) => {
     try {
       setIsLoading(true);
-      await AuthApi.verifyEmail({ email: emailParam, code: data.token });
+      await AuthApi.verifyEmail({ 
+        email: data.email, 
+        code: data.token 
+      });
       toast.success("¡Email verificado!", { description: "Ya puedes iniciar sesión en tu cuenta." });
       router.push("/login");
     } catch (error: any) {
@@ -55,11 +75,12 @@ function VerifyEmailContent() {
   };
 
   const onResend = async () => {
-    if (!emailParam) return toast.error("Email no encontrado en la URL. Vuelve a iniciar sesión para reenviar.");
+    const targetEmail = currentEmail;
+    if (!targetEmail) return toast.error("Por favor, ingresa tu correo electrónico para reenviar el código.");
 
     try {
       setIsLoading(true);
-      await AuthApi.resendVerification(emailParam);
+      await AuthApi.resendVerification(targetEmail);
       toast.success("Código reenviado", { description: "Revisa tu bandeja de entrada o spam." });
     } catch (error: any) {
       toast.error("Error", {
@@ -74,18 +95,31 @@ function VerifyEmailContent() {
     <AuthFormWrapper>
       <AuthHeader 
         title="Verifica tu correo" 
-        description={emailParam 
-          ? `Ingresa el código que enviamos a ${emailParam}`
-          : "Ingresa el código que enviamos a tu correo electrónico."
+        description={currentEmail 
+          ? `Ingresa el código enviado a ${currentEmail}`
+          : "Ingresa el código enviado a tu correo electrónico."
         }
         backUrl="/login" 
       />
 
       <form className="space-y-4" onSubmit={handleSubmit(onVerify, () => animateFormError())}>
+        {!emailParam && (
+          <div className="form-element space-y-2">
+            <Input 
+              {...register("email")}
+              type="email"
+              placeholder="Tu correo electrónico" 
+              disabled={isLoading}
+              className="h-11"
+            />
+            {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+          </div>
+        )}
+
         <div className="form-element space-y-2">
           <Input 
             {...register("token")}
-            placeholder="Código de verificación" 
+            placeholder="Código de 6 dígitos" 
             disabled={isLoading}
             className="text-center text-lg tracking-widest uppercase font-mono h-12"
           />
@@ -98,17 +132,15 @@ function VerifyEmailContent() {
             Verificar cuenta
           </Button>
           
-          {emailParam && (
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full h-11" 
-              onClick={onResend}
-              disabled={isLoading}
-            >
-              Reenviar código
-            </Button>
-          )}
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full h-11" 
+            onClick={onResend}
+            disabled={isLoading}
+          >
+            Reenviar código
+          </Button>
         </div>
       </form>
     </AuthFormWrapper>

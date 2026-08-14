@@ -56,6 +56,8 @@ export interface Pedido {
   codigoSeguimiento: string
   total: number
   cobrado: boolean
+  fechaHoraPedido?: string
+  fechaHoraCreacion?: string
   fechaRecepcion?: string
   fechaEntregaEstimada?: string
   fechaEntregadoReal?: string
@@ -118,20 +120,26 @@ export const getPedidoById = async (id: number): Promise<Pedido> => {
 
 export const cambiarEstadoPedido = async (
   pedidoId: number,
-  estado: string,
-  comentario?: string,
+  nuevoEstado: string,
+  extraOrComentario?: any,
   motivoCancelacion?: string,
   descripcionCancelacion?: string,
-  accionDinero?: "SALDO_A_FAVOR" | "DEVOLVER"
-) => {
-  const res = await apiClient.patch<{ data: Pedido }>(`/pedidos/${pedidoId}/estado`, {
-    estado,
-    comentario,
-    motivoCancelacion,
-    descripcionCancelacion,
-    accionDinero
-  })
-  return res.data
+  accionDinero?: string
+): Promise<any> => {
+  const extraObj = typeof extraOrComentario === "object" && extraOrComentario !== null
+    ? extraOrComentario
+    : {
+        comentario: extraOrComentario,
+        motivoCancelacion,
+        descripcionCancelacion,
+        accionDinero
+      }
+
+  const res = await apiClient.patch(`/pedidos/${pedidoId}/estado`, {
+    estado: nuevoEstado,
+    ...extraObj
+  } as any)
+  return res
 }
 
 export const getTicketHTML = async (pedidoId: number) => {
@@ -148,6 +156,7 @@ export const generarFactura = async (pedidoId: number) => {
 
 export interface CrearPedidoPayload {
   clienteId: number
+  fechaHoraPedido?: string // ISO string o fecha seleccionada
   fechaEntregaEstimada?: string // ISO string or Date string
   items: {
     productoId: number

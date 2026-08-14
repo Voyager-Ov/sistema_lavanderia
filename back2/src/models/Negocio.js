@@ -7,6 +7,25 @@ export default (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
+			nombre: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
+			subdominio: {
+				type: DataTypes.STRING,
+				allowNull: true,
+				unique: true,
+			},
+			activo: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: true,
+			},
+			estadoSuscripcion: {
+				type: DataTypes.ENUM("PRUEBA", "ACTIVA", "SUSPENDIDA", "CANCELADA"),
+				allowNull: false,
+				defaultValue: "PRUEBA",
+			},
 			razonSocial: {
 				type: DataTypes.STRING,
 				allowNull: true,
@@ -131,12 +150,12 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Negocio.associate = (models) => {
-		Negocio.hasMany(models.Cliente, { foreignKey: "negocioId", as: "clientes", constraints: false });
-		Negocio.hasMany(models.Empleado, { foreignKey: "negocioId", as: "empleados", constraints: false });
-		Negocio.hasMany(models.Servicio, { foreignKey: "negocioId", as: "servicios", constraints: false });
-		Negocio.hasMany(models.Caja, { foreignKey: "negocioId", as: "cajas", constraints: false });
-		Negocio.hasMany(models.Pedido, { foreignKey: "negocioId", as: "pedidos", constraints: false });
-		Negocio.hasMany(models.Gasto, { foreignKey: "negocioId", as: "gastos", constraints: false });
+		if (models.Cliente) Negocio.hasMany(models.Cliente, { foreignKey: "negocioId", as: "clientes", constraints: false });
+		if (models.Empleado) Negocio.hasMany(models.Empleado, { foreignKey: "negocioId", as: "empleados", constraints: false });
+		if (models.Servicio) Negocio.hasMany(models.Servicio, { foreignKey: "negocioId", as: "servicios", constraints: false });
+		if (models.Caja) Negocio.hasMany(models.Caja, { foreignKey: "negocioId", as: "cajas", constraints: false });
+		if (models.Pedido) Negocio.hasMany(models.Pedido, { foreignKey: "negocioId", as: "pedidos", constraints: false });
+		if (models.Gasto) Negocio.hasMany(models.Gasto, { foreignKey: "negocioId", as: "gastos", constraints: false });
 	};
 
 	return Negocio;

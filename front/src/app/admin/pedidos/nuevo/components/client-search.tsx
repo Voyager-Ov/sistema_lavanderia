@@ -144,13 +144,19 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
         <input
           ref={inputRef}
           type="text"
-          autoComplete="off"
+          id="search_query_client_no_fill"
+          name="search_query_client_no_fill"
+          autoComplete="new-password"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
           data-form-type="other"
+          aria-autocomplete="none"
           className="pl-11 pr-10 h-11 w-full rounded-full bg-muted border-2 border-transparent dark:border-input/50 hover:bg-muted/80 focus:bg-background focus:border-brand-blue/50 focus:ring-4 focus:ring-brand-blue/10 shadow-none transition-all text-sm font-medium outline-none text-foreground placeholder:text-muted-foreground"
-          placeholder="Nombre, teléfono o email..."
+          placeholder="Buscar cliente registrado..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onFocus={handleFocus}
@@ -169,24 +175,24 @@ export function ClientSearch({ selectedClient, onSelectClient }: ClientSearchPro
       {isDropdownOpen && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-neutral-900 rounded-3xl shadow-xl border border-gray-100 dark:border-neutral-800 overflow-hidden z-50 max-h-[400px] overflow-y-auto transition-colors">
           {results.length > 0 ? (
-            <ul ref={resultsRef} className="p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
+            <ul ref={resultsRef} className="p-3 grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-2">
               {results.map((cliente) => (
                 <li key={cliente.id}>
                   <button
+                    type="button"
                     onClick={() => {
                       onSelectClient(cliente)
                       setIsDropdownOpen(false)
                     }}
-                    className="w-full flex items-center gap-2.5 p-2 hover:bg-gray-50 dark:hover:bg-neutral-800/50 rounded-lg transition-colors text-left group border border-transparent hover:border-gray-100 dark:hover:border-neutral-700"
+                    className="w-full h-full flex items-center justify-between p-3 bg-white dark:bg-neutral-800/90 hover:bg-blue-50/60 dark:hover:bg-blue-900/30 border border-gray-200 dark:border-neutral-700/70 hover:border-brand-blue/50 rounded-xl transition-all text-left group shadow-sm"
                   >
-                    <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-neutral-800 flex items-center justify-center text-gray-500 dark:text-neutral-400 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors flex-shrink-0">
-                      <User className="w-3.5 h-3.5" />
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className="font-bold text-sm text-gray-900 dark:text-neutral-100 group-hover:text-brand-blue transition-colors leading-tight break-words">{cliente.nombre}</p>
+                      <p className="text-xs text-gray-500 dark:text-neutral-400 font-medium transition-colors mt-1">{cliente.telefono || "Sin teléfono"}</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[13px] text-gray-900 dark:text-neutral-100 group-hover:text-brand-blue transition-colors truncate leading-tight">{cliente.nombre}</p>
-                      <p className="text-[11px] text-gray-500 dark:text-neutral-400 transition-colors truncate leading-tight mt-0.5">{cliente.telefono || "Sin teléfono"}</p>
+                    <div className="w-6 h-6 rounded-full border border-gray-300 dark:border-neutral-600 flex items-center justify-center group-hover:border-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-all flex-shrink-0">
+                      <Check className="w-3.5 h-3.5 text-gray-300 dark:text-neutral-600 group-hover:text-white transition-colors" />
                     </div>
-                    <Check className="w-4 h-4 text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                   </button>
                 </li>
               ))}

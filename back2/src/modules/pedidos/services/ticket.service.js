@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -34,9 +35,12 @@ class TicketService {
             throw new AppError("Pedido no encontrado para imprimir ticket.", 404, "ORDER_NOT_FOUND");
         }
 
-        const nombreNegocio = negocio?.razonSocial || "LAVANDERÍA EXPRESS";
-        const direccionNegocio = negocio?.direccion || "Av. Principal 123";
-        const telefonoNegocio = negocio?.telefonoContacto || "(011) 4455-6677";
+        const nombreNegocio = negocio?.razonSocial || "LAVANDERÍA";
+        const direccionNegocio = negocio?.direccion || "";
+        const telefonoNegocio = negocio?.telefonoContacto || "";
+        const mensajeTicket = negocio?.mensajeTicket || "¡Gracias por su preferencia!";
+        const simboloMoneda = negocio?.simboloMoneda || "$";
+        const mostrarQr = Boolean(negocio?.mostrarQrTicket);
 
         const clienteNombre = pedido.cliente ? pedido.cliente.nombre : "Cliente Mostrador";
         const clienteTel = pedido.cliente?.telefono || "N/A";
@@ -54,8 +58,8 @@ class TicketService {
 
                 itemsHTML += `
                 <tr>
-                    <td style="text-align: left;">${cant}x ${srvNombre}</td>
-                    <td style="text-align: right;">$${totalItem.toFixed(2)}</td>
+                    <td style="text-align: left; padding: 2px 0;">${cant}x ${srvNombre}</td>
+                    <td style="text-align: right; padding: 2px 0;">${simboloMoneda}${totalItem.toFixed(2)}</td>
                 </tr>`;
             }
         }
@@ -65,38 +69,54 @@ class TicketService {
 
         let totalCobrado = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
-            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.monto) || 0), 0);
+            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.montoAbonado || c.monto) || 0), 0);
+        }
+        if (pedido.cobrado && totalCobrado === 0) {
+            totalCobrado = total;
         }
         const saldo = Math.max(0, total - totalCobrado);
 
         const fechaStr = new Date(pedido.fechaHoraCreacion).toLocaleString("es-AR");
         const entregaStr = pedido.fechaHoraEntregaEstimada ? new Date(pedido.fechaHoraEntregaEstimada).toLocaleString("es-AR") : "A confirmar";
+        const estadoCobroText = pedido.cobrado || totalCobrado >= total ? "PAGADO" : "PENDIENTE DE PAGO";
+
+        const token = crypto
+            .createHmac("sha256", "SECRET_TRACKING_KEY")
+            .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
+            .digest("hex")
+            .substring(0, 16);
+
+        const trackingUrl = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/tracking/LAV-${pedido.numeroPedido}?token=${token}` : `http://localhost:3000/tracking/LAV-${pedido.numeroPedido}?token=${token}`;
 
         return `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Ticket #${pedido.numeroPedido}</title>
+            <title>Ticket #LAV-${pedido.numeroPedido}</title>
             <style>
-                body { font-family: monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px; }
+                body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px; color: #000; background: #fff; }
                 .center { text-align: center; }
                 .bold { font-weight: bold; }
                 .line { border-bottom: 1px dashed #000; margin: 8px 0; }
                 table { width: 100%; border-collapse: collapse; }
-                td { padding: 3px 0; }
+                td, th { padding: 3px 0; font-size: 11px; }
+                .qr-container { text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #000; }
+                .qr-img { width: 110px; height: 110px; margin: 6px auto; display: block; }
             </style>
         </head>
-        <body>
-            <div class="center bold" style="font-size: 16px;">${nombreNegocio}</div>
-            <div class="center">${direccionNegocio}</div>
-            <div class="center">Tel: ${telefonoNegocio}</div>
+        <body onload="window.print()">
+            <div class="center bold" style="font-size: 16px; text-transform: uppercase;">${nombreNegocio}</div>
+            ${direccionNegocio ? `<div class="center">${direccionNegocio}</div>` : ''}
+            ${telefonoNegocio ? `<div class="center">Tel: ${telefonoNegocio}</div>` : ''}
             <div class="line"></div>
-            <div><span class="bold">COMPROBANTE DE PEDIDO</span></div>
+            <div class="center bold" style="font-size: 13px;">COMPROBANTE DE PEDIDO</div>
             <div><span class="bold">Pedido #:</span> LAV-${pedido.numeroPedido}</div>
             <div><span class="bold">Fecha:</span> ${fechaStr}</div>
-            <div><span class="bold">Cliente:</span> ${clienteNombre} (${clienteTel})</div>
-            <div><span class="bold">Entrega Estimada:</span> ${entregaStr}</div>
+            <div><span class="bold">Cliente:</span> ${clienteNombre}</div>
+            ${clienteTel !== "N/A" ? `<div><span class="bold">Teléfono:</span> ${clienteTel}</div>` : ''}
+            <div><span class="bold">Entrega Est.:</span> ${entregaStr}</div>
+            <div><span class="bold">Estado Pago:</span> ${estadoCobroText}</div>
             <div class="line"></div>
             <table>
                 <thead>
@@ -110,15 +130,21 @@ class TicketService {
                 </tbody>
             </table>
             <div class="line"></div>
-            <div>Subtotal: $${subtotal.toFixed(2)}</div>
-            ${costoEnvio > 0 ? `<div>Costo Envío: $${costoEnvio.toFixed(2)}</div>` : ''}
-            <div class="bold" style="font-size: 14px;">TOTAL: $${total.toFixed(2)}</div>
-            <div>Pagado: $${totalCobrado.toFixed(2)}</div>
-            <div class="bold">SALDO PENDIENTE: $${saldo.toFixed(2)}</div>
+            <div>Subtotal: ${simboloMoneda}${subtotal.toFixed(2)}</div>
+            ${costoEnvio > 0 ? `<div>Costo Envío: ${simboloMoneda}${costoEnvio.toFixed(2)}</div>` : ''}
+            <div class="bold" style="font-size: 14px; margin-top: 4px;">TOTAL: ${simboloMoneda}${total.toFixed(2)}</div>
+            <div>Abonado: ${simboloMoneda}${totalCobrado.toFixed(2)}</div>
+            <div class="bold" style="font-size: 13px;">SALDO PENDIENTE: ${simboloMoneda}${saldo.toFixed(2)}</div>
             <div class="line"></div>
             ${pedido.observaciones ? `<div><span class="bold">Notas:</span> ${pedido.observaciones}</div><div class="line"></div>` : ''}
-            <div class="center bold" style="margin-top: 10px;">¡Gracias por su preferencia!</div>
-            <div class="center" style="font-size: 10px; margin-top: 5px;">Conserve este ticket para el retiro</div>
+            <div class="center bold" style="margin-top: 10px;">${mensajeTicket}</div>
+            
+            <!-- SEGUIMIENTO QR OBLIGATORIO -->
+            <div class="qr-container">
+                <div class="bold" style="font-size: 10px; text-transform: uppercase;">Escanee para seguimiento de su pedido</div>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(trackingUrl)}" alt="QR Seguimiento" class="qr-img" />
+                <div class="bold" style="font-size: 11px; letter-spacing: 1px;">LAV-${pedido.numeroPedido}</div>
+            </div>
         </body>
         </html>`;
     }

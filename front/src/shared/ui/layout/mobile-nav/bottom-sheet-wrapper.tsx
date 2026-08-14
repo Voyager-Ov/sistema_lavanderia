@@ -24,6 +24,8 @@ export function BottomSheetWrapper({ isOpen, onClose, title, children, height = 
   }, []);
 
   useGSAP(() => {
+    if (!overlayRef.current || !sheetRef.current) return;
+
     if (isOpen) {
       // Entrada
       gsap.to(overlayRef.current, { opacity: 1, duration: 0.3, ease: "power2.out", display: "block" });

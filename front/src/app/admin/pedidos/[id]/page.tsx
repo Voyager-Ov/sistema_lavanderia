@@ -1,13 +1,13 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { PedidoDetailView } from "../_components/pedido-detail-view"
 import { ArrowLeft } from "lucide-react"
-import { getTicketHTML, generarFactura, Pedido } from "@/domains/pedidos/api"
+import { getTicketHTML, generarFactura, cambiarEstadoPedido, Pedido } from "@/domains/pedidos/api"
 import { toast } from "sonner"
 import { CobrarPedidoSheet } from "../components/cobrar-pedido-sheet"
-import { useState } from "react"
+import { CancelOrderSheet } from "../components/cancel-order-sheet"
 
 export default function PedidoDetailPage() {
   const params = useParams()
@@ -16,6 +16,9 @@ export default function PedidoDetailPage() {
 
   const [isCobrarSheetOpen, setIsCobrarSheetOpen] = useState(false)
   const [pedidoToCobrar, setPedidoToCobrar] = useState<Pedido | null>(null)
+
+  const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
+  const [pedidoToCancel, setPedidoToCancel] = useState<Pedido | null>(null)
 
   const handlePrintTicket = async (pedidoId: number) => {
     try {
@@ -65,6 +68,10 @@ export default function PedidoDetailPage() {
             setPedidoToCobrar(pedido)
             setIsCobrarSheetOpen(true)
           }}
+          onCancel={(pedido) => {
+            setPedidoToCancel(pedido)
+            setIsCancelSheetOpen(true)
+          }}
         />
       </div>
 
@@ -74,7 +81,25 @@ export default function PedidoDetailPage() {
         pedido={pedidoToCobrar}
         onSuccess={() => {
           setIsCobrarSheetOpen(false)
-          // Simple reload to refresh data
+          window.location.reload()
+        }}
+      />
+
+      <CancelOrderSheet
+        open={isCancelSheetOpen}
+        onOpenChange={setIsCancelSheetOpen}
+        pedido={pedidoToCancel}
+        onConfirm={async (pedidoId, motivo, desc, accionDinero) => {
+          await cambiarEstadoPedido(
+            pedidoId,
+            "CANCELADO",
+            "Cancelado desde detalle de pedido",
+            motivo,
+            desc,
+            accionDinero
+          )
+          toast.success("Pedido cancelado exitosamente")
+          setIsCancelSheetOpen(false)
           window.location.reload()
         }}
       />

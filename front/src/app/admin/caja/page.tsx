@@ -50,7 +50,11 @@ export default function CajaPage() {
     try {
       if (showLoading && !caja) setIsLoading(true)
       const data = await obtenerCajaActual()
-      setCaja(data)
+      if (data && (data.estado === "ABIERTA" || (data as any).estadoCaja === "Abierta")) {
+        setCaja(data)
+      } else {
+        setCaja(null)
+      }
     } catch (error) {
       setCaja(null)
     } finally {

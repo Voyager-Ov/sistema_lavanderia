@@ -53,19 +53,28 @@ export default function PosClienteDetailPage() {
     }
   }, { scope: containerRef, dependencies: [isLoading, !!cliente] })
 
-  // ── KPIs & chart data ─────────────────────────────────────────────────────
+  // ── KPIs & chart data (excluye pedidos cancelados) ──────────────────────────
   const { totalGastado, totalPedidos, pedidosActivos, ticketPromedio, chartData } = useMemo(() => {
     if (!cliente) return { totalGastado: 0, totalPedidos: 0, pedidosActivos: 0, ticketPromedio: 0, chartData: [] }
 
-    const pedidos = cliente.pedidos || []
-    const totalP = pedidos.length
-    const totalG = pedidos.reduce((acc, p) => acc + parseFloat(p.total || "0"), 0)
-    const activos = pedidos.filter((p) => !["ENTREGADO", "CANCELADO"].includes(p.estado)).length
+    const isPedidoCancelado = (p: any) => {
+      if (!p) return false
+      const est = typeof p.estado === "object" ? p.estado?.nombre : p.estado
+      return est?.toString()?.toUpperCase()?.includes("CANCELAD") || false
+    }
+
+    const validPedidos = (cliente.pedidos || []).filter((p: any) => !isPedidoCancelado(p))
+    const totalP = validPedidos.length
+    const totalG = validPedidos.reduce((acc, p) => acc + parseFloat(p.total || "0"), 0)
+    const activos = validPedidos.filter((p) => {
+      const est = (typeof p.estado === "object" ? p.estado?.nombre : p.estado)?.toString()?.toUpperCase() || ""
+      return !est.includes("ENTREGADO") && !est.includes("COMPLETADO") && !est.includes("CANCELAD")
+    }).length
     const ticket = totalP > 0 ? totalG / totalP : 0
 
     // Agrupar por mes/día para el chart — ascendente
     const dataMap: Record<string, number> = {}
-    ;[...pedidos].reverse().forEach((p) => {
+    ;[...validPedidos].reverse().forEach((p) => {
       const key = format(parseISO(p.createdAt), "dd/MM", { locale: es })
       dataMap[key] = (dataMap[key] || 0) + parseFloat(p.total || "0")
     })

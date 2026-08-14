@@ -23,9 +23,7 @@ import { AuthHeader } from "../_components/auth-header";
 const registerSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   email: z.string().email("Ingresa un correo electrónico válido"),
-  password: z.string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .regex(/^[a-zA-Z0-9]+$/, "Debe ser estrictamente alfanumérica (solo letras y números, sin símbolos)"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   negocioNombre: z.string().min(2, "El nombre del negocio es obligatorio"),
 });
 

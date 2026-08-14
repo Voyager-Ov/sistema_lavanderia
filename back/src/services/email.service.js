@@ -48,14 +48,17 @@ export const enviarEmail = async (to, subject, html) => {
 };
 
 export const enviarCodigoVerificacion = async (email, nombre, code) => {
+    const nombreLimpio = (nombre && nombre !== "undefined") ? nombre : (email ? email.split("@")[0] : "Usuario");
+    const codeLimpio = (code && code !== "undefined") ? String(code).trim() : "";
+
     // Frontend URL real debería venir del .env, hardcodeamos para demo si no existe
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verifyUrl = `${frontendUrl}/verify-email?token=${code}&email=${email}`;
+    const verifyUrl = `${frontendUrl}/verify-email?token=${codeLimpio}&email=${email}`;
     
     const subject = "Verifica tu cuenta - Código de Seguridad";
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2 style="color: #4A90E2; text-align: center;">¡Bienvenido, ${nombre}!</h2>
+            <h2 style="color: #4A90E2; text-align: center;">¡Bienvenido, ${nombreLimpio}!</h2>
             <p>Gracias por registrarte en nuestra plataforma.</p>
             <p>Para activar tu cuenta y poder iniciar sesión, por favor haz clic en el siguiente enlace:</p>
             <div style="text-align: center; margin: 30px 0;">
@@ -65,7 +68,7 @@ export const enviarCodigoVerificacion = async (email, nombre, code) => {
             </div>
             <p>O ingresa manualmente este código de verificación de 6 dígitos en la aplicación:</p>
             <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; border-radius: 4px; margin: 20px 0;">
-                ${code}
+                ${codeLimpio}
             </div>
             <p>Este código y enlace <strong>expirarán en 24 horas</strong>.</p>
             <p style="color: #888; font-size: 12px; margin-top: 30px;">Si no solicitaste crear esta cuenta, puedes ignorar este correo.</p>

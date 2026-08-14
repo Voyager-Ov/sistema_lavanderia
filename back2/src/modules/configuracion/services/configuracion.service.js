@@ -182,6 +182,63 @@ class ConfiguracionService {
 
         return { estadoConexion: "Activo" };
     }
+
+    // Motivos de Cancelación CRUD
+    async listarMotivosCancelacion(negocioId) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        const { MotivoCancelacion } = tenantDb.models;
+
+        const motivos = await MotivoCancelacion.findAll({
+            where: { activo: true },
+            order: [["esFijo", "DESC"], ["id", "ASC"]]
+        });
+
+        return motivos;
+    }
+
+    async crearMotivoCancelacion(negocioId, data) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        if (!data.motivo || typeof data.motivo !== "string" || data.motivo.trim() === "") {
+            throw new AppError("El nombre del motivo de cancelación es obligatorio.", 400, "MISSING_REASON_NAME");
+        }
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        const { MotivoCancelacion } = tenantDb.models;
+
+        const nuevoMotivo = await MotivoCancelacion.create({
+            motivo: data.motivo.trim(),
+            descripcion: data.descripcion ? data.descripcion.trim() : null,
+            esFijo: false,
+            activo: true,
+            negocioId
+        });
+
+        return nuevoMotivo;
+    }
+
+    async eliminarMotivoCancelacion(negocioId, id) {
+        if (!negocioId) {
+            throw new AppError("ID del negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        const { MotivoCancelacion } = tenantDb.models;
+
+        const motivo = await MotivoCancelacion.findByPk(id);
+        if (!motivo) {
+            throw new AppError("Motivo de cancelación no encontrado.", 404, "REASON_NOT_FOUND");
+        }
+
+        if (motivo.esFijo) {
+            throw new AppError("No se puede eliminar un motivo de cancelación base del sistema.", 400, "CANNOT_DELETE_FIXED_REASON");
+        }
+
+        await motivo.update({ activo: false });
+        return { message: "Motivo de cancelación eliminado exitosamente." };
+    }
 }
 
 export const configuracionService = new ConfiguracionService();

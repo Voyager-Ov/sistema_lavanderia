@@ -20,11 +20,12 @@ interface PedidoDetailViewProps {
   id: number
   onPrintComprobante?: (id: number) => void
   onCobrar?: (pedido: Pedido) => void
+  onCancel?: (pedido: Pedido) => void
   onGenerateFactura?: (id: number) => void
   hideActions?: boolean
 }
 
-export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateFactura, hideActions }: PedidoDetailViewProps) {
+export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, onGenerateFactura, hideActions }: PedidoDetailViewProps) {
   const [pedido, setPedido] = useState<Pedido | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -202,6 +203,17 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onGenerateF
             >
               <Banknote className="w-4 h-4 mr-2" />
               Cobrar
+            </Button>
+          )}
+
+          {!hideActions && onCancel && pedido.estado !== "CANCELADO" && (
+            <Button 
+              variant="outline"
+              onClick={() => onCancel(pedido)}
+              className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40 rounded-full px-5 font-bold"
+            >
+              <XCircle className="w-4 h-4 mr-2 text-red-500" />
+              Cancelar Pedido
             </Button>
           )}
         </div>

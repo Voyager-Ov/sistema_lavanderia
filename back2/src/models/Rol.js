@@ -24,7 +24,7 @@ export default (sequelize, DataTypes) => {
 	);
 
 	Rol.associate = (models) => {
-		Rol.belongsToMany(models.Usuario, { through: "UsuarioRoles", foreignKey: "rolId", otherKey: "usuarioEmail", constraints: false });
+		Rol.belongsToMany(models.Usuario, { through: "UsuarioRoles", foreignKey: "rolId", otherKey: "usuarioEmail", as: "Usuarios", constraints: false });
 	};
 
 	return Rol;

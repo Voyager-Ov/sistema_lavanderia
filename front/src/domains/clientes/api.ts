@@ -3,9 +3,16 @@ import { apiClient } from "@/shared/lib/api-client"
 export interface Cliente {
   id: number
   nombre: string
+  apellido?: string
   telefono?: string
   email?: string
+  direccion?: string
   activo: boolean
+  saldoDeuda?: number
+  pedidosImpagosCount?: number
+  cuentaCorriente?: {
+    saldo: number
+  }
   createdAt: string
   updatedAt: string
   pedidos?: any[]
@@ -17,6 +24,7 @@ export interface ClientesResponse {
     items: Cliente[]
     meta: {
       totalItems: number
+      total: number
       totalPages: number
       currentPage: number
     }
@@ -42,17 +50,27 @@ export const getClienteById = async (id: number) => {
   return response.data
 }
 
-export const crearCliente = async (data: { nombre: string; telefono: string; email?: string }) => {
+export const getPedidosImpagosCliente = async (clienteId: number) => {
+  const response = await apiClient.get<{ success: boolean, data: { totalDeuda: number, pedidosImpagos: any[] } }>(`/clientes/${clienteId}/pedidos-impagos`)
+  return response.data
+}
+
+export const cobrarPedidosCliente = async (clienteId: number, payload: { pedidosIds: number[]; metodoPagoId?: number; observaciones?: string }) => {
+  const response = await apiClient.post<{ success: boolean, data: any }>(`/clientes/${clienteId}/cobrar-pedidos`, payload)
+  return response.data
+}
+
+export const crearCliente = async (data: { nombre: string; apellido?: string; telefono?: string; email?: string; direccion?: string }) => {
   const response = await apiClient.post<{ success: boolean, data: Cliente }>(`/clientes`, data)
   return response.data
 }
 
-export const actualizarCliente = async (id: number, data: { nombre?: string; telefono?: string; email?: string }) => {
+export const actualizarCliente = async (id: number, data: { nombre?: string; apellido?: string; telefono?: string; email?: string; direccion?: string }) => {
   const response = await apiClient.put<{ success: boolean, data: Cliente }>(`/clientes/${id}`, data)
   return response.data
 }
 
-export const desactivarCliente = async (id: number, motivoBaja: string) => {
-  const response = await apiClient.patch<{ success: boolean, data: any }>(`/clientes/${id}/estado`, { motivoBaja })
+export const desactivarCliente = async (id: number, motivoBaja?: string) => {
+  const response = await apiClient.delete<{ success: boolean, data: any }>(`/clientes/${id}`)
   return response.data
 }

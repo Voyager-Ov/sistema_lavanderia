@@ -70,9 +70,15 @@ export const apiClient = {
           }
         }
         
+        const errorMessage = (typeof data?.message === 'string' && data.message)
+          || (typeof data?.detalle === 'string' && data.detalle)
+          || (typeof data?.error === 'string' && data.error)
+          || response.statusText
+          || 'Error en la petición';
+
         throw new ApiError(
           response.status,
-          data?.detalle || data?.error || data?.message || response.statusText || 'Error en la petición',
+          errorMessage,
           data
         );
       }
