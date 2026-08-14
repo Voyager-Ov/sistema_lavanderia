@@ -41,9 +41,18 @@ class ServiciosService {
             where.disponible = query.disponible === "true" || query.disponible === true;
         }
 
-        // Ordenamiento
+        // Ordenamiento seguro
+        let orderClause;
         const sortBy = query.sortBy || "id";
         const sortOrder = (query.sortOrder || "DESC").toUpperCase();
+
+        if (sortBy === "categoria" || sortBy === "categoria.nombre" || sortBy === "categoriaId") {
+            orderClause = [[{ model: CategoriaServicio, as: "categoria" }, "nombre", sortOrder]];
+        } else {
+            const validAttributes = Object.keys(Servicio.rawAttributes);
+            const targetSortBy = validAttributes.includes(sortBy) ? sortBy : "id";
+            orderClause = [[targetSortBy, sortOrder]];
+        }
 
         const { count, rows } = await Servicio.findAndCountAll({
             where,
@@ -54,7 +63,7 @@ class ServiciosService {
             }],
             limit,
             offset,
-            order: [[sortBy, sortOrder]],
+            order: orderClause,
             distinct: true
         });
 
