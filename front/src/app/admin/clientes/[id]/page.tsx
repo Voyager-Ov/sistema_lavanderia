@@ -139,7 +139,8 @@ export default function ClienteDetailPage() {
   }, [cliente, pedidosImpagos])
 
   const saldoAFavor = useMemo(() => {
-    return parseFloat(cliente?.saldoAFavor || cliente?.cuentaCorriente?.saldo || "0")
+    const rawVal = cliente?.saldoAFavor ?? cliente?.cuentaCorriente?.saldo ?? 0
+    return parseFloat(rawVal.toString())
   }, [cliente])
 
   // Objetos de pedidos actualmente seleccionados para el cobro
