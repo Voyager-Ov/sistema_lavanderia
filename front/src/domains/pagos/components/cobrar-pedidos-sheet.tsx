@@ -83,7 +83,7 @@ export function CobrarPedidosSheet({
         return `${c.nombre || ""} ${c.apellido || ""}`.trim()
       }
     }
-    return "Cliente"
+    return "Sin Cliente"
   }, [propClienteNombre, pedidos])
 
   // Cálculo del total de pedidos seleccionados (excluye pedidos cancelados)
