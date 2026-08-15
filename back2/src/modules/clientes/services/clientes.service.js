@@ -328,7 +328,15 @@ class ClientesService {
             };
 
             const totalTargetMonto = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
+            
+            // Si se aplica crédito a favor, calculamos el remanente real a pagar en efectivo
+            const creditoTotalUtilizable = aplicarSaldoAFavor ? Math.min(saldoAFavorDisponible, totalTargetMonto) : 0;
+            const remanenteTotalEfectivo = Math.max(0, totalTargetMonto - creditoTotalUtilizable);
+
             const numRecibido = parseFloat(montoRecibido);
+            // Si los pedidos quedan 100% saldados con el saldo a favor, el efectivo recibido en mostrador es 0
+            const cashRecibidoReal = remanenteTotalEfectivo > 0 && !isNaN(numRecibido) ? numRecibido : 0;
+            const permitirSaldoAFavorFinal = remanenteTotalEfectivo > 0 && !!dejarVueltoAFavor;
 
             const resultadosCobros = [];
             let totalCobrado = 0;
@@ -352,10 +360,10 @@ class ClientesService {
 
                 const remanenteAbonarPedido = Math.max(0, montoPedido - creditoParaEstePedido);
 
-                // Para el último pedido en la selección masiva, pasamos el excedente recibido para vuelto o saldo a favor
+                // Para el último pedido en la selección masiva, pasamos el excedente recibido en efectivo para vuelto
                 let pRecibido = remanenteAbonarPedido;
-                if (isLast && !isNaN(numRecibido) && numRecibido > remanenteAbonarPedido) {
-                    pRecibido = numRecibido;
+                if (isLast && remanenteTotalEfectivo > 0 && cashRecibidoReal > remanenteAbonarPedido) {
+                    pRecibido = cashRecibidoReal;
                 }
 
                 const cobroRes = await pagosService.registrarPago(negocioId, {
@@ -365,7 +373,7 @@ class ClientesService {
                     montoRecibido: pRecibido,
                     aplicarSaldoAFavor: creditoParaEstePedido > 0,
                     montoSaldoAFavor: creditoParaEstePedido,
-                    dejarVueltoAFavor: isLast ? !!dejarVueltoAFavor : false,
+                    dejarVueltoAFavor: isLast ? permitirSaldoAFavorFinal : false,
                     observaciones: observaciones || `Cobro Pedidos de Cliente #${clienteId}`
                 }, { transaction: t });
 

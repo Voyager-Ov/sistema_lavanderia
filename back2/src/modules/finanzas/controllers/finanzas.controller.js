@@ -137,18 +137,22 @@ export const getMovimientos = async (req, res, next) => {
 			}
 
 			// Applying search filter manually for cobros since search by 'descripcion' isn't natively in the Cobro model
-			const descripcion = `Cobro de Pedido #${c.pedidoNumeroPedido}`;
-			if (search && !descripcion.toLowerCase().includes(search.toLowerCase())) return;
+			const descripcionBase = `Cobro de Pedido #${c.pedidoNumeroPedido}`;
+			if (search && !descripcionBase.toLowerCase().includes(search.toLowerCase())) return;
+
+			const montoEfectivo = c.movimientoCaja ? parseFloat(c.movimientoCaja.monto) : (parseFloat(c.montoRecibidoEfectivo) || 0);
 
 			movimientos.push({
 				id: `cobro-${c.id}`,
 				originalId: c.id,
 				tipoMovimiento: "INGRESO",
-				monto: c.montoAbonado,
+				monto: montoEfectivo,
 				fecha: c.fechaHora,
-				descripcion: descripcion,
+				descripcion: montoEfectivo === 0 && parseFloat(c.montoAbonado) > 0
+					? `${descripcionBase} (Saldado con Saldo a Favor)`
+					: descripcionBase,
 				referenciaId: c.pedidoNumeroPedido,
-				metodoPago: c.metodoPago ? c.metodoPago.nombre : "Desconocido",
+				metodoPago: c.metodoPago ? c.metodoPago.nombre : (montoEfectivo === 0 ? "Saldo a Favor" : "Desconocido"),
 				registradoPor: registradoPor,
 				estado: "COMPLETADO",
 			});

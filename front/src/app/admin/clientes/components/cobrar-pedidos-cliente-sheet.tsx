@@ -178,8 +178,8 @@ export function CobrarPedidosClienteSheet({
       await cobrarPedidosCliente(clienteId, {
         pedidosIds,
         metodoPagoId: remanenteAPagar > 0 ? parseInt(selectedMetodo) : undefined,
-        montoRecibido: remanenteAPagar > 0 && monto ? montoNum : undefined,
-        dejarVueltoAFavor: vuelto > 0 ? dejarVueltoAFavor : false,
+        montoRecibido: remanenteAPagar > 0 && monto ? montoNum : 0,
+        dejarVueltoAFavor: remanenteAPagar > 0 && vuelto > 0 ? dejarVueltoAFavor : false,
         aplicarSaldoAFavor: aplicarCredito,
         observaciones: `Cobro en mostrador de ${pedidosSeleccionados.length} pedido(s)`
       })
