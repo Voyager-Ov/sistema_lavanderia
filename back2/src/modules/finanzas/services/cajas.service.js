@@ -9,56 +9,98 @@ class CajasService {
         return tenantDb.models;
     }
 
-    // Formatea una caja para cumplir con la interfaz del frontend
+    // Formatea una caja para cumplir con la interfaz completa de CajaActual del frontend
     _formatCaja(caja) {
         const plain = caja.get ? caja.get({ plain: true }) : caja;
 
         let totalIngresosEnVivo = 0;
         let totalEgresosEnVivo = 0;
+        let totalIngresosEfectivo = 0;
+        let totalIngresosDigitales = 0;
+        let totalEgresosEfectivo = 0;
+        let totalEgresosDigitales = 0;
+
         const pagos = [];
         const gastos = [];
+        const metodoMap = {
+            "Efectivo": { metodoPagoId: 1, nombre: "Efectivo", ingresos: 0, egresos: 0 }
+        };
 
         if (plain.movimientos && Array.isArray(plain.movimientos)) {
             for (const mov of plain.movimientos) {
                 const montoVal = parseFloat(mov.monto) || 0;
-                if (mov.tipoMovimiento === "Ingreso por Venta" || montoVal > 0) {
-                    totalIngresosEnVivo += Math.abs(montoVal);
+                const isIngreso = mov.tipoMovimiento?.toLowerCase().includes("ingreso") || mov.tipoMovimiento?.toLowerCase().includes("venta") || montoVal > 0;
+                const absMonto = Math.abs(montoVal);
+
+                const metodoNombre = "Efectivo";
+                const isEfectivo = true;
+
+                if (isIngreso) {
+                    totalIngresosEnVivo += absMonto;
+                    totalIngresosEfectivo += absMonto;
+                    metodoMap["Efectivo"].ingresos += absMonto;
+
                     pagos.push({
                         id: mov.id,
-                        monto: Math.abs(montoVal),
+                        monto: absMonto,
                         estado: "COMPLETADO",
-                        createdAt: mov.fechaHora,
-                        metodoPago: { id: 1, nombre: "Efectivo", esFijo: true }
+                        createdAt: mov.fechaHora || mov.createdAt,
+                        metodoPago: { id: 1, nombre: "Efectivo", esFijo: true },
+                        pedido: {
+                            id: mov.id,
+                            codigoSeguimiento: mov.observacion || `MOV-${mov.id}`,
+                            total: absMonto,
+                            estado: "ENTREGADO",
+                            fechaRecepcion: mov.fechaHora || mov.createdAt
+                        }
                     });
-                } else if (mov.tipoMovimiento === "Egreso por Gasto" || montoVal < 0) {
-                    totalEgresosEnVivo += Math.abs(montoVal);
+                } else {
+                    totalEgresosEnVivo += absMonto;
+                    totalEgresosEfectivo += absMonto;
+                    metodoMap["Efectivo"].egresos += absMonto;
+
                     gastos.push({
                         id: mov.id,
-                        monto: Math.abs(montoVal),
+                        monto: absMonto,
                         categoria: "GASTO_GENERAL",
                         descripcion: mov.observacion || "Gasto de caja",
-                        createdAt: mov.fechaHora
+                        createdAt: mov.fechaHora || mov.createdAt,
+                        metodoPago: { id: 1, nombre: "Efectivo", esFijo: true }
                     });
                 }
             }
         }
 
         const montoInicial = parseFloat(plain.montoInicialEfectivo) || 0;
-        const efectivoEsperadoEnVivo = montoInicial + totalIngresosEnVivo - totalEgresosEnVivo;
+        const efectivoEsperadoEnVivo = montoInicial + totalIngresosEfectivo - totalEgresosEfectivo;
+        const totalesPorMetodo = Object.values(metodoMap);
 
         return {
             id: plain.idCaja,
             idCaja: plain.idCaja,
             negocioId: plain.negocioId,
+            usuarioId: plain.empleadoId || 1,
             estado: plain.estadoCaja === "Abierta" ? "ABIERTA" : "CERRADA",
             estadoCaja: plain.estadoCaja,
             montoInicial,
-            fechaApertura: plain.fechaHoraApertura,
+            fechaApertura: plain.fechaHoraApertura || plain.createdAt,
             fechaCierre: plain.fechaHoraCierre,
             totalIngresosEnVivo,
             totalEgresosEnVivo,
+            totalIngresosEfectivo,
+            totalIngresosDigitales,
+            totalEgresosEfectivo,
+            totalEgresosDigitales,
+            efectivoEsperado: efectivoEsperadoEnVivo,
             efectivoEsperadoEnVivo,
             efectivoReal: plain.montoFinalEfectivoReal,
+            totalesPorMetodo,
+            actividadTurno: [],
+            usuario: {
+                id: plain.empleadoId || 1,
+                nombre: "Cajero de Mostrador",
+                email: "mostrador@lavanderia.com"
+            },
             pagos,
             gastos
         };
@@ -78,7 +120,6 @@ class CajasService {
         });
 
         if (!caja) {
-            // Buscar la última caja cerrada si no hay abierta
             caja = await Caja.findOne({
                 include: [{ model: MovimientoCaja, as: "movimientos" }],
                 order: [["idCaja", "DESC"]]
@@ -86,7 +127,6 @@ class CajasService {
         }
 
         if (!caja) {
-            // Auto-crear la primera caja en estado Abierta con $0 inicial
             caja = await Caja.create({
                 montoInicialEfectivo: 0,
                 estadoCaja: "Abierta",
@@ -105,7 +145,6 @@ class CajasService {
         }
         const { Caja } = await this._getModels(negocioId);
 
-        // Verificar si ya hay una caja abierta
         const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
         if (cajaAbierta) {
             throw new AppError("Ya existe un turno de caja abierto actualmente.", 400, "CASH_REGISTER_ALREADY_OPEN");
