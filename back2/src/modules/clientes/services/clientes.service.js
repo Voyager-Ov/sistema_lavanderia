@@ -271,7 +271,8 @@ class ClientesService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        const sequelize = tenantContext.sequelize || tenantContext;
         const { pagosService } = await import("../../finanzas/services/pagos.service.js");
         const { pedidosIds, metodoPagoId, observaciones, montoRecibido, dejarVueltoAFavor } = data;
 
@@ -279,7 +280,7 @@ class ClientesService {
             throw new AppError("Debe seleccionar al menos un pedido para cobrar.", 400, "MISSING_ORDERS_TO_CHARGE");
         }
 
-        return await tenantDb.transaction(async (t) => {
+        return await sequelize.transaction(async (t) => {
             const { Pedido } = await this._getModels(negocioId);
 
             // Validar atómicamente antes de procesar cobros
