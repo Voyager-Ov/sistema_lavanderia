@@ -159,7 +159,8 @@ class PagosService {
             }
 
             for (const p of pedidosTarget) {
-                const estUpper = (p.estado || "").toString().toUpperCase();
+                const estadoVal = typeof p.estado === "object" ? p.estado?.nombre : p.estado;
+                const estUpper = (estadoVal || "").toString().toUpperCase();
                 if (estUpper.includes("CANCELAD")) {
                     throw new AppError(`No se puede cobrar el pedido #${p.numeroPedido} porque se encuentra cancelado.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
                 }

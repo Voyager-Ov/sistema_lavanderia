@@ -62,7 +62,7 @@ class ClientesService {
                     model: Pedido, 
                     as: "pedidos", 
                     attributes: ["numeroPedido", "total", "costoEnvio", "cobrado", "estado"], 
-                    where: { cobrado: false, estado: { [Op.notILike]: "%cancelad%" } }, 
+                    where: { cobrado: false, estado: { [Op.notLike]: "%CANCELAD%" } }, 
                     include: [
                         {
                             model: DetallePedido,
@@ -194,6 +194,7 @@ class ClientesService {
             activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
             saldoDeuda: totalDeuda,
             saldoAFavor,
+            saldoCuentaCorriente: saldoAFavor,
             montoEnTaller: totalTaller,
             pedidosImpagosCount: pedidosDeuda.length,
             cuentaCorriente: {
@@ -220,7 +221,7 @@ class ClientesService {
             where: {
                 clienteId,
                 cobrado: false,
-                estado: { [Op.notILike]: "%cancelad%" }
+                estado: { [Op.notLike]: "%CANCELAD%" }
             },
             include: [
                 {
@@ -382,8 +383,7 @@ class ClientesService {
             .filter(p => !(typeof p.estado === 'object' ? p.estado?.nombre : p.estado)?.toString()?.toUpperCase()?.includes("ENTREGADO"))
             .reduce((sum, p) => sum + p.total, 0);
 
-        const saldoCC = clienteData.saldoCuentaCorriente || 0;
-        const saldoAFavor = saldoCC < 0 ? Math.abs(saldoCC) : 0;
+        const saldoAFavor = Math.max(0, parseFloat(clienteData.saldoCuentaCorriente || 0));
 
         return {
             resumen: {
@@ -422,14 +422,14 @@ class ClientesService {
             cc = await CuentaCorriente.create({ clienteId, saldo: 0 });
         }
 
-        // Un crédito a favor reduce la deuda (saldo negativo en ledger)
-        const nuevoSaldo = parseFloat(cc.saldo || 0) - monto;
+        // Un crédito a favor suma al saldo positivo en la cuenta corriente
+        const nuevoSaldo = parseFloat(cc.saldo || 0) + monto;
         await cc.update({ saldo: nuevoSaldo });
 
         if (MovimientoCuentaCorriente) {
             await MovimientoCuentaCorriente.create({
                 cuentaCorrienteId: cc.id,
-                monto: -monto,
+                monto: monto,
                 saldoResultante: nuevoSaldo,
                 concepto,
                 fechaHora: new Date()
