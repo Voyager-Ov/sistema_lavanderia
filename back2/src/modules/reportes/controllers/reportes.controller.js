@@ -10,6 +10,26 @@ const getTenantId = (req) => {
     return negocioId;
 };
 
+export const obtenerReportePedidos = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const report = await reportesService.obtenerReportePedidos(negocioId, req.query);
+        return successResponse(res, 200, "Reporte de pedidos generado exitosamente", report);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const obtenerReporteServicios = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const report = await reportesService.obtenerReporteServicios(negocioId, req.query);
+        return successResponse(res, 200, "Reporte de servicios generado exitosamente", report);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const obtenerReporteVentasPorMetodoPago = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
