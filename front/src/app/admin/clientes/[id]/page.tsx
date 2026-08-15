@@ -7,7 +7,7 @@ import gsap from "gsap"
 import {
   ArrowLeft, Edit, Phone, Mail,
   ShoppingBag, AlertCircle, CheckCircle2, Clock,
-  ExternalLink, Package, MessageCircle, Banknote, RefreshCw, Eye
+  ExternalLink, Package, MessageCircle, Banknote, RefreshCw, Eye, Sparkles
 } from "lucide-react"
 import { parseISO, formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -48,9 +48,9 @@ function renderEstadoBadge(estadoRaw: any) {
   const labelFormatted = estadoStr.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase())
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${colorClass}`}>
-      <Icon className="w-3.5 h-3.5" />
-      {labelFormatted}
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass}`}>
+      <Icon className="w-3.5 h-3.5 shrink-0" />
+      <span>{labelFormatted}</span>
     </span>
   )
 }
@@ -62,7 +62,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 export default function ClienteDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const clienteId = Number(params.id)
+  const clienteId = params.id ? parseInt(params.id as string) : 0
 
   const { cliente, isLoading, fetchCliente } = useClienteDetail(clienteId)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -137,6 +137,10 @@ export default function ClienteDetailPage() {
     }
     return pedidosImpagos.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
   }, [cliente, pedidosImpagos])
+
+  const saldoAFavor = useMemo(() => {
+    return parseFloat(cliente?.saldoAFavor || cliente?.cuentaCorriente?.saldo || "0")
+  }, [cliente])
 
   // Objetos de pedidos actualmente seleccionados para el cobro
   const pedidosSeleccionadosParaCobro = useMemo(() => {
@@ -287,6 +291,16 @@ export default function ClienteDetailPage() {
             </div>
           )}
 
+          {saldoAFavor > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-blue-600 shrink-0" />
+              <div>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">Saldo a Favor</span>
+                <span className="text-lg font-black text-blue-600 font-mono">${saldoAFavor.toLocaleString("es-AR")}</span>
+              </div>
+            </div>
+          )}
+
           {saldoDeuda > 0 ? (
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
@@ -296,13 +310,15 @@ export default function ClienteDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <div>
-                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Estado de Cuenta</span>
-                <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">Al día ($0)</span>
+            saldoAFavor === 0 && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-4 py-2 rounded-2xl flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Estado de Cuenta</span>
+                  <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">Al día ($0)</span>
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {saldoDeuda > 0 && (

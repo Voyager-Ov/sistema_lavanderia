@@ -207,9 +207,11 @@ class PagosService {
 
         // Si se generó saldo a favor, impactar cuenta corriente del cliente
         if (saldoGenerado > 0 && pedido.clienteId) {
-            const cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
+            let cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
             if (cuenta) {
                 await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGenerado }, { transaction: t });
+            } else {
+                await CuentaCorriente.create({ clienteId: pedido.clienteId, saldo: saldoGenerado }, { transaction: t });
             }
         }
 

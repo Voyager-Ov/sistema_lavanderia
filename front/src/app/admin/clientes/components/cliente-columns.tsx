@@ -2,7 +2,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Cliente } from "@/domains/clientes/api"
 import { Button } from "@/shared/ui/forms/button"
 import { Checkbox } from "@/shared/ui/forms/checkbox"
-import { Eye, Edit, PowerOff, MessageCircle, MoreHorizontal, Banknote, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Eye, Edit, PowerOff, MessageCircle, MoreHorizontal, Banknote, AlertCircle, CheckCircle2, Sparkles } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/overlays/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/overlays/dropdown-menu"
 
@@ -93,7 +93,8 @@ export const getClienteColumns = (actions: ClienteColumnsActions): ColumnDef<Cli
     accessorKey: "saldoDeuda",
     header: "Saldo / Cuenta Corriente",
     cell: ({ row }) => {
-      const deuda = row.original.saldoDeuda || row.original.cuentaCorriente?.saldo || 0
+      const deuda = row.original.saldoDeuda || 0
+      const saldoAFavor = row.original.saldoAFavor || row.original.cuentaCorriente?.saldo || 0
 
       if (deuda > 0) {
         return (
@@ -104,10 +105,11 @@ export const getClienteColumns = (actions: ClienteColumnsActions): ColumnDef<Cli
         )
       }
 
-      if (deuda < 0) {
+      if (saldoAFavor > 0) {
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 transition-colors">
-            A favor ${Math.abs(deuda).toLocaleString("es-AR")}
+            <Sparkles className="w-3.5 h-3.5" />
+            A favor ${saldoAFavor.toLocaleString("es-AR")}
           </span>
         )
       }

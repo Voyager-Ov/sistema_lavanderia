@@ -98,14 +98,18 @@ class ClientesService {
                 const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
                 return acc + finalTotal;
             }, 0);
+
+            const saldoAFavor = parseFloat(plain.cuentaCorriente?.saldo) || 0;
             
             return {
                 ...plain,
                 activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
                 saldoDeuda: totalDeudaImpaga,
+                saldoAFavor,
                 pedidosImpagosCount: pedidosDeuda.length,
                 cuentaCorriente: {
-                    saldo: totalDeudaImpaga
+                    saldo: saldoAFavor,
+                    saldoDeuda: totalDeudaImpaga
                 }
             };
         });
@@ -182,15 +186,19 @@ class ClientesService {
         const impagosTaller = pedidosFormatted.filter(p => !p.cobrado && !isPedidoCancelado(p) && !isPedidoEntregadoEImpago(p));
         const totalTaller = impagosTaller.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
 
+        const saldoAFavor = parseFloat(plain.cuentaCorriente?.saldo) || 0;
+
         return {
             ...plain,
             pedidos: pedidosFormatted,
             activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true,
             saldoDeuda: totalDeuda,
+            saldoAFavor,
             montoEnTaller: totalTaller,
             pedidosImpagosCount: pedidosDeuda.length,
             cuentaCorriente: {
-                saldo: totalDeuda
+                saldo: saldoAFavor,
+                saldoDeuda: totalDeuda
             }
         };
     }
@@ -281,11 +289,12 @@ class ClientesService {
         }
 
         return await sequelize.transaction(async (t) => {
-            const { Pedido } = await this._getModels(negocioId);
+            const { Pedido, DetallePedido } = await this._getModels(negocioId);
 
-            // Validar atómicamente antes de procesar cobros
+            // Validar atómicamente e incluir detalles para asegurar el monto real del pedido
             const pedidosTarget = await Pedido.findAll({
                 where: { numeroPedido: pedidosIds },
+                include: [{ model: DetallePedido, as: "detalles" }],
                 transaction: t
             });
 
@@ -298,7 +307,20 @@ class ClientesService {
                 }
             }
 
-            const totalTargetMonto = pedidosTarget.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
+            const calcularMontoReal = (p) => {
+                let subtotalItems = 0;
+                if (p.detalles && Array.isArray(p.detalles)) {
+                    subtotalItems = p.detalles.reduce((acc, d) => {
+                        const precio = parseFloat(d.precioHistorico) || parseFloat(d.precioUnitario) || 0;
+                        const cant = parseInt(d.cantidad) || 1;
+                        return acc + (precio * cant);
+                    }, 0);
+                }
+                const costoEnvio = parseFloat(p.costoEnvio) || 0;
+                return parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+            };
+
+            const totalTargetMonto = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
             const numRecibido = parseFloat(montoRecibido);
 
             const resultadosCobros = [];
@@ -307,7 +329,12 @@ class ClientesService {
             for (let i = 0; i < pedidosTarget.length; i++) {
                 const p = pedidosTarget[i];
                 const isLast = i === pedidosTarget.length - 1;
-                const montoPedido = parseFloat(p.total) || 0;
+                const montoPedido = calcularMontoReal(p);
+
+                // Si el total en la tabla figuraba en 0, actualizamos transparentemente el comprobante
+                if (parseFloat(p.total || 0) === 0 && montoPedido > 0) {
+                    await p.update({ total: montoPedido }, { transaction: t });
+                }
 
                 // Para el último pedido en la selección masiva, pasamos el excedente recibido para vuelto o saldo a favor
                 let pRecibido = montoPedido;
