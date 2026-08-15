@@ -321,7 +321,8 @@ class PedidosService {
             negocioId
         });
 
-        // Insertar ítems
+        // Insertar ítems y calcular subtotal total
+        let subtotalTotal = 0;
         for (const item of itemsList) {
             const servicioId = item.servicioId || item.productoId;
             let precioUnitario = item.precio || item.precioUnitario;
@@ -331,13 +332,21 @@ class PedidosService {
                 if (srv) precioUnitario = srv.precioActual;
             }
 
+            const cant = parseInt(item.cantidad || 1);
+            const pr = parseFloat(precioUnitario || 0);
+            subtotalTotal += (pr * cant);
+
             await DetallePedido.create({
                 pedidoNumeroPedido: nuevoPedido.numeroPedido,
                 servicioId: servicioId || null,
-                cantidad: parseInt(item.cantidad || 1),
-                precioHistorico: parseFloat(precioUnitario || 0)
+                cantidad: cant,
+                precioHistorico: pr
             });
         }
+
+        const costoEnvio = parseFloat(data.costoEnvio || 0);
+        const totalFinalCalculado = subtotalTotal + costoEnvio;
+        await nuevoPedido.update({ subtotal: subtotalTotal, total: totalFinalCalculado });
 
         // Asignar estado inicial PENDIENTE
         let estadoInicial = await Estado.findOne({ where: { nombre: "PENDIENTE" } });
