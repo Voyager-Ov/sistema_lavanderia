@@ -49,7 +49,7 @@ export function usePedidosReport() {
               end.setHours(23,59,59,999);
           } else if (activePeriod === 'semana') {
               const day = start.getDay();
-              const diff = start.getDate() - day + (day == 0 ? -6:1);
+              const diff = start.getDate() - day + (day === 0 ? -6 : 1);
               start = new Date(start.setDate(diff));
               start.setHours(0,0,0,0);
           } else if (activePeriod === 'mes') {
@@ -58,8 +58,9 @@ export function usePedidosReport() {
               start = new Date(now.getFullYear(), 0, 1);
           }
           
-          params.append('fechaInicio', start.toISOString().split('T')[0]);
-          params.append('fechaFin', end.toISOString().split('T')[0]);
+          const toLocalYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          params.append('fechaInicio', toLocalYMD(start));
+          params.append('fechaFin', toLocalYMD(end));
       }
 
       const response = await apiClient.get<any>(`/reportes/pedidos?${params.toString()}`);

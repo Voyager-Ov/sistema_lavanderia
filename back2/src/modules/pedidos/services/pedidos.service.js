@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { parseDateRange } from "../../../utils/date.util.js";
 import { pedidosSocket } from "../sockets/pedidos.socket.js";
 
 class PedidosService {
@@ -153,13 +154,18 @@ class PedidosService {
             }
         }
 
-        // Filtro por rango de fechas de creación
+        // Filtro por rango de fechas de creación / pedido
         if (query.fechaDesde || query.fechaInicio || query.fechaHasta || query.fechaFin) {
             const desde = query.fechaDesde || query.fechaInicio;
             const hasta = query.fechaHasta || query.fechaFin;
-            where.fechaHoraCreacion = {};
-            if (desde) where.fechaHoraCreacion[Op.gte] = new Date(desde);
-            if (hasta) where.fechaHoraCreacion[Op.lte] = new Date(hasta);
+            const dateClause = parseDateRange(desde, hasta);
+            if (dateClause) {
+                where[Op.or] = [
+                    { fechaHoraCreacion: dateClause },
+                    { fechaHoraPedido: dateClause },
+                    { createdAt: dateClause }
+                ];
+            }
         }
 
         // Ordenamiento

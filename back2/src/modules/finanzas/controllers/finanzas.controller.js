@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { successResponse } from "../../../utils/response.util.js";
+import { parseDateRange } from "../../../utils/date.util.js";
 
 const getModels = async (negocioId) => {
 	const tenantDb = await connectionManager.getTenantDb(negocioId);
@@ -14,20 +15,8 @@ export const getKPIs = async (req, res, next) => {
 
 		const { Cobro, Gasto, Pedido } = await getModels(negocioId);
 
-		const dateFilter = {};
-		if (fechaDesde && fechaHasta) {
-			dateFilter.fechaHora = {
-				[Op.between]: [new Date(fechaDesde), new Date(fechaHasta)],
-			};
-		} else if (fechaDesde) {
-			dateFilter.fechaHora = {
-				[Op.gte]: new Date(fechaDesde),
-			};
-		} else if (fechaHasta) {
-			dateFilter.fechaHora = {
-				[Op.lte]: new Date(fechaHasta),
-			};
-		}
+		const parsedRange = parseDateRange(fechaDesde, fechaHasta);
+		const dateFilter = parsedRange ? { fechaHora: parsedRange } : {};
 
 		// 1. Total Ingresos (Cobros)
 		const ingresosQuery = {
@@ -77,20 +66,8 @@ export const getMovimientos = async (req, res, next) => {
 
 		const { Cobro, Gasto, Pedido, Empleado, MetodoPago, MovimientoCaja, Caja } = await getModels(negocioId);
 
-		const dateFilter = {};
-		if (fechaDesde && fechaHasta) {
-			dateFilter.fechaHora = {
-				[Op.between]: [new Date(fechaDesde), new Date(fechaHasta)],
-			};
-		} else if (fechaDesde) {
-			dateFilter.fechaHora = {
-				[Op.gte]: new Date(fechaDesde),
-			};
-		} else if (fechaHasta) {
-			dateFilter.fechaHora = {
-				[Op.lte]: new Date(fechaHasta),
-			};
-		}
+		const parsedRange = parseDateRange(fechaDesde, fechaHasta);
+		const dateFilter = parsedRange ? { fechaHora: parsedRange } : {};
 
 		const searchFilter = search ? {
 			[Op.or]: [

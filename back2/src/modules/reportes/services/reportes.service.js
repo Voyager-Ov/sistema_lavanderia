@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { parseDateRange } from "../../../utils/date.util.js";
 
 class ReportesService {
 
@@ -16,18 +17,14 @@ class ReportesService {
         }
         const { Pedido, Cliente, DetallePedido, Servicio } = await this._getModels(negocioId);
 
-        const fechaInicio = query.fechaInicio ? new Date(query.fechaInicio) : null;
-        const fechaFin = query.fechaFin ? new Date(query.fechaFin) : null;
-
         const wherePedido = {};
-        if (fechaInicio || fechaFin) {
-            wherePedido.fechaHoraCreacion = {};
-            if (fechaInicio) wherePedido.fechaHoraCreacion[Op.gte] = fechaInicio;
-            if (fechaFin) {
-                const endOfDay = new Date(fechaFin);
-                endOfDay.setHours(23, 59, 59, 999);
-                wherePedido.fechaHoraCreacion[Op.lte] = endOfDay;
-            }
+        const dateClause = parseDateRange(query.fechaInicio || query.fechaDesde, query.fechaFin || query.fechaHasta);
+        if (dateClause) {
+            wherePedido[Op.or] = [
+                { fechaHoraCreacion: dateClause },
+                { fechaHoraPedido: dateClause },
+                { createdAt: dateClause }
+            ];
         }
 
         const pedidos = await Pedido.findAll({
@@ -133,18 +130,14 @@ class ReportesService {
         }
         const { Servicio, DetallePedido, Pedido } = await this._getModels(negocioId);
 
-        const fechaInicio = query.fechaInicio ? new Date(query.fechaInicio) : null;
-        const fechaFin = query.fechaFin ? new Date(query.fechaFin) : null;
-
         const wherePedido = { cobrado: true };
-        if (fechaInicio || fechaFin) {
-            wherePedido.fechaHoraCreacion = {};
-            if (fechaInicio) wherePedido.fechaHoraCreacion[Op.gte] = fechaInicio;
-            if (fechaFin) {
-                const endOfDay = new Date(fechaFin);
-                endOfDay.setHours(23, 59, 59, 999);
-                wherePedido.fechaHoraCreacion[Op.lte] = endOfDay;
-            }
+        const dateClauseSrv = parseDateRange(query.fechaInicio || query.fechaDesde, query.fechaFin || query.fechaHasta);
+        if (dateClauseSrv) {
+            wherePedido[Op.or] = [
+                { fechaHoraCreacion: dateClauseSrv },
+                { fechaHoraPedido: dateClauseSrv },
+                { createdAt: dateClauseSrv }
+            ];
         }
 
         const detalles = await DetallePedido.findAll({
