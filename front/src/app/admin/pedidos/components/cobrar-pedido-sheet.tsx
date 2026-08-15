@@ -4,7 +4,13 @@ import { useState, useEffect, useMemo } from "react"
 import { Pedido } from "@/domains/pedidos/api"
 import { MetodoPago, obtenerMetodosPago, registrarPago, obtenerSaldosAFavorCliente } from "@/domains/pagos/api"
 import { generarTicketsAPI } from "@/domains/pedidos/api"
-import { FormSheet } from "@/shared/ui/composite/form-sheet"
+import {
+  ResponsiveSheet,
+  ResponsiveSheetContent,
+  ResponsiveSheetHeader,
+  ResponsiveSheetTitle,
+  ResponsiveSheetDescription
+} from "@/shared/ui/overlays/responsive-sheet"
 import { Button } from "@/shared/ui/forms/button"
 import { Input } from "@/shared/ui/forms/input"
 import { Label } from "@/shared/ui/forms/label"
@@ -87,6 +93,7 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
       setMonto("")
       setSelectedMetodo("")
       setSaldoAFavorTotal(0)
+      setDejarVueltoAFavor(false)
     }
   }, [open, pedido])
 
@@ -168,183 +175,192 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
   }
 
   return (
-    <FormSheet
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Cobrar Pedido"
-      description={`Registra el pago para el pedido #${pedido?.codigoSeguimiento}.`}
-      trigger={<span style={{ display: "none" }} />}
-    >
-      {pedido && (
-        <div className="flex-1 space-y-5">
-          {/* Resumen de Pedido */}
-          <div className="bg-muted rounded-2xl p-4 border border-border flex flex-col gap-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Cliente</span>
-              <span className="font-semibold text-foreground">{pedido.cliente?.nombre || "Consumidor Final"}</span>
-            </div>
-            <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-border">
-              <span className="text-muted-foreground font-medium">Total Pedido</span>
-              <span className="font-bold text-foreground">${totalPedido.toLocaleString("es-AR")}</span>
-            </div>
-          </div>
+    <ResponsiveSheet open={open} onOpenChange={onOpenChange}>
+      <ResponsiveSheetContent>
+        <ResponsiveSheetHeader className="mb-6 text-left">
+          <ResponsiveSheetTitle className="text-xl font-black text-gray-900 dark:text-neutral-100">
+            Cobrar Pedido
+          </ResponsiveSheetTitle>
+          <ResponsiveSheetDescription className="text-xs text-gray-500 dark:text-neutral-400">
+            Registra el pago para el pedido #{pedido?.codigoSeguimiento || pedido?.id}.
+          </ResponsiveSheetDescription>
+        </ResponsiveSheetHeader>
 
-          {/* Saldo a Favor disponible */}
-          {saldoAFavorTotal > 0 && (
-            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-emerald-900">
-                    Saldo a favor disponible: ${saldoAFavorTotal.toLocaleString("es-AR")}
-                  </p>
-                  <p className="text-[11px] text-emerald-700">
-                    Aplicar ${creditoAAplicar.toLocaleString("es-AR")} a este pedido
-                  </p>
-                </div>
+        {pedido && (
+          <div className="flex-1 space-y-5">
+            {/* Resumen de Pedido */}
+            <div className="bg-slate-50 dark:bg-neutral-800/60 rounded-2xl p-4 border border-gray-100 dark:border-neutral-700/60 flex flex-col gap-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 dark:text-neutral-400">Cliente</span>
+                <span className="font-bold text-gray-900 dark:text-neutral-100">{pedido.cliente?.nombre || "Consumidor Final"}</span>
               </div>
-              <Switch checked={aplicarCredito} onCheckedChange={setAplicarCredito} />
-            </div>
-          )}
-
-          {/* Desglose Remanente */}
-          {aplicarCredito && creditoAAplicar > 0 && (
-            <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2">
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>Total Pedido:</span>
-                <span className="font-mono">${totalPedido.toLocaleString("es-AR")}</span>
-              </div>
-              <div className="flex justify-between text-xs text-emerald-400 font-semibold">
-                <span>Crédito a Favor Aplicado:</span>
-                <span className="font-mono">-${creditoAAplicar.toLocaleString("es-AR")}</span>
-              </div>
-              <div className="border-t border-slate-800 pt-2 flex justify-between items-baseline">
-                <span className="text-sm font-bold">Restante a Abonar:</span>
-                <span className="text-xl font-extrabold text-blue-400 font-mono">
-                  ${remanenteAPagar.toLocaleString("es-AR")}
-                </span>
+              <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t border-gray-200 dark:border-neutral-700">
+                <span className="text-gray-600 dark:text-neutral-300 font-medium">Total Pedido</span>
+                <span className="font-black text-gray-900 dark:text-neutral-100 font-mono">${totalPedido.toLocaleString("es-AR")}</span>
               </div>
             </div>
-          )}
 
-          {/* Formulario de Pago Restante */}
-          {remanenteAPagar > 0 ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-muted-foreground">
-                  Método de Pago
-                </Label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {metodos.map((metodo) => {
-                    const isSelected = selectedMetodo === metodo.id.toString()
-                    const Icon = metodo.icono ? ICON_MAP[metodo.icono] || Banknote : Banknote
-
-                    return (
-                      <div
-                        key={metodo.id}
-                        onClick={() => setSelectedMetodo(metodo.id.toString())}
-                        className={`
-                          cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200
-                          ${
-                            isSelected
-                              ? "border-blue-600 bg-blue-50/50 shadow-sm scale-[1.02]"
-                              : "border-border bg-card hover:border-border/80 hover:bg-muted/50"
-                          }
-                        `}
-                      >
-                        <Icon
-                          className={`w-6 h-6 mb-1.5 ${
-                            isSelected ? "text-blue-600" : "text-muted-foreground"
-                          }`}
-                        />
-                        <span
-                          className={`text-xs font-bold text-center ${
-                            isSelected ? "text-blue-600" : "text-foreground"
-                          }`}
-                        >
-                          {metodo.nombre}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">
-                  Monto Entregado (Con cuánto paga)
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                    $
-                  </span>
-                  <Input
-                    type="number"
-                    min={remanenteAPagar}
-                    step="0.01"
-                    value={monto}
-                    onChange={(e) => setMonto(e.target.value)}
-                    disabled={!esEfectivo}
-                    className="pl-7 h-11 text-base font-bold font-mono"
-                  />
-                </div>
-                {!esEfectivo && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    El monto debe ser exacto para este método de pago.
-                  </p>
-                )}
-              </div>
-
-              {vuelto > 0 && esEfectivo && (
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
-                  <div className="flex justify-between items-center text-emerald-900">
-                    <span className="text-xs font-semibold">Vuelto calculado:</span>
-                    <span className="text-lg font-black font-mono">
-                      ${vuelto.toLocaleString("es-AR")}
-                    </span>
+            {/* Saldo a Favor disponible */}
+            {saldoAFavorTotal > 0 && (
+              <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/50 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl">
+                    <Sparkles className="w-4 h-4" />
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60">
-                    <span className="text-xs text-emerald-800 font-medium">
-                      Acreditar vuelto como saldo a favor
+                  <div>
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                      Saldo a favor disponible: ${saldoAFavorTotal.toLocaleString("es-AR")}
+                    </p>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                      Aplicar ${creditoAAplicar.toLocaleString("es-AR")} a este pedido
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={aplicarCredito} onCheckedChange={setAplicarCredito} />
+              </div>
+            )}
+
+            {/* Desglose Remanente */}
+            {aplicarCredito && creditoAAplicar > 0 && (
+              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-2">
+                <div className="flex justify-between text-xs text-slate-300">
+                  <span>Total Pedido:</span>
+                  <span className="font-mono">${totalPedido.toLocaleString("es-AR")}</span>
+                </div>
+                <div className="flex justify-between text-xs text-emerald-400 font-semibold">
+                  <span>Crédito a Favor Aplicado:</span>
+                  <span className="font-mono">-${creditoAAplicar.toLocaleString("es-AR")}</span>
+                </div>
+                <div className="border-t border-slate-800 pt-2 flex justify-between items-baseline">
+                  <span className="text-sm font-bold">Restante a Abonar:</span>
+                  <span className="text-xl font-extrabold text-blue-400 font-mono">
+                    ${remanenteAPagar.toLocaleString("es-AR")}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Formulario de Pago Restante */}
+            {remanenteAPagar > 0 ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-gray-500 dark:text-neutral-400">
+                    Método de Pago
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {metodos.map((metodo) => {
+                      const isSelected = selectedMetodo === metodo.id.toString()
+                      const Icon = metodo.icono ? ICON_MAP[metodo.icono] || Banknote : Banknote
+
+                      return (
+                        <div
+                          key={metodo.id}
+                          onClick={() => setSelectedMetodo(metodo.id.toString())}
+                          className={`
+                            cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200
+                            ${
+                              isSelected
+                                ? "border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 shadow-sm scale-[1.02]"
+                                : "border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-gray-300 dark:hover:border-neutral-700 text-gray-800 dark:text-neutral-200"
+                            }
+                          `}
+                        >
+                          <Icon
+                            className={`w-6 h-6 mb-1.5 ${
+                              isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-neutral-500"
+                            }`}
+                          />
+                          <span className="text-xs font-bold text-center">
+                            {metodo.nombre}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 dark:text-neutral-400">
+                    Monto Entregado (Con cuánto paga)
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-medium">
+                      $
                     </span>
-                    <Switch
-                      checked={dejarVueltoAFavor}
-                      onCheckedChange={setDejarVueltoAFavor}
+                    <Input
+                      type="number"
+                      min={remanenteAPagar}
+                      step="0.01"
+                      value={monto}
+                      onChange={(e) => setMonto(e.target.value)}
+                      disabled={!esEfectivo}
+                      className="pl-7 h-11 text-base font-bold font-mono"
                     />
                   </div>
+                  {!esEfectivo && (
+                    <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+                      El monto debe ser exacto para este método de pago.
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span>
-                El pedido quedará <strong>100% saldado</strong> utilizando el saldo a favor disponible.
-              </span>
-            </div>
-          )}
-        </div>
-      )}
 
-      <div className="flex flex-col gap-2.5 w-full mt-6 pt-4 border-t border-border">
-        <Button
-          className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white"
-          onClick={handleCobrar}
-          disabled={loading || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
-        >
-          {loading ? "Registrando..." : `Registrar Cobro ($${totalPedido.toLocaleString("es-AR")})`}
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full h-10 rounded-xl text-sm font-semibold"
-          onClick={() => onOpenChange(false)}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-      </div>
-    </FormSheet>
+                {vuelto > 0 && esEfectivo && (
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+                    <div className="flex justify-between items-center text-emerald-900 dark:text-emerald-300">
+                      <span className="text-xs font-semibold">Vuelto calculado:</span>
+                      <span className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-400">
+                        ${vuelto.toLocaleString("es-AR")}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-emerald-900 dark:text-emerald-300 font-bold">
+                          Acreditar vuelto como saldo a favor
+                        </span>
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                          {dejarVueltoAFavor 
+                            ? `Se sumará $${vuelto.toLocaleString("es-AR")} a la cuenta del cliente` 
+                            : `Se entregará $${vuelto.toLocaleString("es-AR")} en efectivo de caja`
+                          }
+                        </span>
+                      </div>
+                      <Switch
+                        checked={dejarVueltoAFavor}
+                        onCheckedChange={setDejarVueltoAFavor}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>
+                  El pedido quedará <strong>100% saldado</strong> utilizando el saldo a favor disponible.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2.5 w-full mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
+          <Button
+            className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleCobrar}
+            disabled={loading || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
+          >
+            {loading ? "Registrando..." : `Registrar Cobro ($${totalPedido.toLocaleString("es-AR")})`}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full h-10 rounded-xl text-sm font-semibold"
+            onClick={() => onOpenChange(false)}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+        </div>
+      </ResponsiveSheetContent>
+    </ResponsiveSheet>
   )
 }

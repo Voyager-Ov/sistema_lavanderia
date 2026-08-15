@@ -55,7 +55,7 @@ export const getPedidosImpagosCliente = async (clienteId: number) => {
   return response.data
 }
 
-export const cobrarPedidosCliente = async (clienteId: number, payload: { pedidosIds: number[]; metodoPagoId?: number; observaciones?: string }) => {
+export const cobrarPedidosCliente = async (clienteId: number, payload: { pedidosIds: number[]; metodoPagoId?: number; observaciones?: string; montoRecibido?: number; dejarVueltoAFavor?: boolean }) => {
   const response = await apiClient.post<{ success: boolean, data: any }>(`/clientes/${clienteId}/cobrar-pedidos`, payload)
   return response.data
 }

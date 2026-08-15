@@ -273,7 +273,7 @@ class ClientesService {
         }
         const tenantDb = await connectionManager.getTenantDb(negocioId);
         const { pagosService } = await import("../../finanzas/services/pagos.service.js");
-        const { pedidosIds, metodoPagoId, observaciones } = data;
+        const { pedidosIds, metodoPagoId, observaciones, montoRecibido, dejarVueltoAFavor } = data;
 
         if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
             throw new AppError("Debe seleccionar al menos un pedido para cobrar.", 400, "MISSING_ORDERS_TO_CHARGE");
@@ -297,13 +297,29 @@ class ClientesService {
                 }
             }
 
+            const totalTargetMonto = pedidosTarget.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
+            const numRecibido = parseFloat(montoRecibido);
+
             const resultadosCobros = [];
             let totalCobrado = 0;
 
-            for (const pedidoId of pedidosIds) {
+            for (let i = 0; i < pedidosTarget.length; i++) {
+                const p = pedidosTarget[i];
+                const isLast = i === pedidosTarget.length - 1;
+                const montoPedido = parseFloat(p.total) || 0;
+
+                // Para el último pedido en la selección masiva, pasamos el excedente recibido para vuelto o saldo a favor
+                let pRecibido = montoPedido;
+                if (isLast && !isNaN(numRecibido) && numRecibido > totalTargetMonto) {
+                    pRecibido = montoPedido + (numRecibido - totalTargetMonto);
+                }
+
                 const cobroRes = await pagosService.registrarPago(negocioId, {
-                    pedidoId,
+                    pedidoId: p.numeroPedido,
                     metodoPagoId,
+                    monto: montoPedido,
+                    montoRecibido: pRecibido,
+                    dejarVueltoAFavor: isLast ? !!dejarVueltoAFavor : false,
                     observaciones: observaciones || `Cobro Pedidos de Cliente #${clienteId}`
                 }, { transaction: t });
 

@@ -64,6 +64,7 @@ export function CobrarPedidosClienteSheet({
   const [loading, setLoading] = useState(false)
   const [saldoAFavorTotal, setSaldoAFavorTotal] = useState(0)
   const [aplicarCredito, setAplicarCredito] = useState(false)
+  const [dejarVueltoAFavor, setDejarVueltoAFavor] = useState(false)
 
   // Cálculo fail-safe del total de pedidos seleccionados (excluye pedidos cancelados)
   const totalPedidos = useMemo(() => {
@@ -91,6 +92,7 @@ export function CobrarPedidosClienteSheet({
   useEffect(() => {
     if (open && clienteId) {
       setAplicarCredito(false)
+      setDejarVueltoAFavor(false)
 
       obtenerMetodosPago()
         .then((data) => {
@@ -116,6 +118,7 @@ export function CobrarPedidosClienteSheet({
       setMonto("")
       setSelectedMetodo("")
       setSaldoAFavorTotal(0)
+      setDejarVueltoAFavor(false)
     }
   }, [open, clienteId])
 
@@ -175,6 +178,8 @@ export function CobrarPedidosClienteSheet({
       await cobrarPedidosCliente(clienteId, {
         pedidosIds,
         metodoPagoId: remanenteAPagar > 0 ? parseInt(selectedMetodo) : undefined,
+        montoRecibido: remanenteAPagar > 0 && monto ? montoNum : undefined,
+        dejarVueltoAFavor: vuelto > 0 ? dejarVueltoAFavor : false,
         observaciones: `Cobro en mostrador de ${pedidosSeleccionados.length} pedido(s)`
       })
 
@@ -329,12 +334,29 @@ export function CobrarPedidosClienteSheet({
               </div>
 
               {vuelto > 0 && esEfectivo && (
-                <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-2">
+                <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
                   <div className="flex justify-between items-center text-emerald-900 dark:text-emerald-300">
                     <span className="text-xs font-semibold">Vuelto calculado:</span>
                     <span className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-400">
                       ${vuelto.toLocaleString("es-AR")}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-emerald-900 dark:text-emerald-300 font-bold">
+                        Acreditar vuelto como saldo a favor
+                      </span>
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                        {dejarVueltoAFavor 
+                          ? `Se sumará $${vuelto.toLocaleString("es-AR")} a la cuenta del cliente` 
+                          : `Se entregará $${vuelto.toLocaleString("es-AR")} en efectivo de caja`
+                        }
+                      </span>
+                    </div>
+                    <Switch
+                      checked={dejarVueltoAFavor}
+                      onCheckedChange={setDejarVueltoAFavor}
+                    />
                   </div>
                 </div>
               )}
