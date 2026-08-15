@@ -180,6 +180,7 @@ export function CobrarPedidosClienteSheet({
         metodoPagoId: remanenteAPagar > 0 ? parseInt(selectedMetodo) : undefined,
         montoRecibido: remanenteAPagar > 0 && monto ? montoNum : undefined,
         dejarVueltoAFavor: vuelto > 0 ? dejarVueltoAFavor : false,
+        aplicarSaldoAFavor: aplicarCredito,
         observaciones: `Cobro en mostrador de ${pedidosSeleccionados.length} pedido(s)`
       })
 
@@ -241,7 +242,9 @@ export function CobrarPedidosClienteSheet({
                     Saldo a favor disponible: ${saldoAFavorTotal.toLocaleString("es-AR")}
                   </p>
                   <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                    Aplicar ${creditoAAplicar.toLocaleString("es-AR")} a este cobro
+                    {aplicarCredito 
+                      ? `Aplicar $${creditoAAplicar.toLocaleString("es-AR")} de saldo a favor a este cobro` 
+                      : `Usar saldo a favor de $${saldoAFavorTotal.toLocaleString("es-AR")} para este cobro`}
                   </p>
                 </div>
               </div>

@@ -9,6 +9,7 @@ export interface Cliente {
   direccion?: string
   activo: boolean
   saldoDeuda?: number
+  saldoAFavor?: number
   pedidosImpagosCount?: number
   cuentaCorriente?: {
     saldo: number
@@ -55,7 +56,7 @@ export const getPedidosImpagosCliente = async (clienteId: number) => {
   return response.data
 }
 
-export const cobrarPedidosCliente = async (clienteId: number, payload: { pedidosIds: number[]; metodoPagoId?: number; observaciones?: string; montoRecibido?: number; dejarVueltoAFavor?: boolean }) => {
+export const cobrarPedidosCliente = async (clienteId: number, payload: { pedidosIds: number[]; metodoPagoId?: number; observaciones?: string; montoRecibido?: number; dejarVueltoAFavor?: boolean; aplicarSaldoAFavor?: boolean }) => {
   const response = await apiClient.post<{ success: boolean, data: any }>(`/clientes/${clienteId}/cobrar-pedidos`, payload)
   return response.data
 }

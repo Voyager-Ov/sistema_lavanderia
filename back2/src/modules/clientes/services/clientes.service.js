@@ -282,14 +282,21 @@ class ClientesService {
         const tenantContext = await connectionManager.getTenantDb(negocioId);
         const sequelize = tenantContext.sequelize || tenantContext;
         const { pagosService } = await import("../../finanzas/services/pagos.service.js");
-        const { pedidosIds, metodoPagoId, observaciones, montoRecibido, dejarVueltoAFavor } = data;
+        const { pedidosIds, metodoPagoId, observaciones, montoRecibido, dejarVueltoAFavor, aplicarSaldoAFavor } = data;
 
         if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
             throw new AppError("Debe seleccionar al menos un pedido para cobrar.", 400, "MISSING_ORDERS_TO_CHARGE");
         }
 
         return await sequelize.transaction(async (t) => {
-            const { Pedido, DetallePedido } = await this._getModels(negocioId);
+            const { Pedido, DetallePedido, CuentaCorriente } = await this._getModels(negocioId);
+
+            // Obtener saldo a favor disponible del cliente si solicitó aplicarlo
+            let saldoAFavorDisponible = 0;
+            if (aplicarSaldoAFavor && clienteId) {
+                const cc = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
+                if (cc) saldoAFavorDisponible = parseFloat(cc.saldo) || 0;
+            }
 
             // Validar atómicamente e incluir detalles para asegurar el monto real del pedido
             const pedidosTarget = await Pedido.findAll({
@@ -336,10 +343,19 @@ class ClientesService {
                     await p.update({ total: montoPedido }, { transaction: t });
                 }
 
+                // Calcular cuánto de este pedido se cubre con Saldo a Favor disponible
+                let creditoParaEstePedido = 0;
+                if (aplicarSaldoAFavor && saldoAFavorDisponible > 0) {
+                    creditoParaEstePedido = Math.min(saldoAFavorDisponible, montoPedido);
+                    saldoAFavorDisponible -= creditoParaEstePedido;
+                }
+
+                const remanenteAbonarPedido = Math.max(0, montoPedido - creditoParaEstePedido);
+
                 // Para el último pedido en la selección masiva, pasamos el excedente recibido para vuelto o saldo a favor
-                let pRecibido = montoPedido;
-                if (isLast && !isNaN(numRecibido) && numRecibido > totalTargetMonto) {
-                    pRecibido = montoPedido + (numRecibido - totalTargetMonto);
+                let pRecibido = remanenteAbonarPedido;
+                if (isLast && !isNaN(numRecibido) && numRecibido > remanenteAbonarPedido) {
+                    pRecibido = numRecibido;
                 }
 
                 const cobroRes = await pagosService.registrarPago(negocioId, {
@@ -347,6 +363,8 @@ class ClientesService {
                     metodoPagoId,
                     monto: montoPedido,
                     montoRecibido: pRecibido,
+                    aplicarSaldoAFavor: creditoParaEstePedido > 0,
+                    montoSaldoAFavor: creditoParaEstePedido,
                     dejarVueltoAFavor: isLast ? !!dejarVueltoAFavor : false,
                     observaciones: observaciones || `Cobro Pedidos de Cliente #${clienteId}`
                 }, { transaction: t });

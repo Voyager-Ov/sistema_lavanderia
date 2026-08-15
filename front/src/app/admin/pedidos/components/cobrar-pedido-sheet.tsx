@@ -212,7 +212,9 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
                       Saldo a favor disponible: ${saldoAFavorTotal.toLocaleString("es-AR")}
                     </p>
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                      Aplicar ${creditoAAplicar.toLocaleString("es-AR")} a este pedido
+                      {aplicarCredito 
+                        ? `Aplicar $${creditoAAplicar.toLocaleString("es-AR")} de saldo a favor a este pedido` 
+                        : `Usar saldo a favor de $${saldoAFavorTotal.toLocaleString("es-AR")} para este pedido`}
                     </p>
                   </div>
                 </div>

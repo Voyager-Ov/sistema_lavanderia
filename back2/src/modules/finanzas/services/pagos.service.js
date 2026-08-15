@@ -156,13 +156,29 @@ class PagosService {
 
         const montoTotal = parseFloat(pedido.total) || 0;
         const montoAbonado = parseFloat(params.monto) || montoTotal;
-        const montoRecibido = parseFloat(params.montoRecibido) || montoAbonado;
+
+        // Descontar Saldo a Favor si fue solicitado
+        let creditoUsado = 0;
+        if (params.aplicarSaldoAFavor && pedido.clienteId) {
+            let cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
+            const saldoDisponible = cuenta ? parseFloat(cuenta.saldo) || 0 : 0;
+            if (saldoDisponible > 0) {
+                const aDescontar = Math.min(saldoDisponible, parseFloat(params.montoSaldoAFavor) || montoAbonado);
+                if (aDescontar > 0) {
+                    creditoUsado = aDescontar;
+                    await cuenta.update({ saldo: saldoDisponible - aDescontar }, { transaction: t });
+                }
+            }
+        }
+
+        const remanenteAbonar = Math.max(0, montoAbonado - creditoUsado);
+        const montoRecibido = parseFloat(params.montoRecibido) || remanenteAbonar;
 
         let vuelto = 0;
         let saldoGenerado = 0;
 
-        if (montoRecibido > montoAbonado) {
-            const diferencia = montoRecibido - montoAbonado;
+        if (montoRecibido > remanenteAbonar) {
+            const diferencia = montoRecibido - remanenteAbonar;
             if (params.dejarVueltoAFavor) {
                 saldoGenerado = diferencia;
             } else {
@@ -177,16 +193,20 @@ class PagosService {
             if (metodoDefault) metodoId = metodoDefault.id;
         }
 
-        // Buscar caja abierta para asociar movimiento
+        // Buscar caja abierta para asociar movimiento de dinero real entrante
         const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
 
         let movimientoCajaId = null;
         if (cajaAbierta) {
             const numPed = pedido.numeroPedido || pedido.id;
+            const obsText = creditoUsado > 0
+                ? `Cobro Pedido #${numPed} (Crédito a favor aplicado: $${creditoUsado})`
+                : `Cobro Pedido #${numPed}`;
+
             const nuevoMovimiento = await MovimientoCaja.create({
-                monto: montoAbonado,
+                monto: remanenteAbonar,
                 tipoMovimiento: "Ingreso por Venta",
-                observacion: `Cobro Pedido #${numPed}`,
+                observacion: obsText,
                 cajaIdCaja: cajaAbierta.idCaja
             }, { transaction: t });
             movimientoCajaId = nuevoMovimiento.id;
