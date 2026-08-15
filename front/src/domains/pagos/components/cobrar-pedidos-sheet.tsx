@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { cobrarPedidosCliente } from "@/domains/clientes/api"
 import { MetodoPago, obtenerMetodosPago, registrarPago, obtenerSaldosAFavorCliente } from "@/domains/pagos/api"
+import { obtenerCajaActual } from "@/domains/caja/caja.api"
+import { useRouter } from "next/navigation"
 import {
   ResponsiveSheet,
   ResponsiveSheetContent,
@@ -26,7 +28,8 @@ import {
   Gem,
   DollarSign,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react"
 
 const ICON_MAP: Record<string, any> = {
@@ -65,6 +68,8 @@ export function CobrarPedidosSheet({
   const [saldoAFavorTotal, setSaldoAFavorTotal] = useState(0)
   const [aplicarCredito, setAplicarCredito] = useState(false)
   const [dejarVueltoAFavor, setDejarVueltoAFavor] = useState(false)
+  const [isCajaAbierta, setIsCajaAbierta] = useState(true)
+  const router = useRouter()
 
   // Determinar cliente id y nombre de forma dinámica desde las props o los pedidos
   const effectiveClienteId = useMemo(() => {
@@ -125,6 +130,13 @@ export function CobrarPedidosSheet({
         })
         .catch(() => toast.error("Error al cargar los métodos de pago"))
 
+      obtenerCajaActual()
+        .then((caja) => {
+          const abierta = !!caja && (caja.estado === "ABIERTA" || (caja as any).estadoCaja === "Abierta")
+          setIsCajaAbierta(abierta)
+        })
+        .catch(() => setIsCajaAbierta(false))
+
       if (effectiveClienteId) {
         obtenerSaldosAFavorCliente(effectiveClienteId)
           .then((creditos) => {
@@ -166,6 +178,11 @@ export function CobrarPedidosSheet({
   const esEfectivo = metodoObj?.nombre.toLowerCase().includes("efectivo")
 
   const handleCobrar = async () => {
+    if (!isCajaAbierta) {
+      toast.error("Debe abrir una caja antes de registrar un cobro.")
+      return
+    }
+
     if (!pedidos || pedidos.length === 0) {
       toast.error("Seleccione al menos un pedido impago para cobrar.")
       return
@@ -440,11 +457,26 @@ export function CobrarPedidosSheet({
           )}
         </div>
 
+        {!isCajaAbierta && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center justify-between text-amber-800 dark:text-amber-200 text-xs mb-4">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <strong className="block text-amber-900 dark:text-amber-100 font-bold">Caja Cerrada</strong>
+                <span>Debe abrir la caja para poder cobrar.</span>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => router.push("/admin/caja")} className="text-xs h-8 font-bold border-amber-300 dark:border-amber-700">
+              Abrir Caja
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2.5 w-full mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
           <Button
-            className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
             onClick={handleCobrar}
-            disabled={loading || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
+            disabled={loading || !isCajaAbierta || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
           >
             {loading ? "Registrando..." : `Registrar Cobro ($${totalPedidos.toLocaleString("es-AR")})`}
           </Button>

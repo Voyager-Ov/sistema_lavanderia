@@ -13,7 +13,8 @@ async function runExtremeStressTest() {
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
         const tenantDb = await connectionManager.getTenantDb(negocioId);
-        const { Pedido, CuentaCorriente, Cobro, MovimientoCaja } = tenantDb.models;
+        const { Pedido, CuentaCorriente, Cobro, MovimientoCaja, Caja } = tenantDb.models;
+        await Caja.create({ montoInicialEfectivo: 10000, estadoCaja: "Abierta", negocioId });
 
         // Setup base catalog
         const cat = await categoriasService.crearCategoria(negocioId, { nombre: "Servicios Especiales " + Date.now() });

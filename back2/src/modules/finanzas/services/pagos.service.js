@@ -208,8 +208,11 @@ class PagosService {
                 if (metodoDefault) metodoId = metodoDefault.id;
             }
 
-            // Buscar caja abierta para asociar movimiento real de efectivo en mostrador
+            // Buscar caja abierta obligatoria para registrar el cobro y asociar el movimiento
             const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
+            if (!cajaAbierta) {
+                throw new AppError("No hay una caja abierta actualmente. Debe abrir la caja antes de registrar un cobro.", 400, "NO_OPEN_CASH_REGISTER");
+            }
 
             const cobrosResultados = [];
             let saldoAFavorConsumidoTotal = 0;
