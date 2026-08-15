@@ -334,29 +334,52 @@ export function CobrarPedidosClienteSheet({
               </div>
 
               {vuelto > 0 && esEfectivo && (
-                <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 space-y-3">
-                  <div className="flex justify-between items-center text-emerald-900 dark:text-emerald-300">
-                    <span className="text-xs font-semibold">Vuelto calculado:</span>
-                    <span className="text-lg font-black font-mono text-emerald-700 dark:text-emerald-400">
-                      ${vuelto.toLocaleString("es-AR")}
-                    </span>
+                <div className="space-y-2 pt-1">
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-xs font-bold uppercase text-gray-500 dark:text-neutral-400">
+                      Vuelto Calculado: <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">${vuelto.toLocaleString("es-AR")}</span>
+                    </Label>
+                    <span className="text-[11px] text-gray-400 dark:text-neutral-500 font-medium">¿Qué hacer con el vuelto?</span>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-emerald-900 dark:text-emerald-300 font-bold">
-                        Acreditar vuelto como saldo a favor
-                      </span>
-                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                        {dejarVueltoAFavor 
-                          ? `Se sumará $${vuelto.toLocaleString("es-AR")} a la cuenta del cliente` 
-                          : `Se entregará $${vuelto.toLocaleString("es-AR")} en efectivo de caja`
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Card 1: Entregar Vuelto en Efectivo */}
+                    <div
+                      onClick={() => setDejarVueltoAFavor(false)}
+                      className={`
+                        cursor-pointer flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 text-center
+                        ${
+                          !dejarVueltoAFavor
+                            ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 shadow-sm scale-[1.02]"
+                            : "border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-gray-300 dark:hover:border-neutral-700 text-gray-600 dark:text-neutral-400"
                         }
+                      `}
+                    >
+                      <Banknote className={`w-5 h-5 mb-1 ${!dejarVueltoAFavor ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"}`} />
+                      <span className="text-xs font-black block">Entregar Vuelto</span>
+                      <span className="text-[10px] opacity-80 font-medium block mt-0.5 font-mono">
+                        ${vuelto.toLocaleString("es-AR")} en efectivo
                       </span>
                     </div>
-                    <Switch
-                      checked={dejarVueltoAFavor}
-                      onCheckedChange={setDejarVueltoAFavor}
-                    />
+
+                    {/* Card 2: Dejar como Saldo a Favor */}
+                    <div
+                      onClick={() => setDejarVueltoAFavor(true)}
+                      className={`
+                        cursor-pointer flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 text-center
+                        ${
+                          dejarVueltoAFavor
+                            ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 shadow-sm scale-[1.02]"
+                            : "border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-gray-300 dark:hover:border-neutral-700 text-gray-600 dark:text-neutral-400"
+                        }
+                      `}
+                    >
+                      <Sparkles className={`w-5 h-5 mb-1 ${dejarVueltoAFavor ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
+                      <span className="text-xs font-black block">Saldo a Favor</span>
+                      <span className="text-[10px] opacity-80 font-medium block mt-0.5">
+                        Acreditar a cuenta
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
