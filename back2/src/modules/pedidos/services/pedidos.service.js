@@ -40,8 +40,7 @@ class PedidosService {
             }
         }
 
-        const costoEnvio = parseFloat(plain.costoEnvio) || 0;
-        const total = subtotalItems + costoEnvio;
+        const total = subtotalItems;
 
         // Calcular total cobrado
         let totalCobrado = 0;
@@ -106,7 +105,7 @@ class PedidosService {
             observaciones: plain.observaciones,
             notas: plain.observaciones,
             origen: plain.origen,
-            costoEnvio,
+            costoEnvio: 0,
             subtotalItems,
             total,
             totalCobrado,
@@ -344,9 +343,7 @@ class PedidosService {
             });
         }
 
-        const costoEnvio = parseFloat(data.costoEnvio || 0);
-        const totalFinalCalculado = subtotalTotal + costoEnvio;
-        await nuevoPedido.update({ subtotal: subtotalTotal, total: totalFinalCalculado });
+        await nuevoPedido.update({ subtotal: subtotalTotal, total: subtotalTotal });
 
         // Asignar estado inicial PENDIENTE
         let estadoInicial = await Estado.findOne({ where: { nombre: "PENDIENTE" } });

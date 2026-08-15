@@ -179,8 +179,7 @@ class PagosService {
                         return acc + (precio * cant);
                     }, 0);
                 }
-                const costoEnvio = parseFloat(p.costoEnvio) || 0;
-                return parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+                return parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
             };
 
             const totalMontoPedidos = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);

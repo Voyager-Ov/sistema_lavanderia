@@ -94,8 +94,7 @@ class ClientesService {
                         return sub + (precio * cant);
                     }, 0);
                 }
-                const costoEnvio = parseFloat(p.costoEnvio) || 0;
-                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
                 return acc + finalTotal;
             }, 0);
 
@@ -168,8 +167,7 @@ class ClientesService {
                     return acc + (precio * cant);
                 }, 0);
             }
-            const costoEnvio = parseFloat(p.costoEnvio) || 0;
-            const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+            const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
 
             return {
                 ...p,
@@ -245,8 +243,7 @@ class ClientesService {
                         return acc + (precio * cant);
                     }, 0);
                 }
-                const costoEnvio = parseFloat(p.costoEnvio) || 0;
-                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+                const finalTotal = parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
                 const esEntregado = isPedidoEntregadoEImpago(p);
 
                 return {
