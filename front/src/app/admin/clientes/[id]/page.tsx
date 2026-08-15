@@ -17,7 +17,7 @@ import { getPedidosImpagosCliente } from "@/domains/clientes/api"
 import { Button } from "@/shared/ui/forms/button"
 import { Checkbox } from "@/shared/ui/forms/checkbox"
 import { KpiCard as DashboardKpi } from "@/shared/ui/data-display/kpi-card"
-import { CobrarPedidosClienteSheet } from "../components/cobrar-pedidos-cliente-sheet"
+import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
 import { DataTableBulkActions, BulkAction } from "@/shared/ui/data-display/data-table-bulk-actions"
 import { safeFormatDate } from "@/shared/lib/utils"
 import { toast } from "sonner"
@@ -568,13 +568,13 @@ export default function ClienteDetailPage() {
         onClearSelection={() => setSelectedPedidoIds([])}
       />
 
-      {/* ── SIDESHEET RESPONSIVO DE COBRO DE PEDIDOS ───────────────── */}
-      <CobrarPedidosClienteSheet
+      {/* ── SIDESHEET RESPONSIVO UNIFICADO DE COBRO ───────────────── */}
+      <CobrarPedidosSheet
         open={modalCobroOpen}
         onOpenChange={setModalCobroOpen}
         clienteId={cliente.id}
         clienteNombre={nombreCompleto}
-        pedidosSeleccionados={pedidosParaCobroSheet}
+        pedidos={pedidosParaCobroSheet}
         onSuccess={() => {
           setSelectedPedidoIds([])
           fetchCliente()

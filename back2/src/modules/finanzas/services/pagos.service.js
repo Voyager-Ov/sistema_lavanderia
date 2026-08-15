@@ -126,121 +126,213 @@ class PagosService {
         return { message: "Método de pago eliminado exitosamente." };
     }
 
-    // Registrar pago de pedido
-    async registrarPago(negocioId, params, options = {}) {
+    // Método Único y Centralizado para procesar Cobros (1 o N pedidos, saldo a favor y transacción ACID)
+    async procesarCobro(negocioId, params, options = {}) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Pedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
-        const t = options.transaction;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        const sequelize = tenantContext.sequelize || tenantContext;
+        const outerTransaction = options.transaction;
 
-        const pedidoId = params.pedidoId || params.pedidoNumeroPedido;
-        if (!pedidoId) {
-            throw new AppError("El ID del pedido es obligatorio para registrar un pago.", 400, "MISSING_ORDER_ID");
-        }
+        const executeTransaction = async (t) => {
+            const { Pedido, DetallePedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
 
-        const pedido = await Pedido.findOne({ where: { numeroPedido: pedidoId }, transaction: t });
-        if (!pedido) {
-            throw new AppError("Pedido no encontrado para cobrar.", 404, "ORDER_NOT_FOUND");
-        }
+            let pedidosIds = params.pedidosIds || params.pedidoIds || [];
+            if (!Array.isArray(pedidosIds) && (params.pedidoId || params.pedidoNumeroPedido)) {
+                pedidosIds = [params.pedidoId || params.pedidoNumeroPedido];
+            }
 
-        // VALIDACIÓN ACID DE ESTADO CANCELADO / COBRADO
-        const estUpper = (pedido.estado || "").toString().toUpperCase();
-        if (estUpper.includes("CANCELAD")) {
-            throw new AppError(`No se puede cobrar el pedido #${pedidoId} porque se encuentra cancelado.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
-        }
+            if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
+                throw new AppError("Debe especificar al menos un pedido para cobrar.", 400, "MISSING_ORDER_ID");
+            }
 
-        if (pedido.cobrado) {
-            throw new AppError("El pedido ya se encuentra cobrado.", 400, "ORDER_ALREADY_PAID");
-        }
+            // Buscar pedidos con sus detalles
+            const pedidosTarget = await Pedido.findAll({
+                where: { numeroPedido: pedidosIds },
+                include: [{ model: DetallePedido, as: "detalles" }],
+                transaction: t
+            });
 
-        const montoTotal = parseFloat(pedido.total) || 0;
-        const montoAbonado = parseFloat(params.monto) || montoTotal;
+            if (pedidosTarget.length === 0) {
+                throw new AppError("No se encontraron los pedidos especificados.", 404, "ORDER_NOT_FOUND");
+            }
 
-        // Descontar Saldo a Favor si fue solicitado
-        let creditoUsado = 0;
-        if (params.aplicarSaldoAFavor && pedido.clienteId) {
-            let cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
-            const saldoDisponible = cuenta ? parseFloat(cuenta.saldo) || 0 : 0;
-            if (saldoDisponible > 0) {
-                const aDescontar = Math.min(saldoDisponible, parseFloat(params.montoSaldoAFavor) || montoAbonado);
-                if (aDescontar > 0) {
-                    creditoUsado = aDescontar;
-                    await cuenta.update({ saldo: saldoDisponible - aDescontar }, { transaction: t });
+            for (const p of pedidosTarget) {
+                const estUpper = (p.estado || "").toString().toUpperCase();
+                if (estUpper.includes("CANCELAD")) {
+                    throw new AppError(`No se puede cobrar el pedido #${p.numeroPedido} porque se encuentra cancelado.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
+                }
+                if (p.cobrado) {
+                    throw new AppError(`El pedido #${p.numeroPedido} ya se encuentra cobrado.`, 400, "ORDER_ALREADY_PAID");
                 }
             }
-        }
 
-        const remanenteAbonar = Math.max(0, montoAbonado - creditoUsado);
-        const montoRecibido = parseFloat(params.montoRecibido) || remanenteAbonar;
+            // Función de cálculo de monto real
+            const calcularMontoReal = (p) => {
+                let subtotalItems = 0;
+                if (p.detalles && Array.isArray(p.detalles)) {
+                    subtotalItems = p.detalles.reduce((acc, d) => {
+                        const precio = parseFloat(d.precioHistorico) || parseFloat(d.precioUnitario) || 0;
+                        const cant = parseInt(d.cantidad) || 1;
+                        return acc + (precio * cant);
+                    }, 0);
+                }
+                const costoEnvio = parseFloat(p.costoEnvio) || 0;
+                return parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
+            };
 
-        let vuelto = 0;
-        let saldoGenerado = 0;
+            const totalMontoPedidos = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
+            
+            // Cliente asociado (si viene o de los pedidos)
+            const clienteId = params.clienteId || pedidosTarget[0]?.clienteId;
 
-        if (montoRecibido > remanenteAbonar) {
-            const diferencia = montoRecibido - remanenteAbonar;
-            if (params.dejarVueltoAFavor) {
-                saldoGenerado = diferencia;
-            } else {
-                vuelto = diferencia;
+            // Obtener saldo a favor disponible si fue solicitado
+            let saldoAFavorDisponible = 0;
+            if (params.aplicarSaldoAFavor && clienteId) {
+                const cc = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
+                if (cc) saldoAFavorDisponible = Math.max(0, parseFloat(cc.saldo) || 0);
             }
-        }
 
-        // Obtener el método de pago especificado o tomar el primero activo del negocio
-        let metodoId = params.metodoPagoId;
-        if (!metodoId) {
-            const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]], transaction: t });
-            if (metodoDefault) metodoId = metodoDefault.id;
-        }
+            const creditoTotalUtilizable = params.aplicarSaldoAFavor ? Math.min(saldoAFavorDisponible, totalMontoPedidos) : 0;
+            const remanenteTotalEfectivo = Math.max(0, totalMontoPedidos - creditoTotalUtilizable);
 
-        // Buscar caja abierta para asociar movimiento de dinero real entrante
-        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
+            const numRecibido = parseFloat(params.montoRecibido);
+            const cashRecibidoReal = remanenteTotalEfectivo > 0 && !isNaN(numRecibido) ? numRecibido : 0;
+            const permitirSaldoAFavorFinal = remanenteTotalEfectivo > 0 && !!params.dejarVueltoAFavor;
 
-        let movimientoCajaId = null;
-        if (cajaAbierta) {
-            const numPed = pedido.numeroPedido || pedido.id;
-            const obsText = creditoUsado > 0
-                ? `Cobro Pedido #${numPed} (Crédito a favor aplicado: $${creditoUsado})`
-                : `Cobro Pedido #${numPed}`;
-
-            const nuevoMovimiento = await MovimientoCaja.create({
-                monto: remanenteAbonar,
-                tipoMovimiento: "Ingreso por Venta",
-                observacion: obsText,
-                cajaIdCaja: cajaAbierta.idCaja
-            }, { transaction: t });
-            movimientoCajaId = nuevoMovimiento.id;
-        }
-
-        const nuevoCobro = await Cobro.create({
-            montoAbonado,
-            montoRecibidoEfectivo: montoRecibido,
-            vueltoEntregado: vuelto,
-            fechaHora: new Date(),
-            pedidoNumeroPedido: pedido.numeroPedido,
-            metodoPagoId: metodoId,
-            movimientoCajaId
-        }, { transaction: t });
-
-        // Marcar pedido como cobrado
-        await pedido.update({ cobrado: true }, { transaction: t });
-
-        // Si se generó saldo a favor, impactar cuenta corriente del cliente
-        if (saldoGenerado > 0 && pedido.clienteId) {
-            let cuenta = await CuentaCorriente.findOne({ where: { clienteId: pedido.clienteId }, transaction: t });
-            if (cuenta) {
-                await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGenerado }, { transaction: t });
-            } else {
-                await CuentaCorriente.create({ clienteId: pedido.clienteId, saldo: saldoGenerado }, { transaction: t });
+            // Método de pago
+            let metodoId = params.metodoPagoId;
+            if (!metodoId) {
+                const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]], transaction: t });
+                if (metodoDefault) metodoId = metodoDefault.id;
             }
-        }
 
+            // Buscar caja abierta para asociar movimiento real de efectivo en mostrador
+            const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
+
+            const cobrosResultados = [];
+            let saldoAFavorConsumidoTotal = 0;
+
+            for (let i = 0; i < pedidosTarget.length; i++) {
+                const p = pedidosTarget[i];
+                const isLast = i === pedidosTarget.length - 1;
+                const montoPedido = calcularMontoReal(p);
+
+                // Si el total en la tabla figuraba en 0, actualizamos transparentemente el comprobante
+                if (parseFloat(p.total || 0) === 0 && montoPedido > 0) {
+                    await p.update({ total: montoPedido }, { transaction: t });
+                }
+
+                // Crédito aplicado a este pedido particular
+                let creditoUsadoPedido = 0;
+                if (params.aplicarSaldoAFavor && saldoAFavorDisponible > 0) {
+                    creditoUsadoPedido = Math.min(saldoAFavorDisponible, montoPedido);
+                    saldoAFavorDisponible -= creditoUsadoPedido;
+                    saldoAFavorConsumidoTotal += creditoUsadoPedido;
+                }
+
+                // Descontar del saldo en Cuenta Corriente si aplicó crédito
+                if (creditoUsadoPedido > 0 && clienteId) {
+                    let cuenta = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
+                    if (cuenta) {
+                        const nuevoSaldo = Math.max(0, (parseFloat(cuenta.saldo) || 0) - creditoUsadoPedido);
+                        await cuenta.update({ saldo: nuevoSaldo }, { transaction: t });
+                    }
+                }
+
+                const remanenteAbonarPedido = Math.max(0, montoPedido - creditoUsadoPedido);
+                let pRecibido = remanenteAbonarPedido;
+                let vueltoPedido = 0;
+                let saldoGeneradoPedido = 0;
+
+                if (isLast && remanenteTotalEfectivo > 0 && cashRecibidoReal > remanenteAbonarPedido) {
+                    pRecibido = cashRecibidoReal;
+                    const diferencia = cashRecibidoReal - remanenteAbonarPedido;
+                    if (permitirSaldoAFavorFinal) {
+                        saldoGeneradoPedido = diferencia;
+                    } else {
+                        vueltoPedido = diferencia;
+                    }
+                }
+
+                // Generar movimiento de caja solo por dinero en efectivo físico recibido hoy
+                let movimientoCajaId = null;
+                if (cajaAbierta && remanenteAbonarPedido > 0) {
+                    const numPed = p.numeroPedido || p.id;
+                    const obsText = creditoUsadoPedido > 0
+                        ? `Cobro Pedido #${numPed} (Crédito a favor aplicado: $${creditoUsadoPedido})`
+                        : `Cobro Pedido #${numPed}`;
+
+                    const nuevoMovimiento = await MovimientoCaja.create({
+                        monto: remanenteAbonarPedido,
+                        tipoMovimiento: "Ingreso por Venta",
+                        observacion: obsText,
+                        cajaIdCaja: cajaAbierta.idCaja
+                    }, { transaction: t });
+                    movimientoCajaId = nuevoMovimiento.id;
+                }
+
+                const nuevoCobro = await Cobro.create({
+                    montoAbonado: montoPedido,
+                    montoRecibidoEfectivo: pRecibido,
+                    vueltoEntregado: vueltoPedido,
+                    fechaHora: new Date(),
+                    pedidoNumeroPedido: p.numeroPedido,
+                    metodoPagoId: metodoId,
+                    movimientoCajaId
+                }, { transaction: t });
+
+                // Marcar pedido como cobrado
+                await p.update({ cobrado: true }, { transaction: t });
+
+                // Si se generó saldo a favor por vuelto excedente, actualizar cuenta corriente
+                if (saldoGeneradoPedido > 0 && clienteId) {
+                    let cuenta = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
+                    if (cuenta) {
+                        await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGeneradoPedido }, { transaction: t });
+                    } else {
+                        await CuentaCorriente.create({ clienteId, saldo: saldoGeneradoPedido }, { transaction: t });
+                    }
+                }
+
+                cobrosResultados.push({
+                    id: nuevoCobro.id,
+                    pedidoId: p.numeroPedido,
+                    monto: montoPedido,
+                    creditoUsado: creditoUsadoPedido,
+                    remanenteAbonado: remanenteAbonarPedido,
+                    vueltoEntregado: vueltoPedido,
+                    saldoAFavorGenerado: saldoGeneradoPedido
+                });
+            }
+
+            return {
+                clienteId: clienteId ? parseInt(clienteId) : null,
+                pedidosCobradosCount: cobrosResultados.length,
+                totalMontoCobrado: totalMontoPedidos,
+                creditoConsumidoTotal: saldoAFavorConsumidoTotal,
+                cobros: cobrosResultados
+            };
+        };
+
+        if (outerTransaction) {
+            return await executeTransaction(outerTransaction);
+        } else {
+            return await sequelize.transaction(executeTransaction);
+        }
+    }
+
+    // Registrar pago individual (Delegado al método único procesarCobro)
+    async registrarPago(negocioId, params, options = {}) {
+        const res = await this.procesarCobro(negocioId, params, options);
+        const cobro = res.cobros[0];
         return {
-            id: nuevoCobro.id,
-            pedidoId: pedido.numeroPedido,
-            monto: montoAbonado,
-            montoAFavorGenerado: saldoGenerado,
-            vueltoEntregado: vuelto,
+            id: cobro?.id,
+            pedidoId: cobro?.pedidoId,
+            monto: cobro?.monto,
+            montoAFavorGenerado: cobro?.saldoAFavorGenerado,
+            vueltoEntregado: cobro?.vueltoEntregado,
             estado: "COMPLETADO"
         };
     }

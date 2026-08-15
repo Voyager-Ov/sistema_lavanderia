@@ -9,7 +9,7 @@ import { format, isBefore, isToday } from "date-fns"
 import { es } from "date-fns/locale"
 import { clsx } from "clsx"
 import { Button } from "@/shared/ui/forms/button"
-import { CobrarPedidoSheet } from "@/app/admin/pedidos/components/cobrar-pedido-sheet"
+import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
 import { CancelPedidoSheet } from "./cancel-pedido-sheet"
 
 const MAIN_COLUMNS = [
@@ -304,10 +304,10 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
         </div>
       </DragDropContext>
 
-      <CobrarPedidoSheet
+      <CobrarPedidosSheet
         open={isCobrarSheetOpen}
         onOpenChange={setIsCobrarSheetOpen}
-        pedido={pedidoToCobrar}
+        pedidos={pedidoToCobrar ? [pedidoToCobrar] : []}
         onSuccess={fetchBoard}
       />
       <CancelPedidoSheet

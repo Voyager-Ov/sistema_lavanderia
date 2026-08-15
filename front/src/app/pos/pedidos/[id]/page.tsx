@@ -6,7 +6,7 @@ import { PedidoDetailView } from "@/app/admin/pedidos/_components/pedido-detail-
 import { ArrowLeft } from "lucide-react"
 import { Pedido, getTicketHTML, cambiarEstadoPedido } from "@/domains/pedidos/api"
 import { toast } from "sonner"
-import { CobrarPedidoSheet } from "@/app/admin/pedidos/components/cobrar-pedido-sheet"
+import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
 import { CancelOrderSheet } from "@/app/admin/pedidos/components/cancel-order-sheet"
 
 export default function PosPedidoDetailPage() {
@@ -64,14 +64,14 @@ export default function PosPedidoDetailPage() {
         />
       </div>
 
-      <CobrarPedidoSheet 
+      <CobrarPedidosSheet 
         open={isCobrarSheetOpen} 
         onOpenChange={setIsCobrarSheetOpen} 
-        pedido={pedidoToCobrar}
+        pedidos={pedidoToCobrar ? [pedidoToCobrar] : []} 
         onSuccess={() => {
           setIsCobrarSheetOpen(false)
           window.location.reload()
-        }}
+        }} 
       />
 
       <CancelOrderSheet

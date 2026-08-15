@@ -4,10 +4,9 @@ import { cambiarEstadoPedido, getTicketHTML } from "@/domains/pedidos/api"
 import { ResponsiveSheet, ResponsiveSheetContent } from "@/shared/ui/overlays/responsive-sheet"
 import { CancelOrderSheet } from "../components/cancel-order-sheet"
 import { PedidoDetailView } from "../_components/pedido-detail-view"
-import { CobrarPedidoSheet } from "../components/cobrar-pedido-sheet"
+import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
 import { BulkCancellationWizard } from "../_components/bulk-cancellation-wizard"
 import { PrintQueueManager } from "../_components/print-queue-manager"
-import { BulkChargeModal } from "../_components/bulk-charge-modal"
 import { TicketPrintTemplate } from "../_components/ticket-print-template"
 
 interface PedidosModalsProps {
@@ -87,10 +86,10 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, s
         </ResponsiveSheetContent>
       </ResponsiveSheet>
       
-      <CobrarPedidoSheet 
+      <CobrarPedidosSheet 
         open={isCobrarSheetOpen} 
         onOpenChange={setIsCobrarSheetOpen} 
-        pedido={pedidoToCobrar}
+        pedidos={pedidoToCobrar ? [pedidoToCobrar] : []}
         onSuccess={() => {
           onActionSuccess()
         }}
@@ -120,17 +119,16 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, s
         />
       )}
 
-      <BulkChargeModal
+      <CobrarPedidosSheet
         open={isBulkChargeOpen}
         onOpenChange={setIsBulkChargeOpen}
-        pedidos={pedidosToBulkCharge}
+        pedidos={pedidosToBulkCharge || []}
         onSuccess={() => {
           onActionSuccess()
           if (typeof (window as any)._clearChargeSelection === "function") {
             (window as any)._clearChargeSelection()
           }
         }}
-        setRowErrors={setRowErrors}
       />
 
       {hiddenPedido && hiddenTickets.length > 0 && (

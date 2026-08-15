@@ -274,123 +274,28 @@ class ClientesService {
         };
     }
 
-    // Realizar cobro de pedidos seleccionados del cliente con Transacción ACID
+    // Realizar cobro de pedidos seleccionados del cliente (Delegado al servicio único transaccional pagosService.procesarCobro)
     async cobrarPedidosCliente(negocioId, clienteId, data) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const tenantContext = await connectionManager.getTenantDb(negocioId);
-        const sequelize = tenantContext.sequelize || tenantContext;
         const { pagosService } = await import("../../finanzas/services/pagos.service.js");
-        const { pedidosIds, metodoPagoId, observaciones, montoRecibido, dejarVueltoAFavor, aplicarSaldoAFavor } = data;
-
-        if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
-            throw new AppError("Debe seleccionar al menos un pedido para cobrar.", 400, "MISSING_ORDERS_TO_CHARGE");
-        }
-
-        return await sequelize.transaction(async (t) => {
-            const { Pedido, DetallePedido, CuentaCorriente } = await this._getModels(negocioId);
-
-            // Obtener saldo a favor disponible del cliente si solicitó aplicarlo
-            let saldoAFavorDisponible = 0;
-            if (aplicarSaldoAFavor && clienteId) {
-                const cc = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
-                if (cc) saldoAFavorDisponible = parseFloat(cc.saldo) || 0;
-            }
-
-            // Validar atómicamente e incluir detalles para asegurar el monto real del pedido
-            const pedidosTarget = await Pedido.findAll({
-                where: { numeroPedido: pedidosIds },
-                include: [{ model: DetallePedido, as: "detalles" }],
-                transaction: t
-            });
-
-            for (const p of pedidosTarget) {
-                if (isPedidoCancelado(p)) {
-                    throw new AppError(`El pedido #${p.numeroPedido} se encuentra cancelado y no se puede cobrar.`, 400, "CANNOT_CHARGE_CANCELLED_ORDER");
-                }
-                if (p.cobrado) {
-                    throw new AppError(`El pedido #${p.numeroPedido} ya se encuentra cobrado.`, 400, "ORDER_ALREADY_PAID");
-                }
-            }
-
-            const calcularMontoReal = (p) => {
-                let subtotalItems = 0;
-                if (p.detalles && Array.isArray(p.detalles)) {
-                    subtotalItems = p.detalles.reduce((acc, d) => {
-                        const precio = parseFloat(d.precioHistorico) || parseFloat(d.precioUnitario) || 0;
-                        const cant = parseInt(d.cantidad) || 1;
-                        return acc + (precio * cant);
-                    }, 0);
-                }
-                const costoEnvio = parseFloat(p.costoEnvio) || 0;
-                return parseFloat(p.total) > 0 ? parseFloat(p.total) : (subtotalItems + costoEnvio);
-            };
-
-            const totalTargetMonto = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
-            
-            // Si se aplica crédito a favor, calculamos el remanente real a pagar en efectivo
-            const creditoTotalUtilizable = aplicarSaldoAFavor ? Math.min(saldoAFavorDisponible, totalTargetMonto) : 0;
-            const remanenteTotalEfectivo = Math.max(0, totalTargetMonto - creditoTotalUtilizable);
-
-            const numRecibido = parseFloat(montoRecibido);
-            // Si los pedidos quedan 100% saldados con el saldo a favor, el efectivo recibido en mostrador es 0
-            const cashRecibidoReal = remanenteTotalEfectivo > 0 && !isNaN(numRecibido) ? numRecibido : 0;
-            const permitirSaldoAFavorFinal = remanenteTotalEfectivo > 0 && !!dejarVueltoAFavor;
-
-            const resultadosCobros = [];
-            let totalCobrado = 0;
-
-            for (let i = 0; i < pedidosTarget.length; i++) {
-                const p = pedidosTarget[i];
-                const isLast = i === pedidosTarget.length - 1;
-                const montoPedido = calcularMontoReal(p);
-
-                // Si el total en la tabla figuraba en 0, actualizamos transparentemente el comprobante
-                if (parseFloat(p.total || 0) === 0 && montoPedido > 0) {
-                    await p.update({ total: montoPedido }, { transaction: t });
-                }
-
-                // Calcular cuánto de este pedido se cubre con Saldo a Favor disponible
-                let creditoParaEstePedido = 0;
-                if (aplicarSaldoAFavor && saldoAFavorDisponible > 0) {
-                    creditoParaEstePedido = Math.min(saldoAFavorDisponible, montoPedido);
-                    saldoAFavorDisponible -= creditoParaEstePedido;
-                }
-
-                const remanenteAbonarPedido = Math.max(0, montoPedido - creditoParaEstePedido);
-
-                // Para el último pedido en la selección masiva, pasamos el excedente recibido en efectivo para vuelto
-                let pRecibido = remanenteAbonarPedido;
-                if (isLast && remanenteTotalEfectivo > 0 && cashRecibidoReal > remanenteAbonarPedido) {
-                    pRecibido = cashRecibidoReal;
-                }
-
-                const cobroRes = await pagosService.registrarPago(negocioId, {
-                    pedidoId: p.numeroPedido,
-                    metodoPagoId,
-                    monto: montoPedido,
-                    montoRecibido: pRecibido,
-                    aplicarSaldoAFavor: creditoParaEstePedido > 0,
-                    montoSaldoAFavor: creditoParaEstePedido,
-                    dejarVueltoAFavor: isLast ? permitirSaldoAFavorFinal : false,
-                    observaciones: observaciones || `Cobro Pedidos de Cliente #${clienteId}`
-                }, { transaction: t });
-
-                resultadosCobros.push(cobroRes);
-                totalCobrado += (parseFloat(cobroRes.monto) || 0);
-            }
-
-            const resImpagos = await this.obtenerPedidosImpagosCliente(negocioId, clienteId, { transaction: t });
-
-            return {
-                clienteId: parseInt(clienteId),
-                pedidosCobradosCount: resultadosCobros.length,
-                totalMontoCobrado: totalCobrado,
-                saldoRestanteDeuda: resImpagos.totalDeuda,
-                cobros: resultadosCobros
-            };
+        
+        const res = await pagosService.procesarCobro(negocioId, {
+            ...data,
+            clienteId: parseInt(clienteId)
         });
+
+        const resImpagos = await this.obtenerPedidosImpagosCliente(negocioId, clienteId);
+
+        return {
+            clienteId: parseInt(clienteId),
+            pedidosCobradosCount: res.pedidosCobradosCount,
+            totalMontoCobrado: res.totalMontoCobrado,
+            creditoConsumidoTotal: res.creditoConsumidoTotal,
+            saldoRestanteDeuda: resImpagos.totalDeuda,
+            cobros: res.cobros
+        };
     }
 
     // Crear cliente nuevo
