@@ -24,6 +24,10 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
+			metodoPagoId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "movimientos_caja",
@@ -33,6 +37,7 @@ export default (sequelize, DataTypes) => {
 
 	MovimientoCaja.associate = (models) => {
 		MovimientoCaja.belongsTo(models.Caja, { foreignKey: "cajaIdCaja", as: "caja", constraints: false });
+		MovimientoCaja.belongsTo(models.MetodoPago, { foreignKey: "metodoPagoId", as: "metodoPago", constraints: false });
 	};
 
 	return MovimientoCaja;

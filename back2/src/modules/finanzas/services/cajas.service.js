@@ -22,9 +22,7 @@ class CajasService {
 
         const pagos = [];
         const gastos = [];
-        const metodoMap = {
-            "Efectivo": { metodoPagoId: 1, nombre: "Efectivo", ingresos: 0, egresos: 0 }
-        };
+        const metodoMap = {};
 
         if (plain.movimientos && Array.isArray(plain.movimientos)) {
             for (const mov of plain.movimientos) {
@@ -32,20 +30,35 @@ class CajasService {
                 const isIngreso = mov.tipoMovimiento?.toLowerCase().includes("ingreso") || mov.tipoMovimiento?.toLowerCase().includes("venta") || montoVal > 0;
                 const absMonto = Math.abs(montoVal);
 
-                const metodoNombre = "Efectivo";
-                const isEfectivo = true;
+                const metodoObj = mov.metodoPago || { id: 1, nombre: "Efectivo", esFijo: true };
+                const metodoNombre = metodoObj.nombre || "Efectivo";
+                const isEfectivo = metodoObj.esFijo !== false && !metodoNombre.toLowerCase().includes("transferencia") && !metodoNombre.toLowerCase().includes("mercadopago") && !metodoNombre.toLowerCase().includes("tarjeta");
+
+                if (!metodoMap[metodoNombre]) {
+                    metodoMap[metodoNombre] = {
+                        metodoPagoId: metodoObj.id || 1,
+                        nombre: metodoNombre,
+                        ingresos: 0,
+                        egresos: 0
+                    };
+                }
 
                 if (isIngreso) {
                     totalIngresosEnVivo += absMonto;
-                    totalIngresosEfectivo += absMonto;
-                    metodoMap["Efectivo"].ingresos += absMonto;
+                    metodoMap[metodoNombre].ingresos += absMonto;
+
+                    if (isEfectivo) {
+                        totalIngresosEfectivo += absMonto;
+                    } else {
+                        totalIngresosDigitales += absMonto;
+                    }
 
                     pagos.push({
                         id: mov.id,
                         monto: absMonto,
                         estado: "COMPLETADO",
                         createdAt: mov.fechaHora || mov.createdAt,
-                        metodoPago: { id: 1, nombre: "Efectivo", esFijo: true },
+                        metodoPago: { id: metodoObj.id || 1, nombre: metodoNombre, esFijo: isEfectivo },
                         pedido: {
                             id: mov.id,
                             codigoSeguimiento: mov.observacion || `MOV-${mov.id}`,
@@ -56,8 +69,13 @@ class CajasService {
                     });
                 } else {
                     totalEgresosEnVivo += absMonto;
-                    totalEgresosEfectivo += absMonto;
-                    metodoMap["Efectivo"].egresos += absMonto;
+                    metodoMap[metodoNombre].egresos += absMonto;
+
+                    if (isEfectivo) {
+                        totalEgresosEfectivo += absMonto;
+                    } else {
+                        totalEgresosDigitales += absMonto;
+                    }
 
                     gastos.push({
                         id: mov.id,
@@ -65,7 +83,7 @@ class CajasService {
                         categoria: "GASTO_GENERAL",
                         descripcion: mov.observacion || "Gasto de caja",
                         createdAt: mov.fechaHora || mov.createdAt,
-                        metodoPago: { id: 1, nombre: "Efectivo", esFijo: true }
+                        metodoPago: { id: metodoObj.id || 1, nombre: metodoNombre, esFijo: isEfectivo }
                     });
                 }
             }
@@ -111,17 +129,25 @@ class CajasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja, MovimientoCaja } = await this._getModels(negocioId);
+        const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
 
         let caja = await Caja.findOne({
             where: { estadoCaja: "Abierta" },
-            include: [{ model: MovimientoCaja, as: "movimientos" }],
+            include: [{
+                model: MovimientoCaja,
+                as: "movimientos",
+                include: [{ model: MetodoPago, as: "metodoPago" }]
+            }],
             order: [["idCaja", "DESC"]]
         });
 
         if (!caja) {
             caja = await Caja.findOne({
-                include: [{ model: MovimientoCaja, as: "movimientos" }],
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                }],
                 order: [["idCaja", "DESC"]]
             });
         }
@@ -170,11 +196,15 @@ class CajasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja, MovimientoCaja } = await this._getModels(negocioId);
+        const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
 
         const caja = await Caja.findOne({
             where: { idCaja },
-            include: [{ model: MovimientoCaja, as: "movimientos" }]
+            include: [{
+                model: MovimientoCaja,
+                as: "movimientos",
+                include: [{ model: MetodoPago, as: "metodoPago" }]
+            }]
         });
 
         if (!caja) {
@@ -204,7 +234,7 @@ class CajasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja, MovimientoCaja } = await this._getModels(negocioId);
+        const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
 
         const limit = parseInt(query.limit) || 20;
         const offset = parseInt(query.offset) || 0;
@@ -214,7 +244,11 @@ class CajasService {
 
         try {
             const res = await Caja.findAndCountAll({
-                include: [{ model: MovimientoCaja, as: "movimientos" }],
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                }],
                 limit,
                 offset,
                 order: [["idCaja", "DESC"]]
@@ -224,7 +258,11 @@ class CajasService {
         } catch (err) {
             count = await Caja.count();
             rows = await Caja.findAll({
-                include: [{ model: MovimientoCaja, as: "movimientos" }],
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                }],
                 limit,
                 offset,
                 order: [["idCaja", "DESC"]]
@@ -244,11 +282,15 @@ class CajasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja, MovimientoCaja } = await this._getModels(negocioId);
+        const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
 
         const caja = await Caja.findOne({
             where: { idCaja },
-            include: [{ model: MovimientoCaja, as: "movimientos" }]
+            include: [{
+                model: MovimientoCaja,
+                as: "movimientos",
+                include: [{ model: MetodoPago, as: "metodoPago" }]
+            }]
         });
 
         if (!caja) {

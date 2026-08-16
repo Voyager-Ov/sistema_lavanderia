@@ -39,6 +39,7 @@ class GastosService {
                 monto: -monto, // Registrar egreso en caja
                 tipoMovimiento: "Egreso por Gasto",
                 observacion: `Gasto: ${data.descripcion || "Egreso operativo"}`,
+                metodoPagoId: data.metodoPagoId || 1,
                 cajaIdCaja: cajaAbierta.idCaja
             });
             movimientoCajaId = nuevoMovimiento.id;

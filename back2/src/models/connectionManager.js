@@ -136,6 +136,7 @@ class ConnectionManager {
                 try {
                     await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."pedidos" ADD COLUMN IF NOT EXISTS "fechaHoraPedido" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
                     await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."clientes" ADD COLUMN IF NOT EXISTS "activo" BOOLEAN DEFAULT true;`);
+                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."movimientos_caja" ADD COLUMN IF NOT EXISTS "metodoPagoId" INTEGER;`);
                 } catch (colErr) {
                     console.warn(`[Auto-Migration] Error asegurando columnas en ${schemaNameArg}:`, colErr.message);
                 }
@@ -150,6 +151,21 @@ class ConnectionManager {
             } catch (e) {
                 // Si el negocio ya existe o en concurrencia
             }
+
+            // ─── SIEMBRA DE MÉTODO DE PAGO FIJO (EFECTIVO) ───
+            try {
+                await tenantModels.MetodoPago.findOrCreate({
+                    where: { esFijo: true },
+                    defaults: {
+                        nombre: "Efectivo",
+                        icono: "Banknote",
+                        activo: true,
+                        esFijo: true,
+                        requiereIntegracion: false,
+                        negocioId
+                    }
+                });
+            } catch (e) {}
 
             // ─── SIEMBRA DE ESTADOS DEL SISTEMA ───
             try {

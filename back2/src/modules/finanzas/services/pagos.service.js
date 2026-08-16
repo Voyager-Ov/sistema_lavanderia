@@ -271,6 +271,7 @@ class PagosService {
                         monto: remanenteAbonarPedido,
                         tipoMovimiento: "Ingreso por Venta",
                         observacion: obsText,
+                        metodoPagoId: metodoId,
                         cajaIdCaja: cajaAbierta.idCaja
                     }, { transaction: t });
                     movimientoCajaId = nuevoMovimiento.id;
