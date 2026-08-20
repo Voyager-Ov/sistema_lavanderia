@@ -93,11 +93,14 @@ export const TicketPrintTemplate = React.forwardRef<HTMLDivElement, TicketPrintT
         )}
 
         {(tickets.length > 0 ? [tickets[0]] : [{ id: 1, codigo: pedido.codigoSeguimiento || 'TAG-1' }]).map((ticket) => {
-          const negocioId = (pedido as any).negocioId || (businessConfig as any).id || 13;
+          const negocioId = pedido.negocioId || (pedido as any).negocioId;
+          if (!negocioId) {
+            console.error("⚠️ Error de Multitenant: El pedido no incluye un negocioId válido.");
+          }
           const orderCode = pedido.codigoSeguimiento || (pedido as any).numeroPedido || ticket.codigo;
           const origin = typeof window !== 'undefined' ? window.location.origin : (trackingBaseUrl || '');
           const cleanBase = origin.startsWith('http') ? origin : `http://localhost:3000`;
-          const qrUrl = `${cleanBase}/tracking/${negocioId}/${orderCode}`;
+          const qrUrl = `${cleanBase}/tracking/${negocioId || 0}/${orderCode}`;
           
           const activeTemplate = hardwareConfig.mensajeTicket || DEFAULT_TICKET_TEMPLATE;
 

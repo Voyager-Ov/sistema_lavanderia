@@ -103,6 +103,7 @@ class PedidosService {
         return {
             id: plain.numeroPedido,
             numeroPedido: plain.numeroPedido,
+            negocioId: plain.negocioId,
             codigoSeguimiento: `LAV-${plain.numeroPedido}`,
             fechaHoraCreacion: plain.fechaHoraCreacion || plain.createdAt,
             fechaHoraPedido: fechaPedidoVal,

@@ -51,6 +51,7 @@ export interface PedidoPago {
 
 export interface Pedido {
   id: number
+  negocioId?: number
   clienteId: number
   estado: "PENDIENTE" | "EN_PROCESO" | "LISTO_PARA_RETIRAR" | "ENTREGADO" | "CANCELADO"
   codigoSeguimiento: string

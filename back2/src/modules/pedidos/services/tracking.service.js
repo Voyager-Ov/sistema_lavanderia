@@ -13,13 +13,7 @@ class TrackingService {
         if (!negocioId) {
             throw new AppError("Negocio no especificado para tracking.", 400, "MISSING_TENANT_ID");
         }
-        let models;
-        try {
-            models = await this._getModels(negocioId);
-        } catch (e) {
-            models = await this._getModels(13);
-        }
-        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = models;
+        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = await this._getModels(negocioId);
 
         // Extraer número de pedido del código (ej: LAV-123 o 123)
         let numeroPedido = parseInt(codigo);
@@ -32,39 +26,26 @@ class TrackingService {
             throw new AppError("Código de seguimiento inválido.", 400, "INVALID_TRACKING_CODE");
         }
 
-        const includeClause = [
-            { model: Cliente, as: "cliente", attributes: ["nombre"] },
-            {
-                model: DetallePedido,
-                as: "detalles",
-                include: [{ model: Servicio, as: "servicio", attributes: ["nombre"] }]
-            },
-            {
-                model: CambioEstadoPedido,
-                as: "cambiosEstado",
-                include: [{ model: Estado, as: "estado", attributes: ["nombre"] }]
-            },
-            { model: Cobro, as: "cobros" }
-        ];
-
-        let pedido = await Pedido.findOne({
+        const pedido = await Pedido.findOne({
             where: { numeroPedido },
-            include: includeClause
+            include: [
+                { model: Cliente, as: "cliente", attributes: ["nombre"] },
+                {
+                    model: DetallePedido,
+                    as: "detalles",
+                    include: [{ model: Servicio, as: "servicio", attributes: ["nombre"] }]
+                },
+                {
+                    model: CambioEstadoPedido,
+                    as: "cambiosEstado",
+                    include: [{ model: Estado, as: "estado", attributes: ["nombre"] }]
+                },
+                { model: Cobro, as: "cobros" }
+            ]
         });
 
-        // Smart fallback si el ticket fue impreso con un negocioId previo
-        if (!pedido && Number(negocioId) !== 13) {
-            try {
-                const fallbackModels = await this._getModels(13);
-                pedido = await fallbackModels.Pedido.findOne({
-                    where: { numeroPedido },
-                    include: includeClause
-                });
-            } catch (e) {}
-        }
-
         if (!pedido) {
-            throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
+            throw new AppError(`Pedido no encontrado en la lavandería especificada.`, 404, "ORDER_NOT_FOUND");
         }
 
         // Validación de Token Criptográfico por pedido (si se provee)
