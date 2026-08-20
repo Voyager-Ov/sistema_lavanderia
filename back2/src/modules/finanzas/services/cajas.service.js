@@ -124,11 +124,15 @@ class CajasService {
         };
     }
 
-    // Obtener la caja activa actualmente (o la última caja) del usuario autenticado
-    async obtenerCajaActual(negocioId, empleadoId = null) {
+    // Obtener la caja activa actualmente del usuario autenticado
+    async obtenerCajaActual(negocioId, empleadoId = null, incluirUltimaCerrada = false) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
+        if (!empleadoId) {
+            return null;
+        }
+
         const { Caja, MovimientoCaja, MetodoPago, Empleado } = await this._getModels(negocioId);
 
         const includeModels = [
@@ -143,32 +147,32 @@ class CajasService {
             }
         ];
 
-        if (!empleadoId) {
-            return null;
-        }
-
-        // 1. Buscar la caja abierta de ESTE empleado especifico
-        let caja = await Caja.findOne({
+        // 1. Buscar la caja ABIERTA de ESTE empleado especifico
+        const cajaAbierta = await Caja.findOne({
             where: { estadoCaja: "Abierta", empleadoId },
             include: includeModels,
             order: [["idCaja", "DESC"]]
         });
 
-        // 2. Si este empleado no tiene caja abierta, buscar la última caja cerrada de ESTE empleado
-        if (!caja) {
-            caja = await Caja.findOne({
-                where: { empleadoId },
+        if (cajaAbierta) {
+            return this._formatCaja(cajaAbierta);
+        }
+
+        // 2. Solo si se solicita explicitamente la última caja cerrada del empleado para vistas de resumen
+        if (incluirUltimaCerrada) {
+            const ultimaCajaCerrada = await Caja.findOne({
+                where: { empleadoId, estadoCaja: "Cerrada" },
                 include: includeModels,
                 order: [["idCaja", "DESC"]]
             });
+
+            if (ultimaCajaCerrada) {
+                return this._formatCaja(ultimaCajaCerrada);
+            }
         }
 
-        // Si este empleado no tiene ninguna caja registrada, retornar null
-        if (!caja) {
-            return null;
-        }
-
-        return this._formatCaja(caja);
+        // Si el usuario no tiene una caja abierta a su nombre, retorna NULL
+        return null;
     }
 
     // Obtener todas las cajas abiertas activas del negocio (Para vista de Administrador)

@@ -14,7 +14,8 @@ export const obtenerCajaActual = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
         const empleadoId = req.user?.empleadoId || req.user?.id;
-        const caja = await cajasService.obtenerCajaActual(negocioId, empleadoId);
+        const incluirUltimaCerrada = req.query.incluirUltimaCerrada === "true";
+        const caja = await cajasService.obtenerCajaActual(negocioId, empleadoId, incluirUltimaCerrada);
         return successResponse(res, 200, "Caja actual recuperada exitosamente", caja);
     } catch (error) {
         next(error);
