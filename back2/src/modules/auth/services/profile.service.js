@@ -9,30 +9,53 @@ class ProfileService {
     async _getEmpleadoYNegocioStrict(usuario) {
         const { Negocio } = connectionManager.centralModels;
         
-        if (!usuario || !usuario.empleadoId) {
-            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
+        if (!usuario) {
+            throw new AppError("Usuario no especificado.", 400, "MISSING_USER");
         }
 
         const negocios = await Negocio.findAll();
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 
-        for (const neg of negocios) {
-            try {
-                const tenantDb = await connectionManager.getTenantDb(neg.id);
-                const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
-                if (emp) {
-                    empleadoEncontrado = emp;
-                    negocioEncontrado = neg;
-                    break;
+        if (usuario.empleadoId) {
+            for (const neg of negocios) {
+                try {
+                    const tenantDb = await connectionManager.getTenantDb(neg.id);
+                    const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
+                    if (emp) {
+                        empleadoEncontrado = emp;
+                        negocioEncontrado = neg;
+                        break;
+                    }
+                } catch (err) {
+                    // Continuar si falla un tenant específico
                 }
-            } catch (err) {
-                // Continuar si falla un tenant específico
+            }
+        }
+
+        if (!empleadoEncontrado && usuario.email) {
+            const emailLower = usuario.email.toLowerCase().trim();
+            for (const neg of negocios) {
+                try {
+                    const tenantDb = await connectionManager.getTenantDb(neg.id);
+                    const emp = await tenantDb.models.Empleado.findOne({
+                        where: { email: emailLower }
+                    });
+                    if (emp) {
+                        empleadoEncontrado = emp;
+                        negocioEncontrado = neg;
+                        usuario.empleadoId = emp.id;
+                        await usuario.save();
+                        break;
+                    }
+                } catch (err) {
+                    // Continuar
+                }
             }
         }
 
         if (!empleadoEncontrado || !negocioEncontrado) {
-            throw new AppError("No se encontró el registro de empleado o negocio en la base de datos.", 404, "TENANT_NOT_FOUND");
+            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
         }
 
         return { empleado: empleadoEncontrado, negocio: negocioEncontrado };
@@ -47,7 +70,7 @@ class ProfileService {
 
         const usuario = await Usuario.findOne({
             where: { email: userEmail },
-            include: [{ model: Rol, through: { attributes: [] } }]
+            include: [{ model: Rol, as: "Roles", through: { attributes: [] } }]
         });
 
         if (!usuario) {
@@ -55,13 +78,19 @@ class ProfileService {
         }
 
         const { empleado, negocio } = await this._getEmpleadoYNegocioStrict(usuario);
-        const rolNombre = usuario.Roles && usuario.Roles.length > 0 ? usuario.Roles[0].nombre : "ADMIN";
+        
+        let rolNombre = "EMPLEADO";
+        if (usuario.Roles && usuario.Roles.length > 0 && usuario.Roles[0].nombre) {
+            rolNombre = usuario.Roles[0].nombre.toUpperCase();
+        } else if (empleado && empleado.rol) {
+            rolNombre = empleado.rol.toUpperCase();
+        }
 
         return {
             usuario: {
                 id: empleado.id,
                 email: usuario.email,
-                nombre: `${empleado.nombre} ${empleado.apellido}`.trim(),
+                nombre: `${empleado.nombre} ${empleado.apellido || ''}`.trim(),
                 rol: rolNombre,
                 negocioId: negocio.id,
                 googleLinked: Boolean(usuario.googleId)

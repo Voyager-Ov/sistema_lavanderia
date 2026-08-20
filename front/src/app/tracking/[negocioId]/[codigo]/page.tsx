@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { getTrackingInfoAPI, TrackingResponse } from "@/domains/pedidos/api"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -11,6 +11,8 @@ import { CheckCircle2, Clock, MapPin, Package, AlertCircle } from "lucide-react"
 
 export default function TrackingPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token') || undefined
   const [data, setData] = useState<TrackingResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +25,7 @@ export default function TrackingPage() {
     let mounted = true
     const fetchData = async () => {
       try {
-        const res = await getTrackingInfoAPI(params.negocioId as string, params.codigo as string)
+        const res = await getTrackingInfoAPI(params.negocioId as string, params.codigo as string, token)
         if (mounted) setData(res)
       } catch (err: any) {
         if (mounted) setError(err.message || "No pudimos encontrar tu pedido.")
@@ -33,7 +35,7 @@ export default function TrackingPage() {
     }
     fetchData()
     return () => { mounted = false }
-  }, [params.negocioId, params.codigo])
+  }, [params.negocioId, params.codigo, token])
 
   useGSAP(() => {
     if (!loading && data) {

@@ -130,12 +130,16 @@ class ClientesService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Cliente, CuentaCorriente, Pedido, DetallePedido, Servicio } = await this._getModels(negocioId);
+        const { Cliente, CuentaCorriente, MovimientoCuenta, Pedido, DetallePedido, Servicio } = await this._getModels(negocioId);
 
         const cliente = await Cliente.findOne({
             where: { id },
             include: [
-                { model: CuentaCorriente, as: "cuentaCorriente" },
+                { 
+                    model: CuentaCorriente, 
+                    as: "cuentaCorriente",
+                    include: [{ model: MovimientoCuenta, as: "movimientos" }]
+                },
                 { 
                     model: Pedido, 
                     as: "pedidos", 
@@ -195,9 +199,11 @@ class ClientesService {
             saldoCuentaCorriente: saldoAFavor,
             montoEnTaller: totalTaller,
             pedidosImpagosCount: pedidosDeuda.length,
+            movimientos: plain.cuentaCorriente?.movimientos || [],
             cuentaCorriente: {
                 saldo: saldoAFavor,
-                saldoDeuda: totalDeuda
+                saldoDeuda: totalDeuda,
+                movimientos: plain.cuentaCorriente?.movimientos || []
             }
         };
     }

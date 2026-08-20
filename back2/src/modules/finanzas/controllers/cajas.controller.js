@@ -13,7 +13,8 @@ const getTenantId = (req) => {
 export const obtenerCajaActual = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const caja = await cajasService.obtenerCajaActual(negocioId);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const caja = await cajasService.obtenerCajaActual(negocioId, empleadoId);
         return successResponse(res, 200, "Caja actual recuperada exitosamente", caja);
     } catch (error) {
         next(error);
@@ -23,7 +24,8 @@ export const obtenerCajaActual = async (req, res, next) => {
 export const abrirCaja = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const caja = await cajasService.abrirCaja(negocioId, req.body);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const caja = await cajasService.abrirCaja(negocioId, { ...req.body, empleadoId });
         return successResponse(res, 201, "Turno de caja abierto exitosamente", caja);
     } catch (error) {
         next(error);
@@ -33,7 +35,11 @@ export const abrirCaja = async (req, res, next) => {
 export const cerrarCaja = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const caja = await cajasService.cerrarCaja(negocioId, req.params.id, req.body);
+        const userRol = (req.user?.rol || "").toUpperCase().replace("_", "").trim();
+        const isGlobalAdmin = userRol.includes("ADMIN") || userRol === "SUPERADMIN";
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+
+        const caja = await cajasService.cerrarCaja(negocioId, req.params.id, req.body, empleadoId, isGlobalAdmin);
         return successResponse(res, 200, "Turno de caja cerrado exitosamente", caja);
     } catch (error) {
         next(error);
@@ -43,7 +49,15 @@ export const cerrarCaja = async (req, res, next) => {
 export const obtenerHistorialCajas = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await cajasService.obtenerHistorialCajas(negocioId, req.query);
+        const userRol = (req.user?.rol || "").toUpperCase().replace("_", "").trim();
+        const isGlobalAdmin = userRol.includes("ADMIN") || userRol === "SUPERADMIN";
+
+        const query = { ...req.query };
+        if (!isGlobalAdmin && (req.user?.empleadoId || req.user?.id)) {
+            query.empleadoId = req.user.empleadoId || req.user.id;
+        }
+
+        const result = await cajasService.obtenerHistorialCajas(negocioId, query);
         return successResponse(res, 200, "Historial de cajas recuperado exitosamente", result);
     } catch (error) {
         next(error);
@@ -54,6 +68,15 @@ export const obtenerCajaPorId = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
         const caja = await cajasService.obtenerCajaPorId(negocioId, req.params.id);
+
+        const userRol = (req.user?.rol || "").toUpperCase().replace("_", "").trim();
+        const isGlobalAdmin = userRol.includes("ADMIN") || userRol === "SUPERADMIN";
+        const userEmpleadoId = req.user?.empleadoId || req.user?.id;
+
+        if (!isGlobalAdmin && userEmpleadoId && caja.usuarioId && Number(caja.usuarioId) !== Number(userEmpleadoId)) {
+            throw new AppError("No posees permisos para acceder a este turno de caja.", 403, "FORBIDDEN");
+        }
+
         return successResponse(res, 200, "Caja recuperada exitosamente", caja);
     } catch (error) {
         next(error);

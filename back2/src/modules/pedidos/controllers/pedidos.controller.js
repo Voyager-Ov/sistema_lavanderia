@@ -61,10 +61,12 @@ export const cambiarEstado = async (req, res, next) => {
         const { estado, motivoCancelacion, descripcionCancelacion, accionDinero } = req.body;
 
         if (estado === "CANCELADO") {
+            const empleadoId = req.user?.empleadoId || req.user?.id;
             await cancelacionService.cancelarPedido(negocioId, req.params.id, {
                 motivoCancelacion,
                 descripcionCancelacion,
-                accionDinero
+                accionDinero,
+                empleadoId
             });
         } else {
             await trazabilidadService.cambiarEstado(negocioId, req.params.id, estado);

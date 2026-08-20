@@ -39,31 +39,31 @@ export function CajaActividadTurno({ actividades = [] }: CajaActividadTurnoProps
   }
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[300px]">
-      <div className="border-b border-slate-100 pb-4 mb-4 flex items-center gap-2">
-        <Activity className="w-5 h-5 text-slate-500" />
-        <h3 className="font-semibold text-slate-800">
+    <div className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-neutral-800 overflow-hidden flex flex-col h-full min-h-[300px]">
+      <div className="border-b border-slate-100 dark:border-neutral-800 pb-4 mb-4 flex items-center gap-2">
+        <Activity className="w-5 h-5 text-slate-500 dark:text-neutral-400" />
+        <h3 className="font-semibold text-slate-800 dark:text-neutral-100">
           Historial del Turno
         </h3>
       </div>
 
       <div className="overflow-y-auto max-h-[400px]">
         {actividades.length > 0 ? (
-          <div className="relative border-l border-slate-200 ml-3 space-y-6">
+          <div className="relative border-l border-slate-200 dark:border-neutral-800 ml-3 space-y-6">
             {actividades.map((act) => (
               <div key={act.id} className="relative pl-6">
-                <span className="absolute -left-3 top-1 flex items-center justify-center w-6 h-6 rounded-full bg-white border border-slate-200 shadow-sm">
+                <span className="absolute -left-3 top-1 flex items-center justify-center w-6 h-6 rounded-full bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 shadow-sm">
                   {getIconForActivity(act.estadoNuevo)}
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-400 mb-0.5">
+                  <span className="text-xs font-semibold text-slate-400 dark:text-neutral-500 mb-0.5">
                     {format(new Date(act.createdAt), "HH:mm")}
                   </span>
-                  <span className="text-sm text-slate-700 font-medium">
+                  <span className="text-sm text-slate-700 dark:text-neutral-200 font-medium">
                     {getActionText(act)}
                   </span>
                   {act.comentario && (
-                    <span className="text-xs text-slate-500 mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <span className="text-xs text-slate-500 dark:text-neutral-400 mt-1 bg-slate-50 dark:bg-neutral-800/80 p-2 rounded-lg border border-slate-100 dark:border-neutral-700/60">
                       "{act.comentario}"
                     </span>
                   )}
@@ -73,8 +73,8 @@ export function CajaActividadTurno({ actividades = [] }: CajaActividadTurnoProps
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <Activity className="w-8 h-8 text-slate-200 mb-2" />
-            <p className="text-slate-400 text-sm">No hay actividad registrada en este turno.</p>
+            <Activity className="w-8 h-8 text-slate-200 dark:text-neutral-700 mb-2" />
+            <p className="text-slate-400 dark:text-neutral-500 text-sm">No hay actividad registrada en este turno.</p>
           </div>
         )}
       </div>

@@ -22,6 +22,7 @@ export interface HardwareConfig {
   imprimirTicketAutomatico: boolean;
   mensajeTicket: string;
   showQr: boolean;
+  anchoPapel: '58mm' | '80mm';
 }
 
 export interface AppearanceConfig {
@@ -123,6 +124,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
     imprimirTicketAutomatico: false,
     mensajeTicket: '',
     showQr: true,
+    anchoPapel: '80mm',
   },
   setHardwareConfig: (config) => set({ hardwareConfig: config }),
 
@@ -162,6 +164,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
       imprimirTicketAutomatico: data.imprimirTicketAutomatico ?? state.hardwareConfig.imprimirTicketAutomatico,
       mensajeTicket: data.mensajeTicket ?? state.hardwareConfig.mensajeTicket,
       showQr: data.mostrarQrTicket ?? state.hardwareConfig.showQr,
+      anchoPapel: data.anchoPapel ?? state.hardwareConfig.anchoPapel,
     },
     arcaConfig: {
       ...state.arcaConfig,

@@ -47,17 +47,17 @@ export function CajaDashboard({ caja, onRefresh, isHistoricalView = false }: Caj
   return (
     <div className="space-y-8" ref={containerRef}>
       {/* HEADER ACTIVO */}
-      <div className="metric-card flex flex-col md:flex-row md:items-center justify-between bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 gap-4">
+      <div className="metric-card flex flex-col md:flex-row md:items-center justify-between bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-neutral-800 gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${caja.estado === 'ABIERTA' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${caja.estado === 'ABIERTA' ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400' : 'bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300'}`}>
               <Wallet className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-neutral-50 tracking-tight">
                 {caja.estado === 'ABIERTA' ? 'Turno en curso' : 'Turno cerrado'}
               </h2>
-              <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+              <p className="text-sm text-slate-500 dark:text-neutral-400 flex items-center gap-2 mt-1">
                 <Calendar className="w-4 h-4" /> 
                 {format(new Date(caja.fechaApertura), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
                 {caja.usuario && ` • Por ${caja.usuario.nombre}`}
@@ -115,7 +115,7 @@ export function CajaDashboard({ caja, onRefresh, isHistoricalView = false }: Caj
 
       {/* MOBILE BOTTOM ISLAND PARA ACCIONES */}
       {!isHistoricalView && caja.estado === "ABIERTA" && (
-        <div className="md:hidden fixed bottom-6 left-4 right-4 z-40 flex items-center gap-3 p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200">
+        <div className="md:hidden fixed bottom-6 left-4 right-4 z-40 flex items-center gap-3 p-3 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-neutral-800">
           <Button 
             variant="outlineRed"
             onClick={() => setIsRegistrarGastoOpen(true)}

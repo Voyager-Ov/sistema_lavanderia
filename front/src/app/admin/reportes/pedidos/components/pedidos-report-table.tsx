@@ -27,17 +27,17 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
     switch (estado) {
       case 'COMPLETADO':
       case 'ENTREGADO':
-        return 'bg-green-100 text-green-700'
+        return 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300'
       case 'PENDIENTE':
-        return 'bg-yellow-100 text-yellow-700'
+        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300'
       case 'CANCELADO':
-        return 'bg-red-100 text-red-700'
+        return 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
       case 'EN_PROCESO':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
       case 'LISTO_PARA_RETIRAR':
-        return 'bg-purple-100 text-purple-700'
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300'
     }
   }
 
@@ -54,7 +54,7 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
       accessorKey: "codigoSeguimiento",
       header: "Cód.",
       cell: ({ row }) => (
-        <span className="font-bold text-gray-500 font-mono text-sm">
+        <span className="font-bold text-gray-500 dark:text-neutral-400 font-mono text-sm">
           {row.original.codigoSeguimiento}
         </span>
       ),
@@ -62,7 +62,7 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
     {
       accessorKey: "cliente",
       header: "Cliente",
-      cell: ({ row }) => <span className="font-bold text-gray-900">{row.original.cliente}</span>,
+      cell: ({ row }) => <span className="font-bold text-gray-900 dark:text-neutral-100">{row.original.cliente}</span>,
     },
     {
       accessorKey: "estado",
@@ -77,7 +77,7 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
       accessorKey: "total",
       header: "Monto",
       cell: ({ row }) => (
-        <span className="font-black text-gray-900 text-base">
+        <span className="font-black text-gray-900 dark:text-neutral-100 text-base">
           {formatCurrency(row.original.total)}
         </span>
       ),
@@ -88,9 +88,9 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
       header: "Fechas",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-gray-700">Recepción: {formatFecha(row.original.fecha)}</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-neutral-300">Recepción: {formatFecha(row.original.fecha)}</span>
           {row.original.fechaEntrega && (
-            <span className="text-xs font-medium text-gray-400 mt-0.5">Est. Entrega: {formatFecha(row.original.fechaEntrega)}</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-neutral-500 mt-0.5">Est. Entrega: {formatFecha(row.original.fechaEntrega)}</span>
           )}
         </div>
       ),
@@ -113,9 +113,9 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
   };
 
   return (
-    <div className={`bg-white rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 shadow-sm flex flex-col h-full ${className || ''}`}>
+    <div className={`bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 dark:border-neutral-800 shadow-sm flex flex-col h-full ${className || ''}`}>
       <div className="flex justify-between items-center mb-4 px-2">
-        <h3 className="text-lg font-extrabold text-gray-900 tracking-wider uppercase">
+        <h3 className="text-lg font-extrabold text-gray-900 dark:text-neutral-100 tracking-wider uppercase">
           Listado de Pedidos
         </h3>
       </div>
@@ -126,7 +126,7 @@ export function PedidosReportTable({ data, className }: PedidosReportTableProps)
           data={data} 
           searchPlaceholder="Buscar por código o cliente..."
           toolbarExtras={
-            <Button onClick={exportCsv} variant="outline" size="sm" className="rounded-full h-9 gap-2">
+            <Button onClick={exportCsv} variant="outline" size="sm" className="rounded-full h-9 gap-2 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700">
               <Download className="w-4 h-4" /> Exportar CSV
             </Button>
           }

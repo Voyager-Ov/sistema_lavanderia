@@ -5,6 +5,10 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { validarVariablesEntorno } from "./config/env.config.js";
+
+// Validar variables de entorno críticas al iniciar el servidor
+validarVariablesEntorno();
 
 // Custom Middlewares
 import { errorHandler } from "./middlewares/error.middleware.js";

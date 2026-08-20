@@ -30,11 +30,11 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
   const getBadgeColor = (estado: string) => {
     switch (estado) {
       case 'CERRADA':
-        return 'bg-green-100 text-green-700'
+        return 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300'
       case 'ABIERTA':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300'
     }
   }
 
@@ -50,7 +50,7 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
     {
       accessorKey: "usuario",
       header: "Operador",
-      cell: ({ row }) => <span className="font-bold text-gray-900">{row.original.usuario}</span>,
+      cell: ({ row }) => <span className="font-bold text-gray-900 dark:text-neutral-100">{row.original.usuario}</span>,
     },
     {
       accessorKey: "estado",
@@ -65,7 +65,7 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
       accessorKey: "montoFinal",
       header: "Arqueo Final",
       cell: ({ row }) => (
-        <span className="font-black text-gray-900">
+        <span className="font-black text-gray-900 dark:text-neutral-100">
           {row.original.estado === 'CERRADA' ? formatCurrency(row.original.montoFinal) : '-'}
         </span>
       ),
@@ -74,12 +74,12 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
       accessorKey: "diferencia",
       header: "Diferencia",
       cell: ({ row }) => {
-        if (row.original.estado !== 'CERRADA') return <span className="text-gray-400 font-bold">-</span>;
+        if (row.original.estado !== 'CERRADA') return <span className="text-gray-400 dark:text-neutral-500 font-bold">-</span>;
         const diff = row.original.diferencia;
         const isPositive = diff > 0;
         const isNegative = diff < 0;
         return (
-          <span className={`font-bold ${isPositive ? 'text-green-600' : isNegative ? 'text-red-500' : 'text-gray-500'}`}>
+          <span className={`font-bold ${isPositive ? 'text-green-600 dark:text-green-400' : isNegative ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-neutral-400'}`}>
             {formatCurrency(diff)}
           </span>
         )
@@ -91,9 +91,9 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
       header: "Horarios",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="text-xs font-semibold text-gray-700">Apertura: {formatFecha(row.original.fechaApertura)}</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-neutral-300">Apertura: {formatFecha(row.original.fechaApertura)}</span>
           {row.original.fechaCierre && (
-            <span className="text-xs font-medium text-gray-400 mt-0.5">Cierre: {formatFecha(row.original.fechaCierre)}</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-neutral-500 mt-0.5">Cierre: {formatFecha(row.original.fechaCierre)}</span>
           )}
         </div>
       ),
@@ -106,8 +106,8 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-brand-blue hover:text-blue-700 hover:bg-blue-50 rounded-full font-bold px-4 gap-2"
-            onClick={() => router.push('/admin/finanzas/cajas')}
+            className="text-brand-blue dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full font-bold px-4 gap-2"
+            onClick={() => router.push(`/admin/caja/${row.original.id}`)}
           >
             Ver <ExternalLink className="w-3 h-3" />
           </Button>
@@ -117,9 +117,9 @@ export function UltimasCajasTable({ data, className }: UltimasCajasTableProps) {
   ], [router]);
 
   return (
-    <div className={`bg-white rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 shadow-sm flex flex-col h-full ${className || ''}`}>
+    <div className={`bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 dark:border-neutral-800 shadow-sm flex flex-col h-full ${className || ''}`}>
       <div className="flex justify-between items-center mb-4 px-2">
-        <h3 className="text-lg font-extrabold text-gray-900 tracking-wider uppercase">
+        <h3 className="text-lg font-extrabold text-gray-900 dark:text-neutral-100 tracking-wider uppercase">
           Últimas Cajas Registradas
         </h3>
       </div>

@@ -35,8 +35,10 @@ class FacturacionService {
             };
         }
 
-        // Obtener datos del negocio para la factura
-        const negocio = await Negocio.findByPk(negocioId);
+        let negocio = null;
+        try {
+            negocio = await Negocio.findByPk(negocioId);
+        } catch (e) {}
         const tipoFactura = negocio && negocio.condicionIva === "RESPONSABLE_INSCRIPTO" ? "A" : "B";
 
         // Calcular importes de la factura

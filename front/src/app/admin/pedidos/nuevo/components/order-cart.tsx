@@ -129,7 +129,7 @@ export function OrderCart({
                 d.setHours(d.getHours() + 24)
                 setFechaEntregaEstimada(d)
               }}
-              className="flex-1 py-1.5 px-2 bg-blue-50/50 hover:bg-blue-100 text-brand-blue border border-brand-blue/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="flex-1 py-1.5 px-2 bg-blue-50/50 hover:bg-blue-100 text-brand-blue border border-brand-blue/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800"
             >
               <Zap className="w-3.5 h-3.5" /> 24 hs
             </button>

@@ -63,9 +63,11 @@ export interface CajaGasto {
 
 export interface CajaActual {
   id: number;
+  idCaja?: number;
   negocioId: number;
   usuarioId: number;
   estado: string;
+  estadoCaja?: string;
   montoInicial: number | string;
   fechaApertura: string;
   fechaCierre: string | null;

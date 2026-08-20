@@ -175,20 +175,20 @@ export function ServicioForm({ id }: ServicioFormProps) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-10 h-10 rounded-2xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all text-gray-500"
+          className="w-10 h-10 rounded-2xl border border-gray-200 dark:border-neutral-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-neutral-800 hover:border-gray-300 dark:hover:border-neutral-600 transition-all text-gray-500 dark:text-neutral-400"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-gray-900">
+            <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-neutral-50">
               {isEditing ? "Editar Servicio" : "Nuevo Servicio"}
             </h1>
-            <span className="px-2 py-0.5 rounded-lg bg-brand-blue/10 text-brand-blue text-xs font-bold">
+            <span className="px-2 py-0.5 rounded-lg bg-brand-blue/10 text-brand-blue dark:bg-blue-950/60 dark:text-blue-400 text-xs font-bold">
               {isEditing ? "Edición" : "Creación"}
             </span>
           </div>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="text-gray-400 dark:text-neutral-400 text-sm mt-0.5">
             {isEditing
               ? "Modificá los datos del servicio. Los cambios se aplican de inmediato."
               : "Completá los datos para agregar un nuevo servicio al catálogo."}
@@ -203,11 +203,11 @@ export function ServicioForm({ id }: ServicioFormProps) {
           <div className="xl:col-span-2 space-y-4">
 
             {/* Imagen upload */}
-            <div className="form-section bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2">
-                <Upload className="w-4 h-4 text-gray-400" />
-                <span className="font-bold text-sm text-gray-700">Imagen del Servicio</span>
-                <span className="text-xs text-gray-400 font-medium">(Punto de Venta)</span>
+            <div className="form-section bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-50 dark:border-neutral-800/80 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
+                <span className="font-bold text-sm text-gray-700 dark:text-neutral-200">Imagen del Servicio</span>
+                <span className="text-xs text-gray-400 dark:text-neutral-400 font-medium">(Punto de Venta)</span>
               </div>
               <div className="p-6">
                 <div className="flex gap-4 items-start">
@@ -218,7 +218,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
                     className={`flex-1 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed cursor-pointer transition-all min-h-[140px] ${
                       isDragging
                         ? "border-brand-blue bg-brand-blue/5 scale-[1.01]"
-                        : "border-gray-200 hover:border-brand-blue/50 hover:bg-gray-50/80"
+                        : "border-gray-200 dark:border-neutral-700 hover:border-brand-blue/50 dark:hover:border-blue-500/50 hover:bg-gray-50/80 dark:hover:bg-neutral-800/50"
                     }`}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                     onDragLeave={() => setIsDragging(false)}
@@ -233,20 +233,20 @@ export function ServicioForm({ id }: ServicioFormProps) {
                         if (e.target.files?.[0]) handleFile(e.target.files[0])
                       }}
                     />
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <Upload className="w-5 h-5 text-gray-400" />
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-neutral-800 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-gray-400 dark:text-neutral-400" />
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-gray-600">
+                      <p className="text-sm font-bold text-gray-600 dark:text-neutral-300">
                         {imageFile ? imageFile.name : "Arrastrá o hacé click para subir"}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP — máx. 2MB</p>
+                      <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1">JPG, PNG, WEBP — máx. 2MB</p>
                     </div>
                   </label>
 
                   {/* Preview */}
                   {previewUrl ? (
-                    <div className="relative w-36 h-36 shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 group">
+                    <div className="relative w-36 h-36 shrink-0 rounded-2xl overflow-hidden border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800 group">
                       <img
                         src={previewUrl}
                         alt="Vista previa"
@@ -268,9 +268,9 @@ export function ServicioForm({ id }: ServicioFormProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-36 h-36 shrink-0 rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50 flex flex-col items-center justify-center gap-2">
-                      <Package className="w-8 h-8 text-gray-200" />
-                      <span className="text-[10px] font-bold text-gray-300 text-center">SIN IMAGEN</span>
+                    <div className="w-36 h-36 shrink-0 rounded-2xl border-2 border-dashed border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800 flex flex-col items-center justify-center gap-2">
+                      <Package className="w-8 h-8 text-gray-200 dark:text-neutral-600" />
+                      <span className="text-[10px] font-bold text-gray-300 dark:text-neutral-500 text-center">SIN IMAGEN</span>
                     </div>
                   )}
                 </div>
@@ -278,15 +278,15 @@ export function ServicioForm({ id }: ServicioFormProps) {
             </div>
 
             {/* Info general */}
-            <div className="form-section bg-white rounded-2xl border border-gray-100">
-              <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-gray-400" />
-                <span className="font-bold text-sm text-gray-700">Información General</span>
+            <div className="form-section bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800">
+              <div className="px-6 py-4 border-b border-gray-50 dark:border-neutral-800/80 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
+                <span className="font-bold text-sm text-gray-700 dark:text-neutral-200">Información General</span>
               </div>
               <div className="p-6 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-1.5">
-                    <Label htmlFor="nombre" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    <Label htmlFor="nombre" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                       Nombre del Servicio *
                     </Label>
                     <Input
@@ -294,23 +294,23 @@ export function ServicioForm({ id }: ServicioFormProps) {
                       value={formData.nombre || ""}
                       onChange={(e) => setFormData(p => ({ ...p, nombre: e.target.value }))}
                       placeholder="Ej: Lavado Acolchado 2 Plazas"
-                      className="h-11 rounded-xl border border-gray-200 focus-visible:ring-brand-blue font-semibold bg-gray-50/50"
+                      className="h-11 rounded-xl border border-gray-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 focus-visible:ring-brand-blue font-semibold bg-gray-50/50 dark:bg-neutral-800/60"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="categoria" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    <Label htmlFor="categoria" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                       Categoría *
                     </Label>
                     <Select
                       value={formData.categoriaId || ""}
                       onValueChange={(val) => setFormData(p => ({ ...p, categoriaId: val }))}
                     >
-                      <SelectTrigger id="categoria" className="h-11 rounded-xl border border-gray-200 font-semibold bg-gray-50/50">
+                      <SelectTrigger id="categoria" className="h-11 rounded-xl border border-gray-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 font-semibold bg-gray-50/50 dark:bg-neutral-800/60">
                         <SelectValue placeholder="Seleccionar categoría" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800">
                         {categorias.map(c => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>
+                          <SelectItem key={c.id} value={c.id.toString()} className="text-slate-900 dark:text-neutral-100">{c.nombre}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -318,7 +318,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="descripcion" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  <Label htmlFor="descripcion" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                     Descripción
                   </Label>
                   <Textarea
@@ -326,7 +326,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
                     value={formData.descripcion || ""}
                     onChange={(e) => setFormData(p => ({ ...p, descripcion: e.target.value }))}
                     placeholder="Detalles del servicio, materiales utilizados, recomendaciones..."
-                    className="min-h-[100px] rounded-xl border border-gray-200 focus-visible:ring-brand-blue font-medium resize-none bg-gray-50/50"
+                    className="min-h-[100px] rounded-xl border border-gray-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 focus-visible:ring-brand-blue font-medium resize-none bg-gray-50/50 dark:bg-neutral-800/60"
                   />
                 </div>
               </div>
@@ -337,18 +337,18 @@ export function ServicioForm({ id }: ServicioFormProps) {
           <div className="space-y-4">
 
             {/* Precio, Costo y tiempo */}
-            <div className="form-section bg-white rounded-2xl border border-gray-100">
-              <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-gray-400" />
-                <span className="font-bold text-sm text-gray-700">Precios y Rentabilidad</span>
+            <div className="form-section bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800">
+              <div className="px-5 py-4 border-b border-gray-50 dark:border-neutral-800/80 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
+                <span className="font-bold text-sm text-gray-700 dark:text-neutral-200">Precios y Rentabilidad</span>
               </div>
               <div className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="precio" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  <Label htmlFor="precio" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                     Precio de Venta ($) *
                   </Label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-bold text-sm">$</span>
                     <Input
                       id="precio"
                       type="number"
@@ -357,17 +357,17 @@ export function ServicioForm({ id }: ServicioFormProps) {
                       value={formData.precioActual || ""}
                       onChange={(e) => setFormData(p => ({ ...p, precioActual: e.target.value }))}
                       placeholder="0.00"
-                      className="h-11 rounded-xl border border-gray-200 pl-7 font-bold text-gray-900 bg-gray-50/50"
+                      className="h-11 rounded-xl border border-gray-200 dark:border-neutral-700 pl-7 font-bold text-gray-900 dark:text-neutral-100 bg-gray-50/50 dark:bg-neutral-800/60"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="costoEstimado" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  <Label htmlFor="costoEstimado" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                     Costo Estimado ($)
                   </Label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 font-bold text-sm">$</span>
                     <Input
                       id="costoEstimado"
                       type="number"
@@ -376,42 +376,42 @@ export function ServicioForm({ id }: ServicioFormProps) {
                       value={formData.costoEstimado || ""}
                       onChange={(e) => setFormData(p => ({ ...p, costoEstimado: e.target.value }))}
                       placeholder="0.00"
-                      className="h-11 rounded-xl border border-gray-200 pl-7 font-bold text-gray-900 bg-gray-50/50"
+                      className="h-11 rounded-xl border border-gray-200 dark:border-neutral-700 pl-7 font-bold text-gray-900 dark:text-neutral-100 bg-gray-50/50 dark:bg-neutral-800/60"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400 font-medium">Costo de insumos, jabón, luz, etc. por unidad</p>
+                  <p className="text-[11px] text-gray-400 dark:text-neutral-500 font-medium">Costo de insumos, jabón, luz, etc. por unidad</p>
                 </div>
 
                 {/* Previsualización del Margen */}
                 {parseFloat(formData.precioActual) > 0 && (
                   <div className={`p-3.5 rounded-xl border flex flex-col gap-1 transition-all ${
                     (parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) >= 0
-                      ? "bg-emerald-50/60 border-emerald-100 text-emerald-900"
-                      : "bg-red-50/60 border-red-100 text-red-900"
+                      ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-300"
+                      : "bg-red-50/60 dark:bg-red-950/40 border-red-100 dark:border-red-900/60 text-red-900 dark:text-red-300"
                   }`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-600">Margen Bruto Est.</span>
+                      <span className="text-xs font-bold text-gray-600 dark:text-neutral-400">Margen Bruto Est.</span>
                       <span className={`text-xs font-black px-2 py-0.5 rounded-md ${
                         (parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) >= 0
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-red-100 text-red-700"
+                          ? "bg-emerald-100 dark:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300"
+                          : "bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-300"
                       }`}>
                         {Math.round(((parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)) / parseFloat(formData.precioActual)) * 100)}%
                       </span>
                     </div>
                     <p className="text-base font-black">
                       ${(parseFloat(formData.precioActual) - (parseFloat(formData.costoEstimado) || 0)).toLocaleString("es-AR")}
-                      <span className="text-xs font-normal text-gray-500 ml-1.5">por servicio</span>
+                      <span className="text-xs font-normal text-gray-500 dark:text-neutral-400 ml-1.5">por servicio</span>
                     </p>
                   </div>
                 )}
 
                 <div className="space-y-1.5 pt-1">
-                  <Label htmlFor="tiempo" className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                  <Label htmlFor="tiempo" className="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
                     Tiempo Estimado
                   </Label>
                   <div className="relative">
-                    <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500 w-4 h-4" />
                     <Input
                       id="tiempo"
                       type="number"
@@ -419,7 +419,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
                       value={formData.tiempoEstimadoMinutos || ""}
                       onChange={(e) => setFormData(p => ({ ...p, tiempoEstimadoMinutos: e.target.value }))}
                       placeholder="minutos"
-                      className="h-11 rounded-xl border border-gray-200 pl-10 font-semibold bg-gray-50/50"
+                      className="h-11 rounded-xl border border-gray-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 pl-10 font-semibold bg-gray-50/50 dark:bg-neutral-800/60"
                     />
                   </div>
                 </div>
@@ -427,11 +427,11 @@ export function ServicioForm({ id }: ServicioFormProps) {
             </div>
 
             {/* Estado */}
-            <div className="form-section bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="form-section bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-bold text-gray-900 text-sm">Servicio Disponible</p>
-                  <p className="text-xs text-gray-400 mt-0.5 font-medium leading-relaxed">
+                  <p className="font-bold text-gray-900 dark:text-neutral-100 text-sm">Servicio Disponible</p>
+                  <p className="text-xs text-gray-400 dark:text-neutral-400 mt-0.5 font-medium leading-relaxed">
                     Los servicios inactivos no aparecen en el Punto de Venta ni en nuevos pedidos.
                   </p>
                 </div>
@@ -443,8 +443,8 @@ export function ServicioForm({ id }: ServicioFormProps) {
               </div>
               <div className={`mt-4 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold ${
                 formData.disponible
-                  ? "bg-green-50 text-green-700 border border-green-100"
-                  : "bg-gray-50 text-gray-500 border border-gray-100"
+                  ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-900/60"
+                  : "bg-gray-50 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border border-gray-100 dark:border-neutral-700"
               }`}>
                 <CheckCircle className="w-3.5 h-3.5" />
                 {formData.disponible ? "Activo — visible en el catálogo" : "Inactivo — oculto del catálogo"}
@@ -456,7 +456,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
               <Button
                 type="submit"
                 disabled={saving}
-                className="w-full h-12 rounded-xl font-bold shadow-sm text-sm"
+                className="w-full h-12 rounded-xl font-bold shadow-sm text-sm bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {saving
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>
@@ -468,7 +468,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-11 rounded-xl font-bold text-sm"
+                className="w-full h-11 rounded-xl font-bold text-sm dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 onClick={() => router.back()}
               >
                 Cancelar

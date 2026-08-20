@@ -80,6 +80,11 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: true,
 			},
+			anchoPapel: {
+				type: DataTypes.STRING,
+				allowNull: false,
+				defaultValue: "80mm",
+			},
 			facturacionHabilitada: {
 				type: DataTypes.BOOLEAN,
 				allowNull: false,

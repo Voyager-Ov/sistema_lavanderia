@@ -17,6 +17,7 @@ const hardwareSchema = z.object({
   imprimirTicketAutomatico: z.boolean(),
   mensajeTicket: z.string().optional().nullable(),
   showQr: z.boolean(),
+  anchoPapel: z.enum(['58mm', '80mm']),
 });
 
 type HardwareFormValues = z.infer<typeof hardwareSchema>;
@@ -38,7 +39,6 @@ export const DEFAULT_TICKET_TEMPLATE = `{{razonSocial}}
 Ticket de Servicios
 --------------------------------
 Orden: {{nro_pedido}}
-Bulto: {{bulto}}
 Cliente: {{cliente}}
 Fecha: {{fecha}} {{hora}}
 --------------------------------
@@ -52,24 +52,34 @@ TOTAL              {{total}}
 ¡Gracias por su confianza!`;
 
 // ─── Ticket Preview ──────────────────────────────────────────────────────────
-function TicketPreview({ template, showQr, razonSocial }: { template: string, showQr: boolean, razonSocial: string }) {
+function TicketPreview({ template, showQr, razonSocial, anchoPapel }: { template: string, showQr: boolean, razonSocial: string, anchoPapel: '58mm' | '80mm' }) {
   const [renderedContent, setRenderedContent] = useState<React.ReactNode[]>([]);
+  const is58mm = anchoPapel === '58mm';
+  const widthPx = is58mm ? '220px' : '280px';
 
   useEffect(() => {
     const renderTemplate = () => {
       const activeTemplate = template || DEFAULT_TICKET_TEMPLATE;
+      const maxCols = is58mm ? 32 : 48;
       
+      const itemQty = "1x ";
+      const itemName = "Traje Completo";
+      const itemPrice = "$15.000,00";
+      const paddingLen = Math.max(1, maxCols - itemQty.length - itemName.length - itemPrice.length);
+      const sampleItemStr = `${itemQty}${itemName}${' '.repeat(paddingLen)}${itemPrice}`;
+
       const parsedText = activeTemplate
         .replace(/\{\{razonSocial\}\}/g, razonSocial.toUpperCase() || 'LAVANDERÍA')
         .replace(/\{\{cliente\}\}/g, 'Juan Perez')
-        .replace(/\{\{fecha\}\}/g, new Date().toLocaleDateString())
+        .replace(/\{\{fecha\}\}/g, new Date().toLocaleDateString('es-AR'))
         .replace(/\{\{hora\}\}/g, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))
         .replace(/\{\{total\}\}/g, '$15.000,00')
         .replace(/\{\{nro_pedido\}\}/g, '#LAV-1003')
-        .replace(/\{\{bulto\}\}/g, '1 de 1')
+        .replace(/Bulto:\s*\{\{bulto\}\}\n?/g, '')
+        .replace(/\{\{bulto\}\}/g, '')
         .replace(/\{\{estado\}\}/g, 'PAGADO')
         .replace(/\{\{estado_pedido\}\}/g, 'PENDIENTE')
-        .replace(/\{\{detalle\}\}/g, '1x Traje             $15.000,00');
+        .replace(/\{\{detalle\}\}/g, sampleItemStr);
 
       const lines = parsedText.split('\n');
       
@@ -77,7 +87,6 @@ function TicketPreview({ template, showQr, razonSocial }: { template: string, sh
         let isCentered = false;
         let isBold = false;
         
-        // Basic heuristic for centering/bolding the title or footer
         if (i < 2 || line.includes('***') || line.includes('Gracias')) {
           isCentered = true;
         }
@@ -89,8 +98,8 @@ function TicketPreview({ template, showQr, razonSocial }: { template: string, sh
           <div key={i} style={{ 
             textAlign: isCentered ? 'center' : 'left',
             fontWeight: isBold ? 'bold' : 'normal',
-            whiteSpace: 'pre',
-            fontSize: i === 0 ? '14px' : '11px',
+            whiteSpace: 'pre-wrap',
+            fontSize: i === 0 ? (is58mm ? '13px' : '14px') : (is58mm ? '10px' : '11px'),
             minHeight: '14px'
           }}>
             {line}
@@ -102,16 +111,16 @@ function TicketPreview({ template, showQr, razonSocial }: { template: string, sh
     };
 
     renderTemplate();
-  }, [template, showQr, razonSocial]);
+  }, [template, showQr, razonSocial, is58mm]);
 
   return (
     <div
-      className="bg-white text-black mx-auto shadow-xl"
+      className="bg-white text-black mx-auto shadow-xl transition-all duration-300"
       style={{
         fontFamily: "'Courier New', Courier, monospace",
         lineHeight: '1.4',
-        width: '260px',
-        padding: '20px 14px',
+        width: widthPx,
+        padding: is58mm ? '14px 10px' : '20px 14px',
         border: '1px solid #e5e7eb',
         borderRadius: '4px',
       }}
@@ -121,13 +130,13 @@ function TicketPreview({ template, showQr, razonSocial }: { template: string, sh
       {/* QR */}
       {showQr && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '12px', marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', marginBottom: '8px', color: '#6b7280' }}>
+          <div style={{ fontSize: '10px', marginBottom: '6px', color: '#6b7280' }}>
             Escanea para seguir tu pedido:
           </div>
-          <div style={{ border: '2px solid black', padding: '6px', display: 'inline-block' }}>
-            <QrCode style={{ width: '90px', height: '90px', color: 'black' }} />
+          <div style={{ border: '2px solid black', padding: '4px', display: 'inline-block' }}>
+            <QrCode style={{ width: is58mm ? '80px' : '95px', height: is58mm ? '80px' : '95px', color: 'black' }} />
           </div>
-          <div style={{ fontSize: '9px', marginTop: '4px', color: '#9ca3af' }}>3E70A29A</div>
+          <div style={{ fontSize: '9px', marginTop: '4px', color: '#9ca3af' }}>LAV-1003</div>
         </div>
       )}
     </div>
@@ -154,6 +163,7 @@ export default function HardwareForm() {
       imprimirTicketAutomatico: hardwareConfig.imprimirTicketAutomatico,
       mensajeTicket: hardwareConfig.mensajeTicket,
       showQr: hardwareConfig.showQr,
+      anchoPapel: hardwareConfig.anchoPapel || '80mm',
     },
     mode: 'onSubmit',
   });
@@ -169,6 +179,7 @@ export default function HardwareForm() {
       imprimirTicketAutomatico: hardwareConfig.imprimirTicketAutomatico,
       mensajeTicket: hardwareConfig.mensajeTicket,
       showQr: hardwareConfig.showQr,
+      anchoPapel: hardwareConfig.anchoPapel || '80mm',
     });
   }, [hardwareConfig, reset]);
 
@@ -199,12 +210,14 @@ export default function HardwareForm() {
         imprimirTicketAutomatico: data.imprimirTicketAutomatico,
         mensajeTicket: data.mensajeTicket || '',
         mostrarQrTicket: data.showQr,
+        anchoPapel: data.anchoPapel,
       });
 
       setHardwareConfig({
         imprimirTicketAutomatico: data.imprimirTicketAutomatico,
         mensajeTicket: data.mensajeTicket || '',
         showQr: data.showQr,
+        anchoPapel: data.anchoPapel,
       });
       reset(data);
       toast.success('Configuración de hardware guardada');
@@ -255,6 +268,43 @@ export default function HardwareForm() {
               name="showQr"
               render={({ field }) => (
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
+              )}
+            />
+          </SettingItem>
+
+          {/* Ancho de Rollo de Papel */}
+          <SettingItem
+            title="Formato de Rollo de Impresión"
+            description="Selecciona el ancho del papel de tu impresora térmica de recibos."
+          >
+            <Controller
+              control={control}
+              name="anchoPapel"
+              render={({ field }) => (
+                <div className="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-900 p-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange('58mm')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      field.value === '58mm'
+                        ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50 shadow-sm border border-neutral-200 dark:border-neutral-700'
+                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    58mm (2" / 32 cols)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => field.onChange('80mm')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      field.value === '80mm'
+                        ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-50 shadow-sm border border-neutral-200 dark:border-neutral-700'
+                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    80mm (3" / 48 cols)
+                  </button>
+                </div>
               )}
             />
           </SettingItem>
@@ -313,6 +363,7 @@ export default function HardwareForm() {
               template={watchedValues.mensajeTicket || ''} 
               showQr={watchedValues.showQr} 
               razonSocial={businessConfig.razonSocial || ''} 
+              anchoPapel={watchedValues.anchoPapel || '80mm'}
             />
           </div>
         </div>

@@ -60,35 +60,35 @@ export function CajaMovimientosTabla({ pagos = [], gastos = [] }: CajaMovimiento
   ].sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full" ref={containerRef}>
-      <div className="border-b border-slate-100 pb-4 mb-4 flex gap-6">
-        <h3 className="font-semibold text-slate-800">
+    <div className="bg-white dark:bg-neutral-900 p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-neutral-800 overflow-hidden flex flex-col h-full" ref={containerRef}>
+      <div className="border-b border-slate-100 dark:border-neutral-800 pb-4 mb-4 flex gap-6">
+        <h3 className="font-semibold text-slate-800 dark:text-neutral-100">
           Movimientos de Caja ({movimientos.length})
         </h3>
       </div>
 
       <div className="p-0 overflow-y-auto max-h-[400px]">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-white sticky top-0 z-10 shadow-sm">
+        <table className="w-full text-left text-sm text-slate-600 dark:text-neutral-300">
+          <thead className="bg-white dark:bg-neutral-900 sticky top-0 z-10 shadow-sm border-b border-slate-100 dark:border-neutral-800">
             <tr>
-              <th className="px-6 py-4 font-medium text-slate-400 w-24">Hora</th>
-              <th className="px-6 py-4 font-medium text-slate-400">Descripción</th>
-              <th className="px-6 py-4 font-medium text-slate-400">Método</th>
-              <th className="px-6 py-4 text-right font-medium text-slate-400">Monto</th>
+              <th className="px-6 py-4 font-medium text-slate-400 dark:text-neutral-400 w-24">Hora</th>
+              <th className="px-6 py-4 font-medium text-slate-400 dark:text-neutral-400">Descripción</th>
+              <th className="px-6 py-4 font-medium text-slate-400 dark:text-neutral-400">Método</th>
+              <th className="px-6 py-4 text-right font-medium text-slate-400 dark:text-neutral-400">Monto</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-50 dark:divide-neutral-800/60">
             {movimientos.length > 0 ? (
               movimientos.map((mov) => (
                 <tr 
                   key={mov.id} 
                   onClick={() => mov.referenciaId ? router.push(`/admin/pedidos/${mov.referenciaId}`) : undefined}
-                  className={`movimiento-row hover:bg-slate-50 transition-colors ${mov.referenciaId ? 'cursor-pointer group' : ''}`}
+                  className={`movimiento-row hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-colors ${mov.referenciaId ? 'cursor-pointer group' : ''}`}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-neutral-400">
                     {format(mov.fecha, "HH:mm")}
                   </td>
-                  <td className="px-6 py-4 font-medium text-slate-800 flex items-center gap-2">
+                  <td className="px-6 py-4 font-medium text-slate-800 dark:text-neutral-100 flex items-center gap-2">
                     {mov.tipo === 'INGRESO' ? (
                       <ArrowUpRight className="w-4 h-4 text-emerald-500 shrink-0" />
                     ) : (
@@ -96,10 +96,10 @@ export function CajaMovimientosTabla({ pagos = [], gastos = [] }: CajaMovimiento
                     )}
                     {mov.descripcion}
                     {mov.referenciaId && (
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-slate-300 dark:text-neutral-600 group-hover:text-emerald-500 transition-colors shrink-0" />
                     )}
                     {mov.montoAFavorGenerado && mov.montoAFavorGenerado > 0 ? (
-                      <span className="ml-2 inline-flex items-center text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full w-fit">
+                      <span className="ml-2 inline-flex items-center text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 px-1.5 py-0.5 rounded-full w-fit">
                         + Generó ${mov.montoAFavorGenerado.toLocaleString('es-AR')} a favor
                       </span>
                     ) : null}
@@ -109,14 +109,14 @@ export function CajaMovimientosTabla({ pagos = [], gastos = [] }: CajaMovimiento
                       {mov.metodoPago}
                     </Badge>
                   </td>
-                  <td className={`px-6 py-4 text-right font-bold ${mov.tipo === 'INGRESO' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <td className={`px-6 py-4 text-right font-bold ${mov.tipo === 'INGRESO' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                     {mov.tipo === 'INGRESO' ? '+' : '-'}${mov.monto.toLocaleString('es-AR')}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={4} className="px-6 py-12 text-center text-slate-400 dark:text-neutral-500">
                   No hay movimientos registrados.
                 </td>
               </tr>

@@ -6,17 +6,23 @@ import { ResponsiveSheet, ResponsiveSheetContent, ResponsiveSheetHeader, Respons
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/ui/overlays/dialog"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { apiClient } from "@/shared/lib/api-client"
+import { toast } from "sonner"
 
 const createSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  telefono: z.string().optional(),
+  rol: z.enum(["EMPLEADO", "ADMIN"]).default("EMPLEADO"),
   sueldoBase: z.coerce.number().min(0).optional(),
   horasSemanalesObjetivo: z.coerce.number().min(0).optional().default(40),
 })
 
 const editSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
+  telefono: z.string().optional(),
+  rol: z.enum(["EMPLEADO", "ADMIN"]).default("EMPLEADO"),
+  password: z.string().optional(),
   sueldoBase: z.coerce.number().min(0).optional(),
   horasSemanalesObjetivo: z.coerce.number().min(0).optional().default(40),
 })
@@ -30,6 +36,8 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
       nombre: "",
       email: "",
       password: "",
+      telefono: "",
+      rol: "EMPLEADO" as const,
       sueldoBase: 0,
       horasSemanalesObjetivo: 40
     }
@@ -39,6 +47,9 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
     resolver: zodResolver(editSchema),
     defaultValues: {
       nombre: "",
+      telefono: "",
+      rol: "EMPLEADO" as const,
+      password: "",
       sueldoBase: 0,
       horasSemanalesObjetivo: 40
     }
@@ -47,7 +58,10 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
   useEffect(() => {
     if (props.empleadoToEdit && props.isEditarOpen) {
       editForm.reset({
-        nombre: props.empleadoToEdit.nombre,
+        nombre: props.empleadoToEdit.nombre || "",
+        telefono: props.empleadoToEdit.telefono || "",
+        rol: (props.empleadoToEdit.rol || "EMPLEADO").toUpperCase() as "EMPLEADO" | "ADMIN",
+        password: "",
         sueldoBase: props.empleadoToEdit.sueldoBase || 0,
         horasSemanalesObjetivo: props.empleadoToEdit.horasSemanalesObjetivo || 40,
       })
@@ -62,33 +76,39 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
 
   const onSubmitCreate = async (data: any) => {
     try {
-      const res = await apiClient.post<any>(`/usuarios`, { ...data, rol: "EMPLEADO" })
+      const res = await apiClient.post<any>(`/usuarios`, data)
       if (res.success || res.data) {
+        toast.success("Empleado creado exitosamente")
         props.setIsCrearOpen(false)
         createForm.reset()
         onActionSuccess()
       } else {
-        alert("Error al crear empleado")
+        toast.error("Error al crear empleado")
       }
     } catch (e: any) {
       console.error(e)
-      alert(e?.message || "Error al crear empleado")
+      toast.error(e?.message || "Error al crear el empleado")
     }
   }
 
   const onSubmitEdit = async (data: any) => {
     if (!props.empleadoToEdit) return
     try {
-      const res = await apiClient.put<any>(`/usuarios/${props.empleadoToEdit.id}`, data)
+      const cleanData = { ...data }
+      if (!cleanData.password || cleanData.password.trim() === "") {
+        delete cleanData.password
+      }
+      const res = await apiClient.put<any>(`/usuarios/${props.empleadoToEdit.id}`, cleanData)
       if (res.success || res.data) {
+        toast.success("Empleado actualizado exitosamente")
         props.setIsEditarOpen(false)
         onActionSuccess()
       } else {
-        alert("Error al editar empleado")
+        toast.error("Error al actualizar el empleado")
       }
     } catch (e: any) {
       console.error(e)
-      alert(e?.message || "Error al editar empleado")
+      toast.error(e?.message || "Error al actualizar el empleado")
     }
   }
 
@@ -97,11 +117,15 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
     try {
       const res = await apiClient.patch<any>(`/usuarios/${props.empleadoToDesactivar.id}/estado`, {})
       if (res.success || res.data) {
+        toast.success(`Empleado ${props.empleadoToDesactivar?.activo ? 'desactivado' : 'activado'} exitosamente`)
         props.setIsDesactivarOpen(false)
         onActionSuccess()
+      } else {
+        toast.error("Error al modificar el estado del empleado")
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      toast.error(e?.message || "Error al modificar el estado del empleado")
     }
   }
 
@@ -112,79 +136,107 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
           <ResponsiveSheetHeader className="mb-6">
             <ResponsiveSheetTitle>Nuevo Empleado</ResponsiveSheetTitle>
             <ResponsiveSheetDescription>
-              Crea un nuevo empleado. Se le asignará el rol EMPLEADO.
+              Completa los datos para registrar un nuevo empleado en tu negocio.
             </ResponsiveSheetDescription>
           </ResponsiveSheetHeader>
           <form onSubmit={createForm.handleSubmit(onSubmitCreate)} className="flex flex-col gap-4 flex-1">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Nombre Completo</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Nombre Completo</label>
               <input 
                 {...createForm.register("nombre")}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
                 placeholder="Ej. Juan Pérez"
               />
               {createForm.formState.errors.nombre && (
                 <span className="text-red-500 text-xs">{createForm.formState.errors.nombre.message as string}</span>
               )}
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <input 
-                {...createForm.register("email")}
-                type="email"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                placeholder="juan@ejemplo.com"
-              />
-              {createForm.formState.errors.email && (
-                <span className="text-red-500 text-xs">{createForm.formState.errors.email.message as string}</span>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Contraseña</label>
-              <input 
-                {...createForm.register("password")}
-                type="password"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                placeholder="******"
-              />
-              {createForm.formState.errors.password && (
-                <span className="text-red-500 text-xs">{createForm.formState.errors.password.message as string}</span>
-              )}
-            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Sueldo Base</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Email</label>
+                <input 
+                  {...createForm.register("email")}
+                  type="email"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
+                  placeholder="juan@ejemplo.com"
+                />
+                {createForm.formState.errors.email && (
+                  <span className="text-red-500 text-xs">{createForm.formState.errors.email.message as string}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Teléfono (opcional)</label>
+                <input 
+                  {...createForm.register("telefono")}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
+                  placeholder="Ej. 11 2345 6789"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Contraseña</label>
+                <input 
+                  {...createForm.register("password")}
+                  type="password"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
+                  placeholder="******"
+                />
+                {createForm.formState.errors.password && (
+                  <span className="text-red-500 text-xs">{createForm.formState.errors.password.message as string}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Rol</label>
+                <select
+                  {...createForm.register("rol")}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                >
+                  <option value="EMPLEADO">Empleado</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Sueldo Base</label>
                 <input 
                   {...createForm.register("sueldoBase")}
                   type="number"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
                   placeholder="0"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Horas Objetivo (sem.)</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Horas Objetivo (sem.)</label>
                 <input 
                   {...createForm.register("horasSemanalesObjetivo")}
                   type="number"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
                   placeholder="40"
                 />
               </div>
             </div>
+
             <div className="mt-auto pt-6 flex gap-3">
               <button 
                 type="button" 
                 onClick={() => props.setIsCrearOpen(false)}
-                className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
               >
                 Cancelar
               </button>
               <button 
                 type="submit"
                 disabled={createForm.formState.isSubmitting}
-                className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 font-bold"
               >
-                Crear Empleado
+                {createForm.formState.isSubmitting ? "Creando..." : "Crear Empleado"}
               </button>
             </div>
           </form>
@@ -196,52 +248,86 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
           <ResponsiveSheetHeader className="mb-6">
             <ResponsiveSheetTitle>Editar Empleado</ResponsiveSheetTitle>
             <ResponsiveSheetDescription>
-              Modifica los detalles del empleado.
+              Modifica los detalles, rol o clave del empleado.
             </ResponsiveSheetDescription>
           </ResponsiveSheetHeader>
           <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="flex flex-col gap-4 flex-1">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-slate-700">Nombre Completo</label>
+              <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Nombre Completo</label>
               <input 
                 {...editForm.register("nombre")}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
               {editForm.formState.errors.nombre && (
                 <span className="text-red-500 text-xs">{editForm.formState.errors.nombre.message as string}</span>
               )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Sueldo Base</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Teléfono</label>
+                <input 
+                  {...editForm.register("telefono")}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="Ej. 11 2345 6789"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Rol</label>
+                <select
+                  {...editForm.register("rol")}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                >
+                  <option value="EMPLEADO">Empleado</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Nueva Contraseña (opcional)</label>
+              <input 
+                {...editForm.register("password")}
+                type="password"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-neutral-500"
+                placeholder="Dejar en blanco para conservar actual"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Sueldo Base</label>
                 <input 
                   {...editForm.register("sueldoBase")}
                   type="number"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-slate-700">Horas Objetivo (sem.)</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-neutral-300">Horas Objetivo (sem.)</label>
                 <input 
                   {...editForm.register("horasSemanalesObjetivo")}
                   type="number"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-neutral-800 border border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
             </div>
+
             <div className="mt-auto pt-6 flex gap-3">
               <button 
                 type="button" 
                 onClick={() => props.setIsEditarOpen(false)}
-                className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
               >
                 Cancelar
               </button>
               <button 
                 type="submit"
                 disabled={editForm.formState.isSubmitting}
-                className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 font-bold"
               >
-                Guardar Cambios
+                {editForm.formState.isSubmitting ? "Guardando..." : "Guardar Cambios"}
               </button>
             </div>
           </form>
@@ -253,22 +339,22 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
           <DialogHeader>
             <DialogTitle>Desactivar Empleado</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro que deseas desactivar a {props.empleadoToDesactivar?.nombre}?
-              Ya no podrá acceder al sistema.
+              ¿Estás seguro que deseas {props.empleadoToDesactivar?.activo ? 'desactivar' : 'activar'} a {props.empleadoToDesactivar?.nombre}?
+              {props.empleadoToDesactivar?.activo && " Ya no podrá acceder al sistema."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <button 
               onClick={() => props.setIsDesactivarOpen(false)}
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium"
+              className="px-4 py-2 bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors"
             >
               Cancelar
             </button>
             <button 
               onClick={onDesactivar}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+              className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors font-bold"
             >
-              Desactivar
+              {props.empleadoToDesactivar?.activo ? "Desactivar" : "Activar"}
             </button>
           </DialogFooter>
         </DialogContent>

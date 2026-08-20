@@ -18,6 +18,7 @@ import { useSocket } from "@/shared/hooks/useSocket"
 
 export default function PosCajaPage() {
   const [caja, setCaja] = useState<CajaActual | null>(null)
+  const [ultimaCajaState, setUltimaCajaState] = useState<CajaActual | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -38,11 +39,21 @@ export default function PosCajaPage() {
     socket.on("caja_actualizada", handleUpdate)
     socket.on("pago_registrado", handleUpdate)
     socket.on("pago_anulado", handleUpdate)
+    socket.on("caja:apertura", handleUpdate)
+    socket.on("caja:cierre", handleUpdate)
+    socket.on("gasto:registrado", handleUpdate)
+    socket.on("pedido:creado", handleUpdate)
+    socket.on("pedido:estado_cambiado", handleUpdate)
 
     return () => {
       socket.off("caja_actualizada", handleUpdate)
       socket.off("pago_registrado", handleUpdate)
       socket.off("pago_anulado", handleUpdate)
+      socket.off("caja:apertura", handleUpdate)
+      socket.off("caja:cierre", handleUpdate)
+      socket.off("gasto:registrado", handleUpdate)
+      socket.off("pedido:creado", handleUpdate)
+      socket.off("pedido:estado_cambiado", handleUpdate)
     }
   }, [socket])
 
@@ -50,9 +61,16 @@ export default function PosCajaPage() {
     try {
       if (showLoading && !caja) setIsLoading(true)
       const data = await obtenerCajaActual()
-      setCaja(data)
+      if (data && (data.estado === "ABIERTA" || (data as any).estadoCaja === "Abierta")) {
+        setCaja(data)
+        setUltimaCajaState(null)
+      } else {
+        setCaja(null)
+        setUltimaCajaState(data || null)
+      }
     } catch (error) {
       setCaja(null)
+      setUltimaCajaState(null)
     } finally {
       if (showLoading) setIsLoading(false)
     }
@@ -68,7 +86,7 @@ export default function PosCajaPage() {
     }
   }, { scope: containerRef, dependencies: [isLoading, caja] })
 
-  const ultimaCaja = (caja as any)?.ultimaCajaCerrada ?? null
+  const ultimaCaja = ultimaCajaState || (caja as any)?.ultimaCajaCerrada || null
 
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full gap-6 w-full p-4 lg:p-8">
@@ -76,8 +94,8 @@ export default function PosCajaPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 fade-in">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Caja y Finanzas</h1>
-          <p className="text-slate-500 mt-1">Gestiona los ingresos, egresos y el historial de tu turno.</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-neutral-50 tracking-tight">Caja y Finanzas</h1>
+          <p className="text-slate-500 dark:text-neutral-400 mt-1">Gestiona los ingresos, egresos y el historial de tu turno.</p>
         </div>
       </div>
 

@@ -80,20 +80,20 @@ export function CategoriasSheet({ open, onOpenChange }: CategoriasSheetProps) {
         </ResponsiveSheetHeader>
 
         <div className="flex-1 mt-6 flex flex-col h-full overflow-hidden">
-          <form onSubmit={handleCrearCategoria} className="flex gap-2 items-end bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 shrink-0">
+          <form onSubmit={handleCrearCategoria} className="flex gap-2 items-end bg-slate-50 dark:bg-neutral-800 p-3 rounded-xl border border-slate-200 dark:border-neutral-700 mb-4 shrink-0">
             <div className="flex-1 space-y-1">
-              <Label className="text-xs text-muted-foreground">Nueva Categoría</Label>
+              <Label className="text-xs text-muted-foreground dark:text-neutral-400">Nueva Categoría</Label>
               <Input 
                 placeholder="Ej: Insumos, Sueldos..." 
                 value={nuevaCategoria}
                 onChange={(e) => setNuevaCategoria(e.target.value)}
-                className="h-10 bg-white"
+                className="h-10 bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100"
               />
             </div>
             <Button 
               type="submit" 
               disabled={!nuevaCategoria.trim() || isAgregandoCat}
-              className="h-10 px-4"
+              className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isAgregandoCat ? <Spinner size="sm" className="mr-2" /> : <Plus className="h-4 w-4 mr-1" />}
               Agregar
@@ -101,25 +101,25 @@ export function CategoriasSheet({ open, onOpenChange }: CategoriasSheetProps) {
           </form>
 
           <div className="flex-1 overflow-y-auto pr-1 pb-4">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">Tus Categorías</Label>
+            <Label className="text-xs text-muted-foreground dark:text-neutral-400 uppercase tracking-wider mb-2 block">Tus Categorías</Label>
             {isCargandoCategorias ? (
               <div className="flex items-center justify-center py-8">
-                <Spinner size="default" className="text-muted-foreground" />
+                <Spinner size="default" className="text-muted-foreground dark:text-neutral-400" />
               </div>
             ) : categorias.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground border rounded-xl border-dashed">
+              <div className="text-center py-8 text-sm text-muted-foreground dark:text-neutral-400 border rounded-xl border-dashed dark:border-neutral-800">
                 Aún no hay categorías registradas.
               </div>
             ) : (
               <div className="grid gap-2">
                 {categorias.map(cat => (
-                  <div key={cat.id} className="flex items-center justify-between p-3 rounded-lg border bg-white shadow-sm hover:border-slate-300 transition-colors">
-                    <span className="font-medium text-sm text-slate-800">{cat.nombre}</span>
+                  <div key={cat.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/80 shadow-sm hover:border-slate-300 dark:hover:border-neutral-600 transition-colors">
+                    <span className="font-medium text-sm text-slate-800 dark:text-neutral-100">{cat.nombre}</span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                       onClick={() => handleEliminarCategoria(cat.id)}
                     >
                       <Trash2 className="h-4 w-4" />

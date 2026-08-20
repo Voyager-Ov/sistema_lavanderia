@@ -68,12 +68,13 @@ export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias
 
         <div className="flex flex-col gap-6 mt-4">
           {/* Create */}
-          <div className="flex gap-2 items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <div className="flex gap-2 items-center bg-gray-50 dark:bg-neutral-800 p-4 rounded-xl border border-gray-100 dark:border-neutral-700">
             <Input 
               placeholder="Nueva categoría..." 
               value={newName} 
               onChange={e => setNewName(e.target.value)}
               disabled={loading}
+              className="bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
             <Button onClick={handleCreate} disabled={loading || !newName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 shrink-0 shadow-sm transition-all">
@@ -83,12 +84,12 @@ export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias
 
           {/* List */}
           <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-bold text-gray-500 mb-2">Categorías existentes</h3>
+            <h3 className="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-2">Categorías existentes</h3>
             {categorias?.length === 0 ? (
-              <p className="text-sm text-gray-400 italic text-center py-4">No hay categorías registradas.</p>
+              <p className="text-sm text-gray-400 dark:text-neutral-500 italic text-center py-4">No hay categorías registradas.</p>
             ) : (
               categorias?.map((cat: any) => (
-                <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all bg-white group">
+                <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-all bg-white dark:bg-neutral-800/80 group">
                   {editingId === cat.id ? (
                     <div className="flex items-center gap-2 w-full">
                       <Input 
@@ -96,23 +97,24 @@ export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias
                         onChange={e => setEditName(e.target.value)}
                         disabled={loading}
                         autoFocus
+                        className="bg-white dark:bg-neutral-900 border-slate-200 dark:border-neutral-700 text-slate-900 dark:text-neutral-100"
                         onKeyDown={(e) => e.key === 'Enter' && handleUpdate(cat.id)}
                       />
-                      <Button size="icon" variant="ghost" onClick={() => handleUpdate(cat.id)} disabled={loading} className="text-green-600 shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => handleUpdate(cat.id)} disabled={loading} className="text-green-600 dark:text-green-400 shrink-0">
                         <Save className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} disabled={loading} className="text-gray-400 shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} disabled={loading} className="text-gray-400 dark:text-neutral-500 shrink-0">
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium text-gray-800">{cat.nombre}</span>
+                      <span className="font-medium text-gray-800 dark:text-neutral-100">{cat.nombre}</span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="icon" variant="ghost" onClick={() => { setEditingId(cat.id); setEditName(cat.nombre); }} className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 h-8 w-8">
+                        <Button size="icon" variant="ghost" onClick={() => { setEditingId(cat.id); setEditName(cat.nombre); }} className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 h-8 w-8">
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(cat.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8">
+                        <Button size="icon" variant="ghost" onClick={() => handleDelete(cat.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 h-8 w-8">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

@@ -254,13 +254,13 @@ export function RegistrarGastoModal({ open, onOpenChange, onSuccess }: Registrar
                       className={`
                         cursor-pointer flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200
                         ${isSelected 
-                          ? 'border-brand-blue bg-brand-blue/5 shadow-md shadow-brand-blue/10 scale-[1.02]' 
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          ? 'border-brand-blue bg-brand-blue/5 dark:bg-brand-blue/10 shadow-md shadow-brand-blue/10 scale-[1.02]' 
+                          : 'border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-slate-300 dark:hover:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-800'
                         }
                       `}
                     >
-                      <Icon className={`w-8 h-8 mb-2 ${isSelected ? 'text-brand-blue' : 'text-slate-500'}`} />
-                      <span className={`text-sm font-semibold text-center ${isSelected ? 'text-brand-blue' : 'text-slate-700'}`}>
+                      <Icon className={`w-8 h-8 mb-2 ${isSelected ? 'text-brand-blue dark:text-blue-400' : 'text-slate-500 dark:text-neutral-400'}`} />
+                      <span className={`text-sm font-semibold text-center ${isSelected ? 'text-brand-blue dark:text-blue-400' : 'text-slate-700 dark:text-neutral-300'}`}>
                         {metodo.nombre}
                       </span>
                     </div>
@@ -279,7 +279,7 @@ export function RegistrarGastoModal({ open, onOpenChange, onSuccess }: Registrar
               />
             </div>
 
-            <div className="pt-4 flex flex-col gap-3 border-t border-slate-100">
+            <div className="pt-4 flex flex-col gap-3 border-t border-slate-100 dark:border-neutral-800">
               <Button
                 type="submit"
                 disabled={isLoading || !monto || !metodoPagoId || !categoria}

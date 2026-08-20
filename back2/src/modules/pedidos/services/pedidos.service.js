@@ -41,7 +41,8 @@ class PedidosService {
             }
         }
 
-        const total = subtotalItems;
+        const costoEnvio = parseFloat(plain.costoEnvio) || 0;
+        const total = subtotalItems + costoEnvio;
 
         // Calcular total cobrado
         let totalCobrado = 0;
@@ -60,18 +61,25 @@ class PedidosService {
         }
 
         // Estado actual (último cambio de estado) e historial mapeado para el frontend
-        let estadoActual = "PENDIENTE";
+        let estadoActual = plain.estado || "PENDIENTE";
         const historialFormatted = [];
 
         if (plain.cambiosEstado && Array.isArray(plain.cambiosEstado) && plain.cambiosEstado.length > 0) {
-            const ultimoCambio = plain.cambiosEstado[plain.cambiosEstado.length - 1];
-            if (ultimoCambio.estado) {
+            const sortedCambios = [...plain.cambiosEstado].sort((a, b) => {
+                const timeA = new Date(a.fechaHoraInicio || a.createdAt || 0).getTime();
+                const timeB = new Date(b.fechaHoraInicio || b.createdAt || 0).getTime();
+                if (timeA !== timeB) return timeA - timeB;
+                return (a.id || 0) - (b.id || 0);
+            });
+
+            const ultimoCambio = sortedCambios[sortedCambios.length - 1];
+            if (ultimoCambio && ultimoCambio.estado) {
                 estadoActual = ultimoCambio.estado.nombre || estadoActual;
             }
 
-            for (let i = 0; i < plain.cambiosEstado.length; i++) {
-                const ce = plain.cambiosEstado[i];
-                const prev = i > 0 ? plain.cambiosEstado[i - 1] : null;
+            for (let i = 0; i < sortedCambios.length; i++) {
+                const ce = sortedCambios[i];
+                const prev = i > 0 ? sortedCambios[i - 1] : null;
                 historialFormatted.push({
                     id: ce.id,
                     estadoAnterior: prev && prev.estado ? prev.estado.nombre : null,
@@ -106,7 +114,7 @@ class PedidosService {
             observaciones: plain.observaciones,
             notas: plain.observaciones,
             origen: plain.origen,
-            costoEnvio: 0,
+            costoEnvio,
             subtotalItems,
             total,
             totalCobrado,
@@ -381,6 +389,9 @@ class PedidosService {
         if (!estado) {
             estado = await Estado.create({ nombre: nuevoEstadoNombre, descripcion: `Estado ${nuevoEstadoNombre}`, ambito: "Pedido" });
         }
+
+        // Actualizar la columna estado en la tabla pedidos
+        await pedido.update({ estado: nuevoEstadoNombre });
 
         // Cerrar el cambio de estado previo
         const ultimoCambio = await CambioEstadoPedido.findOne({

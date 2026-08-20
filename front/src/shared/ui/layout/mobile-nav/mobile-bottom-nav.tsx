@@ -114,8 +114,8 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
       <div className="md:hidden fixed bottom-6 left-4 right-4 z-[60] flex flex-col justify-end">
         {/* Floating Pill Container */}
         <div className={`
-          bg-white/95 backdrop-blur-xl shadow-[0_8px_32px_rgb(0,0,0,0.15)] overflow-hidden transition-all duration-300 ease-out
-          ${isSearchOpen ? 'rounded-[2rem] p-3' : 'border border-white/40 rounded-[2rem] p-2 flex items-center justify-between'}
+          bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl shadow-[0_8px_32px_rgb(0,0,0,0.15)] overflow-hidden transition-all duration-300 ease-out
+          ${isSearchOpen ? 'rounded-[2rem] p-3 border border-gray-200/80 dark:border-neutral-800' : 'border border-white/40 dark:border-neutral-800 rounded-[2rem] p-2 flex items-center justify-between'}
         `}>
           
           {isSearchOpen ? (
@@ -128,34 +128,34 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
                 {results.map((res) => (
                   <div 
                     key={res.id} 
-                    className="search-result-item p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:border-blue-200 active:scale-[0.98] transition-all cursor-pointer"
+                    className="search-result-item p-4 bg-gray-50 dark:bg-neutral-800/80 border border-gray-100 dark:border-neutral-700 rounded-2xl hover:border-blue-200 active:scale-[0.98] transition-all cursor-pointer"
                     onClick={closeSearch}
                   >
-                    <h4 className="font-bold text-gray-900">{res.title}</h4>
-                    <p className="text-sm text-gray-500">{res.desc}</p>
+                    <h4 className="font-bold text-gray-900 dark:text-neutral-100">{res.title}</h4>
+                    <p className="text-sm text-gray-500 dark:text-neutral-400">{res.desc}</p>
                   </div>
                 ))}
 
                 {query.length > 0 && query.length <= 2 && (
-                  <p className="text-center text-sm font-medium text-gray-500 py-4">Escribe al menos 3 caracteres...</p>
+                  <p className="text-center text-sm font-medium text-gray-500 dark:text-neutral-400 py-4">Escribe al menos 3 caracteres...</p>
                 )}
                 
                 {query.length > 2 && results.length === 0 && !isSearching && (
-                  <p className="text-center text-sm font-medium text-gray-500 py-4">No se encontraron resultados.</p>
+                  <p className="text-center text-sm font-medium text-gray-500 dark:text-neutral-400 py-4">No se encontraron resultados.</p>
                 )}
               </div>
 
               {/* Separador dinámico si hay contenido arriba */}
               {(query.length > 0 || results.length > 0) && (
-                <div className="w-full h-px bg-gray-100 my-2" />
+                <div className="w-full h-px bg-gray-100 dark:bg-neutral-800 my-2" />
               )}
 
               {/* Search Input Row (siempre visible abajo) */}
               <div className="flex items-center h-12 px-2">
-                <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <Search className="w-5 h-5 text-gray-400 dark:text-neutral-500 flex-shrink-0" />
                 <input 
                   ref={inputRef}
-                  className="flex-1 bg-transparent border-none px-3 h-full focus:outline-none focus:ring-0 text-gray-900 placeholder:text-gray-400 font-medium" 
+                  className="flex-1 bg-transparent border-none px-3 h-full focus:outline-none focus:ring-0 text-gray-900 dark:text-neutral-100 placeholder:text-gray-400 dark:placeholder:text-neutral-500 font-medium" 
                   placeholder="Buscar..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -165,7 +165,7 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
                 ) : (
                   <button 
                     onClick={closeSearch}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:bg-gray-200 transition-colors flex-shrink-0"
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 active:bg-gray-200 dark:active:bg-neutral-700 transition-colors flex-shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -191,10 +191,10 @@ export function MobileBottomNav({ mainMenu, accountMenu, onLogout, colors }: Mob
                   }}
                   className={`
                     relative flex items-center justify-center h-12 transition-all duration-300 ease-out
-                    ${isActive ? `w-28 rounded-2xl border ${item.bgClass}` : 'w-12 rounded-full hover:bg-gray-100/50'}
+                    ${isActive ? `w-28 rounded-2xl border ${item.bgClass}` : 'w-12 rounded-full hover:bg-gray-100/50 dark:hover:bg-neutral-800/50'}
                   `}
                 >
-                  <div className={`flex items-center gap-2 ${isActive ? item.colorClass : 'text-gray-500'}`}>
+                  <div className={`flex items-center gap-2 ${isActive ? item.colorClass : 'text-gray-500 dark:text-neutral-400'}`}>
                     <Icon className={`w-6 h-6 transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100'}`} />
                     {isActive && (
                       <span className="font-semibold text-sm animate-in fade-in slide-in-from-left-2 duration-300">

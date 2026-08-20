@@ -197,7 +197,8 @@ export interface TrackingResponse {
   items: { nombre: string; cantidad: number }[]
 }
 
-export const getTrackingInfoAPI = async (negocioId: string, codigo: string): Promise<TrackingResponse> => {
-  const res = await apiClient.get<{ data: TrackingResponse }>(`/tracking/${negocioId}/${codigo}`)
+export const getTrackingInfoAPI = async (negocioId: string, codigo: string, token?: string): Promise<TrackingResponse> => {
+  const queryToken = token ? `?token=${encodeURIComponent(token)}` : ''
+  const res = await apiClient.get<{ data: TrackingResponse }>(`/tracking/${negocioId}/${codigo}${queryToken}`)
   return res.data
 }

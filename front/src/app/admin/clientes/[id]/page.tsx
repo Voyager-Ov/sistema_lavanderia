@@ -13,12 +13,9 @@ import { parseISO, formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
 import { useClienteDetail } from "../hooks/useClienteDetail"
-import { getPedidosImpagosCliente } from "@/domains/clientes/api"
 import { Button } from "@/shared/ui/forms/button"
-import { Checkbox } from "@/shared/ui/forms/checkbox"
 import { KpiCard as DashboardKpi } from "@/shared/ui/data-display/kpi-card"
-import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
-import { DataTableBulkActions, BulkAction } from "@/shared/ui/data-display/data-table-bulk-actions"
+import { CobrarPedidoSheet } from "@/app/admin/pedidos/components/cobrar-pedido-sheet"
 import { safeFormatDate } from "@/shared/lib/utils"
 import { toast } from "sonner"
 
@@ -67,11 +64,9 @@ export default function ClienteDetailPage() {
   const { cliente, isLoading, fetchCliente } = useClienteDetail(clienteId)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Selección de pedidos impagos para cobrar
-  const [selectedPedidoIds, setSelectedPedidoIds] = useState<number[]>([])
+  // Estado para cobro individual de pedido
   const [modalCobroOpen, setModalCobroOpen] = useState(false)
-  const [pedidosParaCobroSheet, setPedidosParaCobroSheet] = useState<any[]>([])
-  const [isLoadingCobro, setIsLoadingCobro] = useState(false)
+  const [pedidoToCobrar, setPedidoToCobrar] = useState<any>(null)
 
   gsap.registerPlugin(useGSAP)
   useGSAP(() => {
@@ -143,62 +138,17 @@ export default function ClienteDetailPage() {
     return parseFloat(rawVal.toString())
   }, [cliente])
 
-  // Objetos de pedidos actualmente seleccionados para el cobro
-  const pedidosSeleccionadosParaCobro = useMemo(() => {
-    if (!cliente?.pedidos) return []
-    return cliente.pedidos.filter((p: any) => selectedPedidoIds.includes(p.id || p.numeroPedido))
-  }, [cliente, selectedPedidoIds])
-
-  const montoSeleccionado = useMemo(() => {
-    return pedidosSeleccionadosParaCobro.reduce((acc: number, p: any) => acc + parseFloat(p.total || "0"), 0)
-  }, [pedidosSeleccionadosParaCobro])
-
-  const toggleSelectPedido = (id: number) => {
-    setSelectedPedidoIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
+  const handleAbrirCobroPedido = (pedido: any) => {
+    const pId = pedido.id || pedido.numeroPedido
+    setPedidoToCobrar({
+      ...pedido,
+      id: pId,
+      numeroPedido: pId,
+      clienteId: cliente?.id,
+      cliente: cliente ? { id: cliente.id, nombre: `${cliente.nombre} ${cliente.apellido || ""}`.trim() } : undefined
+    })
+    setModalCobroOpen(true)
   }
-
-  const toggleSelectAllImpagos = () => {
-    if (selectedPedidoIds.length === pedidosImpagos.length) {
-      setSelectedPedidoIds([])
-    } else {
-      setSelectedPedidoIds(pedidosImpagos.map((p: any) => p.id || p.numeroPedido))
-    }
-  }
-
-  // Consulta en tiempo real al backend de los pedidos impagos antes de abrir el SideSheet de cobro
-  const abrirCobroVerificadoServidor = async (idsFiltro?: number[]) => {
-    setIsLoadingCobro(true)
-    try {
-      const res = await getPedidosImpagosCliente(clienteId)
-      const impagosServidor = res.pedidosImpagos || []
-
-      if (idsFiltro && idsFiltro.length > 0) {
-        const filtrados = impagosServidor.filter((p: any) => idsFiltro.includes(p.id || p.numeroPedido))
-        setPedidosParaCobroSheet(filtrados)
-      } else {
-        setPedidosParaCobroSheet(impagosServidor)
-        setSelectedPedidoIds(impagosServidor.map((p: any) => p.id || p.numeroPedido))
-      }
-
-      setModalCobroOpen(true)
-    } catch (error: any) {
-      toast.error("Error al consultar deudas en tiempo real con el servidor.")
-    } finally {
-      setIsLoadingCobro(false)
-    }
-  }
-
-  // Acciones masivas para la barra flotante estandarizada DataTableBulkActions
-  const bulkActions = useMemo<BulkAction<any>[]>(() => [
-    {
-      label: `Cobrar ($${montoSeleccionado.toLocaleString("es-AR")})`,
-      icon: Banknote,
-      colorClass: "bg-green-600 hover:bg-green-700 text-white font-bold",
-      onClick: () => abrirCobroVerificadoServidor(selectedPedidoIds)
-    }
-  ], [montoSeleccionado, selectedPedidoIds])
 
   if (isLoading) {
     return (
@@ -322,16 +272,7 @@ export default function ClienteDetailPage() {
             )
           )}
 
-          {saldoDeuda > 0 && (
-            <Button
-              onClick={() => abrirCobroVerificadoServidor()}
-              disabled={isLoadingCobro}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold h-11 px-5 rounded-2xl shadow-md gap-2 text-xs"
-            >
-              <Banknote className="w-4 h-4" />
-              {isLoadingCobro ? "Consultando..." : `Cobrar Deuda ($${saldoDeuda.toLocaleString("es-AR")})`}
-            </Button>
-          )}
+
 
           <Button
             variant="outline"
@@ -415,15 +356,6 @@ export default function ClienteDetailPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 dark:bg-neutral-800/60 text-gray-500 dark:text-neutral-400 text-xs font-bold uppercase tracking-wider border-b border-gray-100 dark:border-neutral-800">
               <tr>
-                <th className="px-6 py-4 w-10">
-                  {pedidosImpagos.length > 0 && (
-                    <Checkbox
-                      checked={selectedPedidoIds.length > 0 && selectedPedidoIds.length === pedidosImpagos.length}
-                      onCheckedChange={toggleSelectAllImpagos}
-                      aria-label="Seleccionar todos los impagos"
-                    />
-                  )}
-                </th>
                 <th className="px-6 py-4">Ticket</th>
                 <th className="px-6 py-4">Servicios / Ítems</th>
                 <th className="px-6 py-4">Fecha Pedido</th>
@@ -436,7 +368,7 @@ export default function ClienteDetailPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
               {(cliente.pedidos || []).length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-gray-400 dark:text-neutral-500">
+                  <td colSpan={7} className="py-16 text-center text-gray-400 dark:text-neutral-500">
                     <ShoppingBag className="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p className="text-sm font-semibold">Sin pedidos registrados para este cliente</p>
                   </td>
@@ -446,7 +378,6 @@ export default function ClienteDetailPage() {
                   const pId = p.id || p.numeroPedido
                   const isCancelado = isPedidoCancelado(p)
                   const isImpago = !p.cobrado && !isCancelado
-                  const isSelected = selectedPedidoIds.includes(pId)
 
                   // Detalle de servicios de las prendas
                   const itemsDetalle = (p.detalles || [])
@@ -459,24 +390,8 @@ export default function ClienteDetailPage() {
                   return (
                     <tr
                       key={pId || idx}
-                      className={`transition-colors ${
-                        isSelected
-                          ? "bg-green-50/60 dark:bg-green-950/20"
-                          : "hover:bg-gray-50/80 dark:hover:bg-neutral-800/40"
-                      }`}
+                      className="hover:bg-gray-50/80 dark:hover:bg-neutral-800/40 transition-colors"
                     >
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        {isImpago ? (
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleSelectPedido(pId)}
-                            aria-label={`Seleccionar pedido #${p.codigoSeguimiento}`}
-                          />
-                        ) : (
-                          <span className="text-gray-300 dark:text-neutral-700 text-xs">—</span>
-                        )}
-                      </td>
-
                       <td
                         className="px-6 py-4 cursor-pointer"
                         onClick={() => router.push(`/admin/pedidos/${pId}`)}
@@ -546,7 +461,8 @@ export default function ClienteDetailPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full"
-                              onClick={() => abrirCobroVerificadoServidor([pId])}
+                              onClick={() => handleAbrirCobroPedido(p)}
+                              title="Cobrar pedido"
                             >
                               <Banknote className="w-4 h-4" />
                             </Button>
@@ -562,22 +478,12 @@ export default function ClienteDetailPage() {
         </div>
       </div>
 
-      {/* ── BOTTOM ISLAND ESTANDARIZADA (DataTableBulkActions) ──────── */}
-      <DataTableBulkActions
-        selectedRows={pedidosSeleccionadosParaCobro}
-        actions={bulkActions}
-        onClearSelection={() => setSelectedPedidoIds([])}
-      />
-
       {/* ── SIDESHEET RESPONSIVO UNIFICADO DE COBRO ───────────────── */}
-      <CobrarPedidosSheet
+      <CobrarPedidoSheet
         open={modalCobroOpen}
         onOpenChange={setModalCobroOpen}
-        clienteId={cliente.id}
-        clienteNombre={nombreCompleto}
-        pedidos={pedidosParaCobroSheet}
+        pedido={pedidoToCobrar}
         onSuccess={() => {
-          setSelectedPedidoIds([])
           fetchCliente()
         }}
       />

@@ -1,5 +1,6 @@
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { pedidosSocket } from "../../pedidos/sockets/pedidos.socket.js";
 
 class PagosService {
 
@@ -138,12 +139,17 @@ class PagosService {
         const executeTransaction = async (t) => {
             const { Pedido, DetallePedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
 
-            let pedidosIds = params.pedidosIds || params.pedidoIds || [];
-            if (!Array.isArray(pedidosIds) && (params.pedidoId || params.pedidoNumeroPedido)) {
-                pedidosIds = [params.pedidoId || params.pedidoNumeroPedido];
+            let pedidosIds = params.pedidosIds || params.pedidoIds;
+            if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
+                const singleId = params.pedidoId || params.pedidoNumeroPedido || params.id || params.numeroPedido;
+                if (singleId) {
+                    pedidosIds = [singleId];
+                } else {
+                    pedidosIds = [];
+                }
             }
 
-            if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
+            if (pedidosIds.length === 0) {
                 throw new AppError("Debe especificar al menos un pedido para cobrar.", 400, "MISSING_ORDER_ID");
             }
 
@@ -208,11 +214,22 @@ class PagosService {
                 if (metodoDefault) metodoId = metodoDefault.id;
             }
 
-            // Buscar caja abierta obligatoria para registrar el cobro y asociar el movimiento
-            const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
-            if (!cajaAbierta) {
-                throw new AppError("No hay una caja abierta actualmente. Debe abrir la caja antes de registrar un cobro.", 400, "NO_OPEN_CASH_REGISTER");
+            // Buscar caja abierta obligatoria para registrar el cobro (estrictamente del turno del empleado activo)
+            const empleadoId = params.empleadoId || params.usuarioId;
+            let cajaAbierta = null;
+            if (empleadoId) {
+                cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId }, transaction: t });
+            } else {
+                cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" }, transaction: t });
             }
+            if (!cajaAbierta) {
+                throw new AppError("No posees una caja abierta actualmente. Debes abrir tu turno de caja antes de registrar un cobro.", 400, "NO_OPEN_CASH_REGISTER");
+            }
+
+            // Total exceso de dinero recibido en efectivo por sobre el total de la deuda a abonar en efectivo del lote
+            const excesoEfectivoTotal = remanenteTotalEfectivo > 0 && cashRecibidoReal > remanenteTotalEfectivo
+                ? cashRecibidoReal - remanenteTotalEfectivo
+                : 0;
 
             const cobrosResultados = [];
             let saldoAFavorConsumidoTotal = 0;
@@ -235,12 +252,23 @@ class PagosService {
                     saldoAFavorConsumidoTotal += creditoUsadoPedido;
                 }
 
-                // Descontar del saldo en Cuenta Corriente si aplicó crédito
+                // Descontar del saldo en Cuenta Corriente si aplicó crédito y registrar MovimientoCuenta (Débito)
                 if (creditoUsadoPedido > 0 && clienteId) {
                     let cuenta = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
                     if (cuenta) {
                         const nuevoSaldo = Math.max(0, (parseFloat(cuenta.saldo) || 0) - creditoUsadoPedido);
                         await cuenta.update({ saldo: nuevoSaldo }, { transaction: t });
+
+                        const { MovimientoCuenta } = await this._getModels(negocioId);
+                        if (MovimientoCuenta) {
+                            await MovimientoCuenta.create({
+                                cuentaCorrienteId: cuenta.id,
+                                monto: creditoUsadoPedido,
+                                tipoMovimiento: "Débito",
+                                descripcion: `Aplicación de saldo a favor a pedido #${p.numeroPedido || p.id}`,
+                                fechaHora: new Date()
+                            }, { transaction: t }).catch(() => {});
+                        }
                     }
                 }
 
@@ -249,13 +277,13 @@ class PagosService {
                 let vueltoPedido = 0;
                 let saldoGeneradoPedido = 0;
 
-                if (isLast && remanenteTotalEfectivo > 0 && cashRecibidoReal > remanenteAbonarPedido) {
-                    pRecibido = cashRecibidoReal;
-                    const diferencia = cashRecibidoReal - remanenteAbonarPedido;
+                // Solo el último pedido absorbe el exceso real de efectivo si existiera
+                if (isLast && excesoEfectivoTotal > 0) {
+                    pRecibido = remanenteAbonarPedido + excesoEfectivoTotal;
                     if (permitirSaldoAFavorFinal) {
-                        saldoGeneradoPedido = diferencia;
+                        saldoGeneradoPedido = excesoEfectivoTotal;
                     } else {
-                        vueltoPedido = diferencia;
+                        vueltoPedido = excesoEfectivoTotal;
                     }
                 }
 
@@ -290,13 +318,24 @@ class PagosService {
                 // Marcar pedido como cobrado
                 await p.update({ cobrado: true }, { transaction: t });
 
-                // Si se generó saldo a favor por vuelto excedente, actualizar cuenta corriente
+                // Si se generó saldo a favor por vuelto excedente, actualizar cuenta corriente y registrar MovimientoCuenta (Crédito)
                 if (saldoGeneradoPedido > 0 && clienteId) {
                     let cuenta = await CuentaCorriente.findOne({ where: { clienteId }, transaction: t });
                     if (cuenta) {
                         await cuenta.update({ saldo: (parseFloat(cuenta.saldo) || 0) + saldoGeneradoPedido }, { transaction: t });
                     } else {
-                        await CuentaCorriente.create({ clienteId, saldo: saldoGeneradoPedido }, { transaction: t });
+                        cuenta = await CuentaCorriente.create({ clienteId, saldo: saldoGeneradoPedido }, { transaction: t });
+                    }
+
+                    const { MovimientoCuenta } = await this._getModels(negocioId);
+                    if (MovimientoCuenta) {
+                        await MovimientoCuenta.create({
+                            cuentaCorrienteId: cuenta.id,
+                            monto: saldoGeneradoPedido,
+                            tipoMovimiento: "Crédito",
+                            descripcion: `Vuelto a favor generado por pedido #${p.numeroPedido || p.id}`,
+                            fechaHora: new Date()
+                        }, { transaction: t }).catch(() => {});
                     }
                 }
 
@@ -320,11 +359,21 @@ class PagosService {
             };
         };
 
+        let result;
         if (outerTransaction) {
-            return await executeTransaction(outerTransaction);
+            result = await executeTransaction(outerTransaction);
         } else {
-            return await sequelize.transaction(executeTransaction);
+            result = await sequelize.transaction(executeTransaction);
         }
+
+        // Emitir actualización vía WebSockets tras confirmar el cobro
+        if (result && Array.isArray(result.cobros)) {
+            for (const c of result.cobros) {
+                pedidosSocket.emitirEstadoCambiado(negocioId, { numeroPedido: c.pedidoId, id: c.pedidoId }, "COBRADO");
+            }
+        }
+
+        return result;
     }
 
     // Registrar pago individual (Delegado al método único procesarCobro)

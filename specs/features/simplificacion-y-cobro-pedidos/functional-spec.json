@@ -1,0 +1,94 @@
+{
+  "feature_id": "simplificacion-y-cobro-pedidos",
+  "title": "Simplificación y Unificación del Modelo de Cobro de Pedidos y Caja",
+  "description": "Especificación funcional para acotar y unificar el cobro de pedidos a nivel de negocio, garantizando transacciones atómicas individuales por pedido (1 pedido a la vez), trazabilidad exacta con MovimientoCaja y MovimientoCuentaCorriente, y eliminando la sobre-lógica de cobro masivo o saldeo de deuda multi-pedido tanto en Pedidos como en Clientes.",
+  "in_scope": [
+    "Unificación estricta del cobro a transacciones individuales por pedido (1 solo pedido a la vez).",
+    "Consolidación de un único componente modal/sheet en el Frontend (`CobrarPedidoSheet`) reutilizado en todas las vistas (Pedidos, Cliente, POS).",
+    "Integración directa y atómica con la Caja Abierta obligatoria para todo ingreso/egreso monetario en efectivo.",
+    "Trazabilidad completa con registros duales explícitos: `MovimientoCaja` (para efectivo físico) y `MovimientoCuentaCorriente` / `MovimientoCuenta` (para saldos a favor o aplicación de crédito).",
+    "Eliminación total de los botones y acciones de cobro masivo multi-pedido en el Bottom Island de la tabla general de pedidos.",
+    "Eliminación total del cobro masivo de deuda ('Cobrar Deuda' masivo o selección múltiple) en la vista de detalle de Clientes (`/admin/clientes/[id]`), dejando únicamente cobro individual por cada pedido."
+  ],
+  "out_of_scope": [
+    "Cobro masivo arbitrario de paquetes de múltiples pedidos en una sola transacción monetaria.",
+    "Botones de saldeo de deuda global agrupada sin desglose por pedido.",
+    "Integración con pasarelas de pago online externas (Stripe, Mercado Pago API webhooks en esta fase)."
+  ],
+  "user_journeys": [
+    {
+      "role": "Operador de Mostrador / Cajero",
+      "goal": "Cobrar un pedido desde la lista general de pedidos o la ficha del pedido",
+      "steps": [
+        "El operador visualiza un pedido impago en la tabla general de Pedidos o en la Ficha de Detalle y hace clic en 'Cobrar'.",
+        "El sistema valida que exista una Caja Chica Abierta. Si la caja está cerrada, deshabilita la confirmación y solicita abrir caja.",
+        "Se despliega el formulario lateral unificado `CobrarPedidoSheet` mostrando el cliente, el total del pedido único y el saldo a favor disponible del cliente (si posee).",
+        "Si el cliente posee saldo a favor, el operador puede activar el switch 'Usar saldo a favor' para cubrir total o parcialmente el monto del pedido.",
+        "Para el remanente en efectivo o tarjeta, el operador selecciona el método de pago e ingresa el monto entregado.",
+        "Si el cliente paga con efectivo en exceso, el sistema calcula el vuelto y permite elegir si entregar vuelto físico o guardarlo como Saldo a Favor.",
+        "El operador confirma el cobro. El sistema marca el pedido como cobrado, registra el ingreso en la Caja Abierta (`MovimientoCaja`) y registra el débito/crédito en Cuenta Corriente (`MovimientoCuentaCorriente`)."
+      ]
+    },
+    {
+      "role": "Operador de Mostrador / Cajero",
+      "goal": "Cobrar pedidos impagos desde el perfil de un Cliente específico",
+      "steps": [
+        "El operador ingresa a la vista de detalle del Cliente (`/admin/clientes/[id]`).",
+        "Visualiza la lista de pedidos del cliente identificando los que constituyen Deuda Pendiente (Entregados e impagos).",
+        "Se elimina el botón de 'Cobrar Deuda' masiva y los checkboxes de selección múltiple. Cada pedido impago cuenta exclusivamente con su propio botón directo 'Cobrar'.",
+        "Al presionar 'Cobrar' en una fila, se abre `CobrarPedidoSheet` pre-cargado para ese único pedido y cliente.",
+        "Una vez cobrado el pedido, la pantalla actualiza en tiempo real los KPIs de Deuda, Saldo a Favor, Movimientos de Cuenta Corriente y el estado del pedido a 'Cobrado'."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-COBRO-01",
+      "scenario": "Cobro de pedido individual con pago exacto en efectivo",
+      "given": "Un pedido impago de $5.000 de un cliente sin saldo a favor y una Caja Abierta",
+      "when": "El cajero registra el pago seleccionando 'Efectivo' con monto entregado $5.000",
+      "then": "El pedido pasa a `cobrado: true`, se crea un registro de `Cobro` por $5.000 y se genera un `MovimientoCaja` de ingreso por $5.000 vinculado a la caja activa. No se altera el saldo en Cuenta Corriente ($0)."
+    },
+    {
+      "id": "AC-COBRO-02",
+      "scenario": "Cobro utilizando Saldo a Favor disponible con trazabilidad de movimientos",
+      "given": "Un pedido impago de $4.000 y un cliente con $3.000 de Saldo a Favor en su Cuenta Corriente",
+      "when": "El cajero activa 'Usar saldo a favor' y paga el remanente de $1.000 en efectivo",
+      "then": "Se descontará $3.000 del saldo de la Cuenta Corriente (quedando en $0), se generará un `MovimientoCuentaCorriente` tipo DÉBITO por $3.000 ('Aplicación de saldo a favor a pedido #X'), se generará un `MovimientoCaja` de ingreso por $1.000 en la caja activa por el remanente en efectivo, y el pedido quedará 100% cobrado."
+    },
+    {
+      "id": "AC-COBRO-03",
+      "scenario": "Generación de Saldo a Favor mediante vuelto abonado con exceso en efectivo y trazabilidad",
+      "given": "Un pedido impago de $8.000, sin crédito previo y el cliente entrega $10.000 en efectivo",
+      "when": "El cajero selecciona la opción 'Dejar vuelto como Saldo a Favor' ($2.000)",
+      "then": "El pedido se cobra por $8.000, se registra un `MovimientoCaja` de ingreso por $8.000 en la caja activa, y se genera un `MovimientoCuentaCorriente` tipo CRÉDITO por $2.000 ('Vuelto a favor generado por pedido #X'), quedando $2.000 de saldo disponible en la Cuenta Corriente del cliente."
+    },
+    {
+      "id": "AC-COBRO-04",
+      "scenario": "Bloqueo de cobro por Caja Cerrada",
+      "given": "No existe un turno de Caja en estado 'Abierta'",
+      "when": "El cajero intenta registrar cualquier cobro desde la interfaz o por API",
+      "then": "El sistema rechaza la operación con mensaje 'No hay una caja abierta actualmente. Debe abrir la caja antes de registrar un cobro' (HTTP 400)."
+    },
+    {
+      "id": "AC-COBRO-05",
+      "scenario": "Eliminación total de cobros masivos en la lista de Pedidos General",
+      "given": "La lista general de pedidos en `/admin/pedidos`",
+      "when": "El usuario selecciona múltiples filas en la tabla de pedidos",
+      "then": "La barra flotante (Bottom Island) ofrece únicamente acciones masivas de estado, impresión de tickets o cancelación, habiendo eliminado por completo la opción 'Cobrar Masivamente'."
+    },
+    {
+      "id": "AC-COBRO-06",
+      "scenario": "Eliminación total de cobros masivos y saldeo de deuda agrupado en la vista del Cliente",
+      "given": "La vista de detalle del cliente en `/admin/clientes/[id]`",
+      "when": "El cajero observa el estado de cuenta y la lista de pedidos del cliente",
+      "then": "No existen botones de 'Cobrar Deuda' masivo ni checkboxes de selección de múltiples pedidos. Cada pedido impago posee únicamente su botón individual 'Cobrar', forzando el cobro de 1 pedido a la vez."
+    }
+  ],
+  "business_rules": [
+    "BR-FIN-01: Regla de Deuda Única - Únicamente los pedidos en estado ENTREGADO que no hayan sido cobrados constituyen Deuda Exigible del cliente.",
+    "BR-FIN-02: Transaccionalidad de Caja y Cuenta Corriente - Todo cobro que involucre dinero en efectivo exige la existencia de una Caja activa y genera un MovimientoCaja. Todo movimiento de crédito/débito sobre el Saldo a Favor exige la generación de un MovimientoCuentaCorriente.",
+    "BR-FIN-03: Inmutabilidad de Pedido Cobrado - Un pedido en estado CANCELADO o ya COBRADO no se puede volver a cobrar.",
+    "BR-FIN-04: Cobro Unificado de 1 Pedido a la Vez - Se prohíbe el cobro en lote o saldeo masivo de múltiples pedidos a la vez en todas las vistas del sistema (Pedidos y Clientes), garantizando cobros individuales de 1 pedido a la vez."
+  ]
+}

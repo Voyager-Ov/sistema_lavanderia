@@ -63,7 +63,8 @@ export const eliminarMetodoPago = async (req, res, next) => {
 export const registrarPago = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const pago = await pagosService.registrarPago(negocioId, req.body);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const pago = await pagosService.registrarPago(negocioId, { ...req.body, empleadoId });
         return successResponse(res, 201, "Pago registrado exitosamente", pago);
     } catch (error) {
         next(error);

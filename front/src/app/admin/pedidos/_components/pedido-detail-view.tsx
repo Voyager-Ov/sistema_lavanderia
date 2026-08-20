@@ -471,13 +471,11 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
         </div>
       </div>
 
-      <div className="hidden print:block print:absolute print:inset-0 print:bg-white print:z-50">
+      <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:z-[999999] print:m-0 print:p-0">
         <TicketPrintTemplate 
           pedido={pedido} 
           tickets={tickets}
-          // Default tracking URL assuming Next.js handles it at /tracking/negocioId/codigo
-          // We can just use origin/tracking or window.location.origin + /tracking
-          trackingBaseUrl={typeof window !== 'undefined' ? `${window.location.origin}/tracking/1` : '/tracking/1'} 
+          trackingBaseUrl={typeof window !== 'undefined' ? `${window.location.origin}/tracking/${(pedido as any)?.negocioId || 1}` : `/tracking/${(pedido as any)?.negocioId || 1}`} 
         />
       </div>
     </div>

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError.js";
+import { getJwtSecret } from "../config/env.config.js";
 
 export const verificarToken = (req, res, next) => {
     try {
@@ -16,7 +17,7 @@ export const verificarToken = (req, res, next) => {
             throw new AppError("No se proporcionó un token de autenticación", 401, "UNAUTHORIZED");
         }
 
-        const secret = process.env.JWT_SECRET || "desarrollo_secret_key_lavanderia";
+        const secret = getJwtSecret();
         const decoded = jwt.verify(token, secret);
 
         req.user = decoded; // { email, negocioId, empleadoId, rol }

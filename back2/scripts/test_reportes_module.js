@@ -81,6 +81,28 @@ async function testReportesModule() {
             throw new Error("TEST 4 FALLÓ.");
         }
 
+        // -------------------------------------------------------------------------
+        // TEST 5: Reporte de Empleados (GET /api/reportes/empleados)
+        // -------------------------------------------------------------------------
+        console.log("\n👤 TEST 5: Probando Reporte de Empleados...");
+        const repEmpleados = await reportesService.obtenerReporteEmpleados(negocioId, {});
+
+        console.log("   KPIs de Empleados:", JSON.stringify(repEmpleados.kpis));
+        console.log(`   Empleados en Tabla: ${repEmpleados.tablaEmpleados.length}`);
+        console.log(`   Últimas Cajas: ${repEmpleados.ultimasCajas.length}`);
+
+        if (
+            repEmpleados.kpis &&
+            typeof repEmpleados.kpis.totalCajas === "number" &&
+            Array.isArray(repEmpleados.tablaEmpleados) &&
+            Array.isArray(repEmpleados.ultimasCajas) &&
+            Array.isArray(repEmpleados.donut)
+        ) {
+            console.log("   ✅ PASÓ TEST 5: Estructura JSON de Reporte de Empleados 100% válida para el Front-End.");
+        } else {
+            throw new Error("TEST 5 FALLÓ la validación de la estructura del reporte de empleados.");
+        }
+
         console.log("\n==========================================================================================");
         console.log("🏆 ¡TODOS LOS REPORTE Y ANALÍTICAS NUEVOS ESTÁN FUNCIONANDO AL 100% PERFECTO! 🏆");
         console.log("==========================================================================================\n");

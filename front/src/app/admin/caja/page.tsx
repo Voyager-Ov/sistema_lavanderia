@@ -18,6 +18,7 @@ import { useSocket } from "@/shared/hooks/useSocket"
 
 export default function CajaPage() {
   const [caja, setCaja] = useState<CajaActual | null>(null)
+  const [ultimaCajaState, setUltimaCajaState] = useState<CajaActual | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -52,11 +53,14 @@ export default function CajaPage() {
       const data = await obtenerCajaActual()
       if (data && (data.estado === "ABIERTA" || (data as any).estadoCaja === "Abierta")) {
         setCaja(data)
+        setUltimaCajaState(null)
       } else {
         setCaja(null)
+        setUltimaCajaState(data || null)
       }
     } catch (error) {
       setCaja(null)
+      setUltimaCajaState(null)
     } finally {
       if (showLoading) setIsLoading(false)
     }
@@ -72,7 +76,7 @@ export default function CajaPage() {
     }
   }, { scope: containerRef, dependencies: [isLoading, caja] })
 
-  const ultimaCaja = (caja as any)?.ultimaCajaCerrada ?? null
+  const ultimaCaja = ultimaCajaState || (caja as any)?.ultimaCajaCerrada || null
 
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full gap-6 w-full">
@@ -80,8 +84,8 @@ export default function CajaPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 fade-in">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Caja y Finanzas</h1>
-          <p className="text-slate-500 mt-1">Gestiona los ingresos, egresos y el historial de tu turno.</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-neutral-50 tracking-tight">Caja y Finanzas</h1>
+          <p className="text-slate-500 dark:text-neutral-400 mt-1">Gestiona los ingresos, egresos y el historial de tu turno.</p>
         </div>
       </div>
 
@@ -117,7 +121,7 @@ export default function CajaPage() {
               {/* Derecha: métricas del último cierre */}
               <div className="lg:col-span-7 flex flex-col gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Resumen del último turno</h3>
+                  <h3 className="text-sm font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-widest mb-4">Resumen del último turno</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

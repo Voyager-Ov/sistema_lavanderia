@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "empleado-portal-audit",
+  "title": "Auditoría Integral y Alineación de Contratos Front-End del Portal de Empleados (/pos) contra Back-End (back2)",
+  "version": "1.0.0",
+  "scope": {
+    "in_scope": [
+      "Auditar y alinear todas las rutas del Portal del Empleado (`/pos/*`): Dashboard, POS Terminal, Caja, Pedidos, Clientes, Servicios, Perfil y Configuración.",
+      "Garantizar que cada acción del usuario (crear pedido, cambiar estado, cobrar, registrar gasto, crear/editar cliente, abrir/cerrar caja) llame exactamente a los controladores y servicios existentes en `back2`.",
+      "Mapeo de respuestas JSON del servidor para evitar campos nulos, tipos desalineados o datos no renderizados.",
+      "Manejo de errores estandarizado (despliegue de notificaciones `toast.error` claras ante rechazos del backend).",
+      "Reutilización de componentes compartidos sin alterar estilos visuales ni tocar el código fuente de `back2`."
+    ],
+    "out_of_scope": [
+      "Modificaciones o cambios en la arquitectura, servicios, modelos o controladores del Back-End (`back2`).",
+      "Rediseños o cambios en la estética y paleta de colores del Front-End."
+    ]
+  },
+  "user_journeys": [
+    {
+      "id": "UJ-EMP-01",
+      "name": "Navegación por el Dashboard del Empleado",
+      "description": "El empleado ingresa a /pos/dashboard. El sistema consulta las estadísticas activas (/api/dashboard/stats) y el estado de la caja (/api/cajas/actual), mostrando métricas reales sin fallos.",
+      "steps": [
+        "Ingresar a /pos/dashboard.",
+        "Consultar /api/dashboard/stats para obtener pedidos activos, entregas y ventas del día.",
+        "Consultar /api/cajas/actual para validar el estado del turno.",
+        "Renderizar métricas de producción y listas de prioridades."
+      ]
+    },
+    {
+      "id": "UJ-EMP-02",
+      "name": "Operación de Venta y Cobro en la Terminal POS",
+      "description": "El empleado opera /pos/terminal: busca/crea cliente, selecciona servicios, aplica entrega estimada, genera pedido y cobra.",
+      "steps": [
+        "Buscar clientes mediante /api/clientes.",
+        "Seleccionar ítems del catálogo consumiendo /api/servicios.",
+        "Crear el pedido mediante POST /api/pedidos.",
+        "Cobrar mediante POST /api/pagos y emitir socket de actualización."
+      ]
+    },
+    {
+      "id": "UJ-EMP-03",
+      "name": "Gestión de Caja en /pos/caja",
+      "description": "El empleado revisa la actividad del turno, registra gastos y realiza el arqueo de cierre.",
+      "steps": [
+        "Consultar /api/cajas/actual y /api/cajas/historial.",
+        "Registrar gastos mediante POST /api/gastos.",
+        "Cerrar la caja activa enviando el efectivo real contado."
+      ]
+    },
+    {
+      "id": "UJ-EMP-04",
+      "name": "Gestión de Pedidos en /pos/pedidos",
+      "description": "El empleado visualiza el listado de pedidos, filtra por estado/fecha, cambia estados (Pendiente -> En Proceso -> Listo -> Entregado) o anula.",
+      "steps": [
+        "Consultar listado paginado en /api/pedidos.",
+        "Cambiar estados vía PATCH /api/pedidos/:id/estado.",
+        "Cancelar pedidos indicando motivo e imputación de dinero."
+      ]
+    },
+    {
+      "id": "UJ-EMP-05",
+      "name": "Gestión de Clientes en /pos/clientes",
+      "description": "El empleado consulta la cartera de clientes, crea un nuevo cliente o revisa la cuenta corriente.",
+      "steps": [
+        "Consultar clientes en /api/clientes.",
+        "Crear cliente vía POST /api/clientes.",
+        "Consultar detalle y saldo a favor en /api/clientes/:id."
+      ]
+    },
+    {
+      "id": "UJ-EMP-06",
+      "name": "Consulta de Servicios en /pos/servicios",
+      "description": "El empleado consulta la lista de precios y servicios activos.",
+      "steps": [
+        "Consultar /api/servicios para renderizar el catálogo con precios actualizados."
+      ]
+    },
+    {
+      "id": "UJ-EMP-07",
+      "name": "Perfil y Configuración del Empleado",
+      "description": "El empleado consulta sus datos personales (/api/auth/me) y configuraciones de sucursal.",
+      "steps": [
+        "Consultar perfil de sesión autenticada y configuraciones del negocio."
+      ]
+    }
+  ],
+  "business_rules": [
+    {
+      "code": "BR-AUD-01",
+      "name": "Aislamiento Multitenant Estricto",
+      "description": "Toda llamada desde el front-end incluye los encabezados de autenticación JWT. Jamás se envía o sobreescribe negocioId manualmente."
+    },
+    {
+      "code": "BR-AUD-02",
+      "name": "Inmutabilidad del Back-End",
+      "description": "No se modifica ningún archivo dentro del directorio back2/. Cualquier desalineación de tipo o nombre de parámetro se corrige exclusivamente en las capas de API, hooks y componentes del Front-End."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-AUD-01",
+      "given": "Un empleado autenticado en el portal /pos",
+      "when": "Navega a la vista de Dashboard (/pos/dashboard)",
+      "then": "El dashboard responde 200 OK y muestra los datos reales de pedidos del día, pedidos activos y alertas sin arrojar errores en la consola."
+    },
+    {
+      "id": "AC-AUD-02",
+      "given": "Un empleado creando un pedido en la Terminal POS (/pos/terminal)",
+      "when": "Confirma la creación del pedido",
+      "then": "Se ejecuta POST /api/pedidos con la estructura exacta exigida por el servidor y el pedido aparece inmediatamente en el tablero de producción."
+    },
+    {
+      "id": "AC-AUD-03",
+      "given": "Un empleado en /pos/caja",
+      "when": "Registra un gasto o realiza el cierre de caja",
+      "then": "Se consumen los endpoints /api/gastos y /api/cajas/:id/cerrar con la firma requerida por back2."
+    },
+    {
+      "id": "AC-AUD-04",
+      "given": "Un empleado en la vista de Pedidos (/pos/pedidos)",
+      "when": "Filtra por estado, busca por cliente o cambia de estado",
+      "then": "Las solicitudes HTTP conectan con /api/pedidos y /api/pedidos/:id/estado retornando respuestas válidas."
+    },
+    {
+      "id": "AC-AUD-05",
+      "given": "Un empleado creando o editando un cliente en /pos/clientes",
+      "when": "Completa el formulario de cliente",
+      "then": "El cliente se registra correctamente vía POST/PUT /api/clientes."
+    }
+  ]
+}

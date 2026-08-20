@@ -123,20 +123,20 @@ export function KpiCard({
       {/* FRONT CARD */}
       <div
         className={cn(
-          "kpi-front absolute inset-0 rounded-3xl p-6 shadow-sm border-2 bg-white dark:bg-neutral-800 flex flex-col justify-between transition-all hover:shadow-md",
+          "kpi-front absolute inset-0 rounded-3xl p-6 shadow-sm border-2 bg-white dark:bg-neutral-900/90 flex flex-col justify-between transition-all hover:shadow-md backdrop-blur-sm",
           borders[colorVariant]
         )}
       >
         <div className="space-y-1">
-          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-widest">
             {title}
           </h3>
-          <p className="text-4xl font-bold tracking-tight text-foreground">
+          <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {isLoading ? <span className="animate-pulse">...</span> : value}
           </p>
         </div>
         {description && (
-          <p className="text-xs text-muted-foreground mt-4">{description}</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-neutral-400 mt-3">{description}</p>
         )}
       </div>
 

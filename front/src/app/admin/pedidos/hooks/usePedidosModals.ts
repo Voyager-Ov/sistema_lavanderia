@@ -27,6 +27,10 @@ export function usePedidosModals() {
 
   const handlePrintTicket = async (pedido: Pedido) => {
     try {
+      // Limpiar ticket anterior para forzar re-render limpio del pedido actual
+      setHiddenPedido(null)
+      setHiddenTickets([])
+
       let tickets = await getTicketsPedidoAPI(pedido.id).catch(() => [])
       
       if (!tickets || tickets.length === 0) {
@@ -37,9 +41,14 @@ export function usePedidosModals() {
       if (tickets && tickets.length > 0) {
         setHiddenPedido(pedido)
         setHiddenTickets(tickets)
+        
+        // Esperar a que React renderice la plantilla en el DOM antes de invocar la ventana de impresion
         setTimeout(() => {
+          const scrollY = window.scrollY
+          window.scrollTo(0, 0)
           window.print()
-        }, 100)
+          window.scrollTo(0, scrollY)
+        }, 300)
       } else {
         toast.error("No se pudo generar el ticket.")
       }

@@ -40,10 +40,10 @@ export function ServiciosReportHeader({
   return (
     <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
       <div>
-        <h1 className="text-3xl font-black tracking-tight text-gray-900 mb-1">
+        <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-neutral-50 mb-1">
           Reportes de Servicios
         </h1>
-        <p className="text-gray-500 font-medium text-sm">
+        <p className="text-gray-500 dark:text-neutral-400 font-medium text-sm">
           Analiza el rendimiento, volumen e ingresos generados por los servicios brindados.
         </p>
       </div>
@@ -51,48 +51,48 @@ export function ServiciosReportHeader({
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={`rounded-full h-12 font-bold text-gray-700 bg-white border-2 border-gray-100 shadow-sm gap-2 ${hasFilter ? 'pr-3' : ''}`}>
+            <Button variant="outline" className={`rounded-full h-12 font-bold text-gray-700 dark:text-neutral-200 bg-white dark:bg-neutral-800 border-2 border-gray-100 dark:border-neutral-700 shadow-sm gap-2 ${hasFilter ? 'pr-3' : ''}`}>
               <CalendarIcon className="h-4 w-4" />
               {filterText}
               {hasFilter && (
                 <div 
                   role="button"
                   tabIndex={0}
-                  className="ml-1 hover:bg-gray-100 p-1 rounded-full flex items-center justify-center transition-colors"
+                  className="ml-1 hover:bg-gray-100 dark:hover:bg-neutral-700 p-1 rounded-full flex items-center justify-center transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     onClearFilters();
                   }}
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 text-gray-500 dark:text-neutral-400" />
                 </div>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 rounded-2xl" align="end">
+          <PopoverContent className="w-80 p-4 rounded-2xl bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800" align="end">
             <div className="space-y-4">
-              <h4 className="font-bold text-gray-900">Rango de fechas</h4>
+              <h4 className="font-bold text-gray-900 dark:text-neutral-100">Rango de fechas</h4>
               
-              <div className="flex flex-wrap gap-2 pb-2 border-b border-gray-100">
-                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("hoy")}>Hoy</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("semana")}>Esta sem.</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("mes")}>Este mes</Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full" onClick={() => setQuickFilter("anio")}>Este año</Button>
+              <div className="flex flex-wrap gap-2 pb-2 border-b border-gray-100 dark:border-neutral-800">
+                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200" onClick={() => setQuickFilter("hoy")}>Hoy</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200" onClick={() => setQuickFilter("semana")}>Esta sem.</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200" onClick={() => setQuickFilter("mes")}>Este mes</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs rounded-full dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200" onClick={() => setQuickFilter("anio")}>Este año</Button>
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500">Desde</label>
-                  <Input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="h-10 text-xs" />
+                  <label className="text-xs font-bold text-gray-500 dark:text-neutral-400">Desde</label>
+                  <Input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="h-10 text-xs dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-100" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500">Hasta</label>
-                  <Input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="h-10 text-xs" />
+                  <label className="text-xs font-bold text-gray-500 dark:text-neutral-400">Hasta</label>
+                  <Input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="h-10 text-xs dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-100" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={onClearFilters}>Limpiar</Button>
+                <Button variant="ghost" size="sm" onClick={onClearFilters} className="dark:text-neutral-400 dark:hover:text-neutral-200">Limpiar</Button>
               </div>
             </div>
           </PopoverContent>

@@ -4,7 +4,7 @@ import { cambiarEstadoPedido, getTicketHTML } from "@/domains/pedidos/api"
 import { ResponsiveSheet, ResponsiveSheetContent } from "@/shared/ui/overlays/responsive-sheet"
 import { CancelOrderSheet } from "../components/cancel-order-sheet"
 import { PedidoDetailView } from "../_components/pedido-detail-view"
-import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
+import { CobrarPedidoSheet } from "./cobrar-pedido-sheet"
 import { BulkCancellationWizard } from "../_components/bulk-cancellation-wizard"
 import { PrintQueueManager } from "../_components/print-queue-manager"
 import { TicketPrintTemplate } from "../_components/ticket-print-template"
@@ -28,8 +28,6 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, s
     pedidosToBulkCancel, setPedidosToBulkCancel,
     isBulkPrintActive, setIsBulkPrintActive,
     pedidosToBulkPrint, setPedidosToBulkPrint,
-    isBulkChargeOpen, setIsBulkChargeOpen,
-    pedidosToBulkCharge, setPedidosToBulkCharge,
     hiddenTickets, hiddenPedido,
     handlePrintTicket
   } = props
@@ -86,13 +84,14 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, s
         </ResponsiveSheetContent>
       </ResponsiveSheet>
       
-      <CobrarPedidosSheet 
+      <CobrarPedidoSheet 
         open={isCobrarSheetOpen} 
         onOpenChange={setIsCobrarSheetOpen} 
-        pedidos={pedidoToCobrar ? [pedidoToCobrar] : []}
+        pedido={pedidoToCobrar}
         onSuccess={() => {
           onActionSuccess()
         }}
+        onPrint={handlePrintTicket}
       />
 
       <BulkCancellationWizard
@@ -119,24 +118,12 @@ export function PedidosModals({ props, onActionSuccess, handleGenerateFactura, s
         />
       )}
 
-      <CobrarPedidosSheet
-        open={isBulkChargeOpen}
-        onOpenChange={setIsBulkChargeOpen}
-        pedidos={pedidosToBulkCharge || []}
-        onSuccess={() => {
-          onActionSuccess()
-          if (typeof (window as any)._clearChargeSelection === "function") {
-            (window as any)._clearChargeSelection()
-          }
-        }}
-      />
-
       {hiddenPedido && hiddenTickets.length > 0 && (
-        <div className="hidden print:block print:absolute print:inset-0 print:bg-white print:z-50">
+        <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:z-[999999] print:m-0 print:p-0">
           <TicketPrintTemplate 
             pedido={hiddenPedido} 
             tickets={hiddenTickets}
-            trackingBaseUrl={typeof window !== 'undefined' ? `${window.location.origin}/tracking/1` : '/tracking/1'} 
+            trackingBaseUrl={typeof window !== 'undefined' ? `${window.location.origin}/tracking/${(hiddenPedido as any).negocioId || 1}` : `/tracking/${(hiddenPedido as any).negocioId || 1}`} 
           />
         </div>
       )}

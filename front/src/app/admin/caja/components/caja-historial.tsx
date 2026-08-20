@@ -90,12 +90,12 @@ export function CajaHistorial() {
         
         return (
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${isAbierta ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 text-slate-500'}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${isAbierta ? 'bg-brand-blue/10 text-brand-blue' : 'bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400'}`}>
               <Calendar className="w-4 h-4" />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 whitespace-nowrap">
+                <span className="font-bold text-slate-900 dark:text-neutral-100 whitespace-nowrap">
                   {format(new Date(caja.fechaApertura), "dd MMM, yyyy", { locale: es })}
                 </span>
                 {isAbierta ? (
@@ -104,7 +104,7 @@ export function CajaHistorial() {
                   <Badge variant="secondary" className="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4">Cerrada</Badge>
                 )}
               </div>
-              <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 truncate">
+              <span className="text-xs text-slate-500 dark:text-neutral-400 flex items-center gap-1 mt-0.5 truncate">
                 <User className="w-3 h-3" />
                 {caja.usuario?.nombre || `Usuario #${caja.usuarioId}`}
               </span>
@@ -120,19 +120,19 @@ export function CajaHistorial() {
       cell: ({ row }) => {
         const caja = row.original
         return (
-          <div className="flex flex-col gap-1 text-xs text-slate-600 font-medium">
+          <div className="flex flex-col gap-1 text-xs text-slate-600 dark:text-neutral-300 font-medium">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500" />
               Apertura: {format(new Date(caja.fechaApertura), "HH:mm 'hs'")}
             </span>
             {caja.fechaCierre ? (
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500" />
                 Cierre: {format(new Date(caja.fechaCierre), "HH:mm 'hs'")}
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 text-slate-400 italic">
-                <Clock className="w-3.5 h-3.5 text-slate-300" />
+              <span className="flex items-center gap-1.5 text-slate-400 dark:text-neutral-500 italic">
+                <Clock className="w-3.5 h-3.5 text-slate-300 dark:text-neutral-600" />
                 En curso...
               </span>
             )}
@@ -151,22 +151,22 @@ export function CajaHistorial() {
         return (
           <div className="flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
+              <span className="text-[10px] text-slate-400 dark:text-neutral-400 font-bold uppercase flex items-center gap-1">
                 <Wallet className="w-3 h-3" /> Inicial
               </span>
-              <span className="font-semibold text-slate-700 text-sm tabular-nums">{formatCurrency(Number(caja.montoInicial))}</span>
+              <span className="font-semibold text-slate-700 dark:text-neutral-200 text-sm tabular-nums">{formatCurrency(Number(caja.montoInicial))}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] text-emerald-500/80 font-bold uppercase flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> In
               </span>
-              <span className="font-semibold text-slate-700 text-sm tabular-nums">{formatCurrency(ingresos)}</span>
+              <span className="font-semibold text-slate-700 dark:text-neutral-200 text-sm tabular-nums">{formatCurrency(ingresos)}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] text-rose-500/80 font-bold uppercase flex items-center gap-1">
                 <TrendingDown className="w-3 h-3" /> Out
               </span>
-              <span className="font-semibold text-slate-700 text-sm tabular-nums">{formatCurrency(egresos)}</span>
+              <span className="font-semibold text-slate-700 dark:text-neutral-200 text-sm tabular-nums">{formatCurrency(egresos)}</span>
             </div>
           </div>
         )
@@ -183,10 +183,10 @@ export function CajaHistorial() {
         
         return (
           <div className="flex flex-col items-start justify-center min-w-[100px]">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
+            <span className="text-[10px] text-slate-400 dark:text-neutral-400 font-bold uppercase tracking-wider mb-0.5">
               {isAbierta ? 'En Vivo' : 'Cierre'}
             </span>
-            <span className="font-black text-slate-900 text-base tabular-nums">
+            <span className="font-black text-slate-900 dark:text-neutral-100 text-base tabular-nums">
               {formatCurrency(Number(montoFinal || 0))}
             </span>
           </div>
@@ -203,7 +203,7 @@ export function CajaHistorial() {
             <Button 
               variant="ghost" 
               size="icon"
-              className="w-8 h-8 rounded-full hover:bg-slate-100 hover:text-brand-blue"
+              className="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 hover:text-brand-blue dark:hover:text-blue-400"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(`/admin/caja/${row.original.id}`);
@@ -219,11 +219,11 @@ export function CajaHistorial() {
 
   return (
     <div className="historial-container" ref={tableRef}>
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      <div className="bg-white dark:bg-neutral-900 rounded-3xl shadow-sm border border-slate-200 dark:border-neutral-800 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-neutral-800 flex justify-between items-center bg-slate-50/50 dark:bg-neutral-950/40">
           <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Historial de Cajas</h3>
-            <p className="text-sm text-slate-500 font-medium mt-0.5">Busca, filtra y revisa turnos anteriores y arqueos.</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-neutral-50 tracking-tight">Historial de Cajas</h3>
+            <p className="text-sm text-slate-500 dark:text-neutral-400 font-medium mt-0.5">Busca, filtra y revisa turnos anteriores y arqueos.</p>
           </div>
         </div>
         

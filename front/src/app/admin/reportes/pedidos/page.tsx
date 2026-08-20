@@ -164,7 +164,8 @@ export default function PedidosReportPage() {
           <AllServicesProgress
             title="Desempeño por Empleado"
             subtitle="Pedidos gestionados"
-            data={data.chartEmpleados.map((e: any, i: number) => ({ id: i, label: e.nombre, value: e.pedidos, displayValue: String(e.pedidos) }))}
+            badgeText="Empleados"
+            data={data.chartEmpleados.map((e: any, i: number) => ({ id: i, label: e.nombre, value: e.pedidos, displayValue: `${e.pedidos} pedidos` }))}
             accentColor="#10b981"
             className="stagger-block opacity-0 h-[400px]"
           />

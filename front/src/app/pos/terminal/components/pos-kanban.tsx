@@ -1,16 +1,18 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { getPedidos, cambiarEstadoPedido, Pedido } from "@/domains/pedidos/api"
-import { Loader2, Clock, AlertCircle, CheckCircle2, User, PackageCheck, XCircle } from "lucide-react"
+import { Loader2, Clock, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
-import { format, isBefore, isToday } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { clsx } from "clsx"
 import { Button } from "@/shared/ui/forms/button"
 import { CobrarPedidosSheet } from "@/domains/pagos/components/cobrar-pedidos-sheet"
 import { CancelPedidoSheet } from "./cancel-pedido-sheet"
+
+import { useSocket } from "@/shared/hooks/useSocket"
 
 const MAIN_COLUMNS = [
   { id: "PENDIENTE", title: "Pendientes", icon: Clock, color: "border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-900/50", headerColor: "text-blue-700 dark:text-blue-400" },
@@ -23,6 +25,8 @@ interface PosKanbanProps {
 }
 
 export function PosKanban({ isActive = true }: PosKanbanProps) {
+  const { socket } = useSocket()
+
   const [pedidos, setPedidos] = useState<{ [key: string]: Pedido[] }>({
     "PENDIENTE": [],
     "EN_PROCESO": [],
@@ -31,7 +35,8 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
     "CANCELADO": []
   })
   const [isLoading, setIsLoading] = useState(true)
-  
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
   // Cobrar State
   const [pedidoToCobrar, setPedidoToCobrar] = useState<Pedido | null>(null)
   const [isCobrarSheetOpen, setIsCobrarSheetOpen] = useState(false)
@@ -40,51 +45,91 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
   const [pedidoToCancel, setPedidoToCancel] = useState<Pedido | null>(null)
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false)
 
-  const fetchBoard = async () => {
+  const fetchBoard = useCallback(async (isManual = false) => {
     try {
-      setIsLoading(true)
-      const res = await getPedidos({ limit: 100, sortBy: 'fechaEntregaEstimada', sortOrder: 'asc' })
-      const allItems = res.data.items
+      if (isManual) setIsRefreshing(true)
+      else if (Object.values(pedidos).every(arr => arr.length === 0)) setIsLoading(true)
 
-      const grouped = {
-        "PENDIENTE": allItems.filter(p => p.estado === "PENDIENTE"),
-        "EN_PROCESO": allItems.filter(p => p.estado === "EN_PROCESO"),
-        "LISTO_PARA_RETIRAR": allItems.filter(p => p.estado === "LISTO_PARA_RETIRAR"),
-        "ENTREGADO": allItems.filter(p => p.estado === "ENTREGADO" && !p.cobrado),
-        "CANCELADO": allItems.filter(p => p.estado === "CANCELADO" && isToday(new Date(p.createdAt)))
+      // Fetch all orders sorted by createdAt DESC (newest first)
+      const res = await getPedidos({ limit: 500, sortBy: 'createdAt', sortOrder: 'desc' })
+      const allItems = res.data?.items || []
+
+      const normalize = (val?: string) => (val || "").toString().trim().toUpperCase()
+
+      const grouped: { [key: string]: Pedido[] } = {
+        "PENDIENTE": [],
+        "EN_PROCESO": [],
+        "LISTO_PARA_RETIRAR": [],
+        "ENTREGADO": [],
+        "CANCELADO": []
       }
+
+      for (const p of allItems) {
+        const st = normalize(p.estado)
+        if (st === "EN_PROCESO" || st === "EN_LAVADO" || st === "EN_SECADO" || st === "PROCESO") {
+          grouped["EN_PROCESO"].push(p)
+        } else if (st === "LISTO_PARA_RETIRAR" || st === "LISTO" || st === "COMPLETADO") {
+          grouped["LISTO_PARA_RETIRAR"].push(p)
+        } else if (st === "ENTREGADO") {
+          grouped["ENTREGADO"].push(p)
+        } else if (st === "CANCELADO" || st === "ANULADO") {
+          grouped["CANCELADO"].push(p)
+        } else {
+          // Default all other orders (PENDIENTE, CREADO, etc.) to PENDIENTE
+          grouped["PENDIENTE"].push(p)
+        }
+      }
+
       setPedidos(grouped)
     } catch (error) {
+      console.error("Error al cargar tablero de producción:", error)
       toast.error("Error al cargar el tablero de producción")
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
-  }
+  }, [])
 
-  // Reload when tab becomes active or on initial mount
+  // Refetch when tab becomes active
   useEffect(() => {
     if (isActive) {
       fetchBoard()
     }
-  }, [isActive])
+  }, [isActive, fetchBoard])
+
+  // Real-time WebSocket event listener for order creation and updates
+  useEffect(() => {
+    if (!socket) return
+
+    const handleUpdate = () => {
+      fetchBoard()
+    }
+
+    socket.on("pedido:creado", handleUpdate)
+    socket.on("pedido:estado_cambiado", handleUpdate)
+
+    return () => {
+      socket.off("pedido:creado", handleUpdate)
+      socket.off("pedido:estado_cambiado", handleUpdate)
+    }
+  }, [socket, fetchBoard])
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result
-    
-    // Dropped outside or no movement
+
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
       return
     }
 
     const sourceCol = source.droppableId
     const destCol = destination.droppableId
-    
-    // Optimistic UI update
-    const sourceItems = [...pedidos[sourceCol]]
-    const destItems = [...pedidos[destCol]]
+
+    const sourceItems = [...(pedidos[sourceCol] || [])]
+    const destItems = [...(pedidos[destCol] || [])]
     const [movedItem] = sourceItems.splice(source.index, 1)
-    
-    // Update state locally
+
+    if (!movedItem) return
+
     movedItem.estado = destCol as any
     destItems.splice(destination.index, 0, movedItem)
 
@@ -94,60 +139,60 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
       [destCol]: destItems
     })
 
-    // If moved to Cancelado, intercept the API call and open sheet
     if (destCol === "CANCELADO") {
       setPedidoToCancel(movedItem)
       setIsCancelSheetOpen(true)
       return
     }
 
-    // Persist API change for other columns
     try {
-      await cambiarEstadoPedido(parseInt(draggableId), destCol)
-      toast.success(`Pedido #${draggableId} movido a ${destCol.replace(/_/g, ' ')}`)
+      await cambiarEstadoPedido(movedItem.id, destCol)
+      toast.success(`Pedido #${movedItem.id} movido a ${destCol.replace(/_/g, ' ')}`)
     } catch (error) {
-      toast.error("Error al mover el pedido. Revertiendo...")
-      fetchBoard() // Revert on failure
+      toast.error("Error al actualizar el estado del pedido")
+      fetchBoard()
     }
   }
 
-  const handleCancelSheetDismiss = () => {
-    toast.info("Cancelación abortada")
+  const handleCancelSheetSuccess = () => {
+    setIsCancelSheetOpen(false)
     setPedidoToCancel(null)
-    fetchBoard() // Revert the optimistic UI update
+    fetchBoard()
   }
 
-  const handleCancelSheetSuccess = () => {
+  const handleCancelSheetDismiss = () => {
+    setIsCancelSheetOpen(false)
     setPedidoToCancel(null)
-    fetchBoard() // Ensure board is perfectly synced
+    fetchBoard()
   }
 
   const renderCard = (pedido: Pedido, index: number) => {
-    const isVencido = pedido.fechaEntregaEstimada && isBefore(new Date(pedido.fechaEntregaEstimada), new Date())
-    
+    const isVencido = pedido.fechaEntregaEstimada
+      ? new Date(pedido.fechaEntregaEstimada) < new Date()
+      : false
+
     return (
-      <Draggable key={pedido.id} draggableId={pedido.id.toString()} index={index}>
+      <Draggable key={pedido.id.toString()} draggableId={pedido.id.toString()} index={index}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={clsx(
-              "bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-xl p-2.5 shadow-sm flex flex-col gap-1.5 select-none transition-all",
-              snapshot.isDragging && "shadow-xl ring-2 ring-brand-blue/50 rotate-2 scale-105"
-            )}
             style={provided.draggableProps.style as React.CSSProperties}
+            className={clsx(
+              "bg-white dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700/80 shadow-sm flex flex-col gap-2 transition-all hover:shadow-md select-none",
+              snapshot.isDragging && "shadow-lg scale-[1.02] border-brand-blue ring-2 ring-brand-blue/20"
+            )}
           >
-            {/* Header Card */}
-            <div className="flex justify-between items-start gap-1">
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1 font-bold text-gray-900 dark:text-gray-100 text-xs">
-                  <span className="text-[10px] px-1 py-0.5 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 rounded leading-none">
-                    #{pedido.id}
-                  </span>
-                  <span className="truncate max-w-[130px] leading-tight">{pedido.cliente?.nombre || 'Consumidor Final'}</span>
-                </div>
-                
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col">
+                <span className="font-extrabold text-sm text-gray-900 dark:text-white leading-tight">
+                  #{(pedido as any).codigoSeguimiento || (pedido as any).numeroPedido || pedido.id}
+                </span>
+                <span className="text-xs font-semibold text-gray-700 dark:text-neutral-300">
+                  {pedido.cliente ? pedido.cliente.nombre : "Consumidor Final"}
+                </span>
+
                 {pedido.fechaEntregaEstimada && (
                   <p className="text-[10px] text-gray-500 font-medium leading-none mt-0.5">
                     Ent: {format(new Date(pedido.fechaEntregaEstimada), "dd MMM HH:mm", { locale: es })}
@@ -177,7 +222,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                 )}
                 <Button
                   onClick={() => {
-                    window.location.href = `/pos/pedidos/${pedido.id}`
+                    window.location.href = `/admin/pedidos`
                   }}
                   size="sm"
                   variant="outline"
@@ -187,12 +232,12 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                 </Button>
               </div>
             </div>
-            
+
             {/* Content: Order Details Inline */}
             <div className="mt-0.5 pt-1 border-t border-gray-100 dark:border-neutral-800 text-[11px] text-gray-600 dark:text-neutral-400 leading-tight">
               {pedido.items && pedido.items.length > 0 ? (
                 <p className="line-clamp-2">
-                  {pedido.items.map(item => `${item.cantidad}x ${item.producto?.nombre}`).join(', ')}
+                  {pedido.items.map(item => `${item.cantidad}x ${item.producto?.nombre || 'Item'}`).join(', ')}
                 </p>
               ) : (
                 <p className="italic">Sin detalles</p>
@@ -213,9 +258,27 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
   }
 
   return (
-    <div className="h-full flex-1 overflow-hidden">
+    <div className="h-full flex-1 flex flex-col overflow-hidden">
+      {/* Header bar with Refresh button */}
+      <div className="flex items-center justify-between pb-2 px-1 flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 dark:text-neutral-400">
+          Tablero Kanban de Producción
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fetchBoard(true)}
+          disabled={isRefreshing}
+          className="h-8 text-xs font-bold rounded-xl flex items-center gap-1.5"
+        >
+          <RefreshCw className={clsx("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
+          <span>Actualizar</span>
+        </Button>
+      </div>
+
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 h-full overflow-x-auto pb-4 snap-x">
+        <div className="flex gap-4 flex-1 overflow-x-auto pb-4 snap-x min-h-0">
           {/* Columnas Principales */}
           {MAIN_COLUMNS.map(col => (
             <div key={col.id} className="min-w-[300px] w-[300px] flex-shrink-0 flex flex-col h-full snap-center">
@@ -226,10 +289,10 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                   {pedidos[col.id]?.length || 0}
                 </span>
               </div>
-              
+
               <Droppable droppableId={col.id}>
                 {(provided, snapshot) => (
-                  <div 
+                  <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={clsx(
@@ -238,7 +301,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                       snapshot.isDraggingOver && "bg-gray-100 dark:bg-neutral-800/80 border-dashed"
                     )}
                   >
-                    {pedidos[col.id].map((pedido, index) => renderCard(pedido, index))}
+                    {pedidos[col.id]?.map((pedido, index) => renderCard(pedido, index))}
                     {provided.placeholder}
                   </div>
                 )}
@@ -248,44 +311,46 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
 
           {/* Columna Doble: Entregados y Cancelados apilados */}
           <div className="min-w-[300px] w-[300px] flex-shrink-0 flex flex-col h-full snap-center gap-3">
-            {/* Mitad Superior: Entregados */}
+            {/* Entregados */}
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex items-center gap-2 mb-2 px-1 text-gray-500 dark:text-gray-400">
-                <PackageCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 mb-2 px-1 text-slate-700 dark:text-slate-300">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 <h3 className="font-bold text-sm">Entregados</h3>
                 <span className="ml-auto bg-white/50 dark:bg-black/20 text-xs px-2 py-0.5 rounded-full font-medium">
                   {pedidos["ENTREGADO"]?.length || 0}
                 </span>
               </div>
+
               <Droppable droppableId="ENTREGADO">
                 {(provided, snapshot) => (
-                  <div 
+                  <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={clsx(
-                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-gray-200 bg-gray-50/50 dark:bg-gray-900/10 dark:border-gray-800",
-                      snapshot.isDraggingOver && "bg-gray-100 dark:bg-neutral-800/80 border-dashed"
+                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-emerald-200 bg-emerald-50/30 dark:bg-emerald-900/10 dark:border-emerald-900/50",
+                      snapshot.isDraggingOver && "bg-emerald-50 dark:bg-emerald-900/30 border-dashed"
                     )}
                   >
-                    {pedidos["ENTREGADO"].map((pedido, index) => renderCard(pedido, index))}
+                    {pedidos["ENTREGADO"]?.map((pedido, index) => renderCard(pedido, index))}
                     {provided.placeholder}
                   </div>
                 )}
               </Droppable>
             </div>
 
-            {/* Mitad Inferior: Cancelados */}
+            {/* Cancelados */}
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex items-center gap-2 mb-2 px-1 text-red-500 dark:text-red-400">
-                <XCircle className="w-4 h-4" />
+              <div className="flex items-center gap-2 mb-2 px-1 text-red-700 dark:text-red-400">
+                <AlertCircle className="w-4 h-4 text-red-500" />
                 <h3 className="font-bold text-sm">Cancelados</h3>
                 <span className="ml-auto bg-white/50 dark:bg-black/20 text-xs px-2 py-0.5 rounded-full font-medium">
                   {pedidos["CANCELADO"]?.length || 0}
                 </span>
               </div>
+
               <Droppable droppableId="CANCELADO">
                 {(provided, snapshot) => (
-                  <div 
+                  <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={clsx(
@@ -293,7 +358,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                       snapshot.isDraggingOver && "bg-red-50 dark:bg-red-900/30 border-dashed"
                     )}
                   >
-                    {pedidos["CANCELADO"].map((pedido, index) => renderCard(pedido, index))}
+                    {pedidos["CANCELADO"]?.map((pedido, index) => renderCard(pedido, index))}
                     {provided.placeholder}
                   </div>
                 )}

@@ -23,8 +23,11 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
+  Moon,
   LayoutDashboard, ShoppingCart, Wallet, Utensils, Box, Users, FileText, User, Settings
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/overlays/collapsible"
 import { LoadingBars } from "@/shared/ui/feedback/loading-bars"
 import { useRouter, usePathname } from "next/navigation"
@@ -85,6 +88,11 @@ export function AppSidebar({
   const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === "collapsed"
   
+  // Theme management
+  const { setTheme, resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const toggleTheme = () => setTheme(isDark ? "light" : "dark")
+
   // Inside AppSidebar:
   const router = useRouter()
   const pathname = usePathname()
@@ -244,6 +252,42 @@ export function AppSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1.5">
+              {/* Toggle de Modo Claro / Oscuro */}
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  tooltip={isDark ? "Modo Claro" : "Modo Oscuro"} 
+                  onClick={toggleTheme} 
+                  className={`h-11 rounded-xl flex items-center px-3 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors ${isCollapsed ? 'justify-center' : 'gap-3 justify-between'}`}
+                >
+                  {isCollapsed ? (
+                    isDark ? (
+                      <Sun className="h-5 w-5 flex-shrink-0 text-amber-400" />
+                    ) : (
+                      <Moon className="h-5 w-5 flex-shrink-0 text-indigo-500" />
+                    )
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 flex items-center justify-center flex-shrink-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-transparent" />
+                        </div>
+                        {isDark ? (
+                          <Sun className="h-5 w-5 flex-shrink-0 text-amber-400" />
+                        ) : (
+                          <Moon className="h-5 w-5 flex-shrink-0 text-indigo-500" />
+                        )}
+                        <span className="font-medium whitespace-nowrap">
+                          {isDark ? "Modo Claro" : "Modo Oscuro"}
+                        </span>
+                      </div>
+                      <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${isDark ? 'bg-indigo-600' : 'bg-gray-300'} flex items-center`}>
+                        <div className={`w-3 h-3 rounded-full bg-white transition-transform ${isDark ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                    </>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {accountMenu.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title} onClick={handleNavClick} className={`h-11 rounded-xl flex items-center px-3 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors ${isCollapsed ? 'justify-center' : 'gap-3'}`}>

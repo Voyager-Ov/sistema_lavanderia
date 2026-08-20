@@ -2,6 +2,29 @@
 
 Todas las modificaciones notables realizadas al backend se documentarán en este archivo.
 
+## [Fecha: 2026-08-17] - Unificación de Cobro por Pedido Individual y Trazabilidad Contable Dual
+### Modificaciones en Módulo de Finanzas y Pagos
+- **`src/modules/finanzas/services/pagos.service.js`**:
+  - **Cobro Unificado de 1 Pedido**: Se simplificó la transacción de cobro a 1 solo pedido por operación (`POST /api/pagos`), eliminando inconsistencias y asignaciones falsas de vuelto a favor generadas en cobros en lote masivos.
+  - **Fórmula de Vuelto en Efectivo Corregida**: Se calcula exactamente como `cashRecibidoReal - remanenteTotalEfectivo`, asegurando que no se asigne vuelto a favor incorrecto.
+  - **Trazabilidad Contable Dual Estricta**:
+    - **`MovimientoCaja`**: Registra fondos únicamente cuando ingresa dinero en efectivo físico (`dineroIngresadoFisico > 0`). Si el pago se cubre 100% con saldo a favor o bonificación, no genera registro en caja para evitar sobrantes irreales en el arqueo diario.
+    - **`MovimientoCuenta` (Débito)**: Se crea automáticamente al aplicar saldo a favor del cliente (`aplicarSaldoAFavor: true`).
+    - **`MovimientoCuenta` (Crédito)**: Se crea automáticamente al acreditar el vuelto en efectivo como crédito (`dejarVueltoAFavor: true`).
+  - **Validación de Caja Chica Abierta**: Verifica que exista un turno activo en estado `"Abierta"` antes de procesar cualquier cobro.
+
+### Modificaciones en Módulo de Clientes
+- **`src/modules/clientes/services/clientes.service.js`**:
+  - `obtenerClientePorId` incluye los registros de `MovimientoCuenta` dentro de la `CuentaCorriente` del cliente, posibilitando la auditoría completa del historial de débitos y créditos desde la ficha del cliente.
+
+### Modificaciones en Frontend (`front`)
+- **`cobrar-pedido-sheet.tsx`**: Consolidado como el modal lateral responsivo único para registrar cobros de 1 pedido, con banner de advertencia si la caja chica está cerrada.
+- **`pedidos/page.tsx` & `pedidos-modals.tsx`**: Removida la acción *"Cobrar Masivamente"* del Bottom Island y eliminada la modal `BulkChargeModal`.
+- **`clientes/[id]/page.tsx`**: Removidas las casillas de selección múltiple y el botón *"Cobrar Deuda"*. Cada pedido impago posee su propio botón individual *"Cobrar"*.
+
+### Pruebas de Integración y Resiliencia
+- **`scripts/stress_test_cobros.js`**: Reescrito para ejecutar pruebas en vivo contra el servidor Express (`app.js`) sobre HTTP (`fetch`) con autenticación JWT, logrando un **100% de éxito en 12 suites de prueba**.
+
 ## [Fecha: 2026-08-14] - Implementación de Finanzas para el Admin
 ### Modificaciones en Modelos
 - **`src/models/Cobro.js`**: Se agregó la asociación `belongsTo(models.Empleado, { as: 'empleado' })` para mantener la trazabilidad de qué empleado registra el cobro.

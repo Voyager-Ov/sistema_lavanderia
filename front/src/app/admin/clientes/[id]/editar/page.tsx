@@ -93,18 +93,18 @@ export default function EditarClientePage() {
   }
 
   return (
-    <div ref={containerRef} className="flex-1 flex flex-col min-h-full bg-gray-50/40">
+    <div ref={containerRef} className="flex-1 flex flex-col min-h-full bg-gray-50/40 dark:bg-transparent">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="fade-in-up flex items-center gap-4 px-4 sm:px-8 pt-6 pb-4 bg-white border-b border-gray-100">
+      <div className="fade-in-up flex items-center gap-4 px-4 sm:px-8 pt-6 pb-4 bg-white dark:bg-neutral-900 border-b border-gray-100 dark:border-neutral-800">
         <button
           onClick={() => router.push(`/admin/clientes/${clienteId}`)}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-800"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-full transition-colors text-gray-400 dark:text-neutral-400 hover:text-gray-800 dark:hover:text-neutral-100"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Editando</p>
-          <h1 className="text-xl font-black text-gray-900 leading-none">{cliente.nombre}</h1>
+          <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wider">Editando</p>
+          <h1 className="text-xl font-black text-gray-900 dark:text-neutral-50 leading-none">{cliente.nombre}</h1>
         </div>
       </div>
 
@@ -118,35 +118,35 @@ export default function EditarClientePage() {
               {cliente.nombre.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900">{cliente.nombre}</h2>
-              <p className="text-gray-400 text-sm font-medium">Modifica los datos y guardá los cambios.</p>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-neutral-50">{cliente.nombre}</h2>
+              <p className="text-gray-400 dark:text-neutral-400 text-sm font-medium">Modifica los datos y guardá los cambios.</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* Nombre */}
-            <div className="fade-in-up bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                <div className="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center">
-                  <User className="w-3.5 h-3.5 text-indigo-600" />
+            <div className="fade-in-up bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm p-5 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-neutral-200">
+                <div className="w-7 h-7 bg-indigo-50 dark:bg-indigo-950/50 rounded-lg flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 Nombre Completo *
               </label>
               <Input
                 value={formData.nombre}
                 onChange={(e) => setFormData((p) => ({ ...p, nombre: e.target.value }))}
-                className="h-12 rounded-xl border-gray-200 bg-gray-50 font-medium focus:bg-white transition-colors"
+                className="h-12 rounded-xl border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 dark:text-neutral-100 font-medium focus:bg-white dark:focus:bg-neutral-800 transition-colors"
                 placeholder="Nombre del cliente"
                 required
               />
             </div>
 
             {/* Teléfono */}
-            <div className="fade-in-up bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center">
-                  <Phone className="w-3.5 h-3.5 text-green-600" />
+            <div className="fade-in-up bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm p-5 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-neutral-200">
+                <div className="w-7 h-7 bg-green-50 dark:bg-green-950/50 rounded-lg flex items-center justify-center">
+                  <Phone className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                 </div>
                 Teléfono
               </label>
@@ -154,19 +154,19 @@ export default function EditarClientePage() {
                 type="tel"
                 value={formData.telefono}
                 onChange={(e) => setFormData((p) => ({ ...p, telefono: e.target.value }))}
-                className="h-12 rounded-xl border-gray-200 bg-gray-50 font-medium focus:bg-white transition-colors"
+                className="h-12 rounded-xl border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 dark:text-neutral-100 font-medium focus:bg-white dark:focus:bg-neutral-800 transition-colors"
                 placeholder="Ej: 11 1234 5678"
               />
-              <p className="text-xs text-gray-400 font-medium">
+              <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">
                 Se usará para comunicaciones por WhatsApp
               </p>
             </div>
 
             {/* Email */}
-            <div className="fade-in-up bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
-                  <Mail className="w-3.5 h-3.5 text-purple-600" />
+            <div className="fade-in-up bg-white dark:bg-neutral-900 rounded-2xl border border-gray-100 dark:border-neutral-800 shadow-sm p-5 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-neutral-200">
+                <div className="w-7 h-7 bg-purple-50 dark:bg-purple-950/50 rounded-lg flex items-center justify-center">
+                  <Mail className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                 </div>
                 Email
               </label>
@@ -174,7 +174,7 @@ export default function EditarClientePage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                className="h-12 rounded-xl border-gray-200 bg-gray-50 font-medium focus:bg-white transition-colors"
+                className="h-12 rounded-xl border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800 dark:text-neutral-100 font-medium focus:bg-white dark:focus:bg-neutral-800 transition-colors"
                 placeholder="cliente@email.com"
               />
             </div>
@@ -184,7 +184,7 @@ export default function EditarClientePage() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full h-12 px-6 font-bold flex-1"
+                className="rounded-full h-12 px-6 font-bold flex-1 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700"
                 onClick={() => router.push(`/admin/clientes/${clienteId}`)}
                 disabled={isSubmitting}
               >

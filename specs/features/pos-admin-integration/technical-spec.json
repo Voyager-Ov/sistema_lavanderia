@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "pos-admin-integration",
+  "title": "Especificación Técnica para Integración POS en Admin, Guardián de Caja, Registro de Gastos y Resumen Gamificado GSAP",
+  "version": "1.0.0",
+  "architecture": {
+    "module_location": "front/src/app/admin/pos/",
+    "components": [
+      {
+        "name": "AdminPosPage",
+        "file": "front/src/app/admin/pos/page.tsx",
+        "role": "Contenedor principal y guardián del estado de la caja. Maneja la verificación inicial con `obtenerCajaActual()`. Si la caja no está abierta (`estado !== 'ABIERTA'`), renderiza `AbrirCajaPosCard`. De lo contrario, renderiza `TerminalPage` con `PosHeaderActions`."
+      },
+      {
+        "name": "AbrirCajaPosCard",
+        "file": "front/src/app/admin/pos/components/abrir-caja-pos-card.tsx",
+        "role": "Card HERO interactiva de apertura de caja. Permite seleccionar/ingresar el monto inicial de efectivo y llama a `abrirCaja(montoInicial)`. Incluye animación de entrada con `useGSAP`."
+      },
+      {
+        "name": "PosHeaderActions",
+        "file": "front/src/app/admin/pos/components/pos-header-actions.tsx",
+        "role": "Barra de estado superior para el POS en Admin. Muestra el ID de la caja activa, el efectivo esperado en vivo, y botones de acceso rápido para 'Registrar Gasto' y 'Cerrar POS'."
+      },
+      {
+        "name": "PosRegistrarGastoModal",
+        "file": "front/src/app/admin/pos/components/pos-registrar-gasto-modal.tsx",
+        "role": "Modal accesible desde la terminal POS para registrar egresos de caja usando `registrarGasto({ monto, categoria, descripcion, metodoPagoId })`."
+      },
+      {
+        "name": "ResumenPartidaCierreModal",
+        "file": "front/src/app/admin/pos/components/resumen-partida-cierre-modal.tsx",
+        "role": "Modal gamificado estilo 'Match Summary Screen'. Utiliza GSAP Core (`gsap.to`) para animar el conteo de números (ingresos, egresos, pedidos, balance) y realiza el arqueo final con `cerrarCaja(cajaId, efectivoReal)`."
+      }
+    ],
+    "sidebar_integration": {
+      "file": "front/src/app/admin/layout.tsx",
+      "change": "Añadir el ítem `{ title: 'POS Terminal', icon: Store, href: '/admin/pos' }` en `adminMainMenu`."
+    }
+  },
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/cajas/actual",
+      "method": "GET",
+      "purpose": "Verificar el estado de la caja activa del negocio.",
+      "response_type": "CajaActual",
+      "key_fields": ["id", "estado", "estadoCaja", "montoInicial", "totalIngresosEnVivo", "totalEgresosEnVivo", "efectivoEsperadoEnVivo", "pagos", "gastos"]
+    },
+    {
+      "endpoint": "POST /api/cajas/abrir",
+      "method": "POST",
+      "purpose": "Abrir una nueva caja con efectivo inicial.",
+      "payload": { "montoInicial": "number" },
+      "response_type": "CajaActual"
+    },
+    {
+      "endpoint": "POST /api/gastos",
+      "method": "POST",
+      "purpose": "Registrar egreso de dinero en la caja activa.",
+      "payload": { "monto": "number", "categoria": "string", "descripcion": "string", "metodoPagoId": "number (optional)" },
+      "response_type": "CajaGasto"
+    },
+    {
+      "endpoint": "POST /api/cajas/:id/cerrar",
+      "method": "POST",
+      "purpose": "Cerrar la caja activa enviando el efectivo real contado.",
+      "payload": { "efectivoReal": "number" },
+      "response_type": "CajaActual"
+    }
+  ],
+  "dependencies": {
+    "libraries": [
+      {
+        "name": "gsap",
+        "use": "Tweens `gsap.to` para animación fluida de números e incremento gradual de estadísticas en el resumen de partida. `gsap.fromTo` con `stagger` para revelación de tarjetas de métricas."
+      },
+      {
+        "name": "@gsap/react",
+        "use": "Hook `useGSAP` para integración limpia y cleanup automático de animaciones en React."
+      },
+      {
+        "name": "lucide-react",
+        "use": "Iconos para interfaz POS, caja, gastos, trofeos, moneda, etc."
+      },
+      {
+        "name": "sonner",
+        "use": "Notificaciones emergentes de retroalimentación visual (`toast.success`, `toast.error`)."
+      }
+    ]
+  },
+  "failure_modes": [
+    {
+      "scenario": "Intento de abrir caja cuando ya hay una abierta",
+      "handling": "El servidor retorna 400 `CASH_REGISTER_ALREADY_OPEN`. El frontend captura el error, notifica con `toast.error` y recarga la caja activa para dar paso a la terminal."
+    },
+    {
+      "scenario": "Intento de registrar gasto con caja cerrada",
+      "handling": "El servidor rechaza con 400 `NO_OPEN_CASH_REGISTER`. El modal muestra el mensaje de error y fuerza la recarga de estado a pantalla de apertura."
+    },
+    {
+      "scenario": "Diferencia de caja en el arqueo final (descuadre)",
+      "handling": "El modal de resumen de partida calcula la diferencia en tiempo real y la resalta con advertencia amarilla/roja (si hay faltante) o verde (si cuadra exactamente), exigiendo confirmación consciente antes de cerrar."
+    }
+  ]
+}

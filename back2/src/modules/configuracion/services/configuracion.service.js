@@ -20,6 +20,7 @@ class ConfiguracionService {
             mensajeTicket: negocio.mensajeTicket || null,
             imprimirTicketAutomatico: Boolean(negocio.imprimirTicketAutomatico),
             mostrarQrTicket: Boolean(negocio.mostrarQrTicket),
+            anchoPapel: negocio.anchoPapel || "80mm",
             afipActivo: Boolean(negocio.afipActivo || negocio.facturacionHabilitada),
             afipModoFacturacion: negocio.afipModoFacturacion || "DESACTIVADO",
             afipPuntoVenta: negocio.afipPuntoVenta || null,
@@ -78,6 +79,7 @@ class ConfiguracionService {
         if (data.mensajeTicket !== undefined) updateFields.mensajeTicket = data.mensajeTicket;
         if (data.imprimirTicketAutomatico !== undefined) updateFields.imprimirTicketAutomatico = Boolean(data.imprimirTicketAutomatico);
         if (data.mostrarQrTicket !== undefined) updateFields.mostrarQrTicket = Boolean(data.mostrarQrTicket);
+        if (data.anchoPapel !== undefined) updateFields.anchoPapel = data.anchoPapel;
 
         // AFIP
         if (data.afipActivo !== undefined || data.facturacionHabilitada !== undefined) {

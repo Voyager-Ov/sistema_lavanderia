@@ -11,7 +11,8 @@ const getTenantId = (req) => {
 export const registrarGasto = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const gasto = await gastosService.registrarGasto(negocioId, req.body);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const gasto = await gastosService.registrarGasto(negocioId, { ...req.body, empleadoId });
         return successResponse(res, 201, "Gasto registrado exitosamente", gasto);
     } catch (error) {
         next(error);

@@ -384,7 +384,7 @@ export function DataTable<TData, TValue>({
                             }
                           }}
                           className={cn(
-                            "hover:bg-muted/30 transition-all border-b last:border-0",
+                            "hover:bg-slate-50/80 dark:hover:bg-neutral-700/30 transition-all border-b border-slate-100 dark:border-neutral-800 last:border-0 text-slate-900 dark:text-neutral-100",
                             (onRowClick || !row.getIsSelected()) ? "cursor-pointer" : "",
                             onRowClick ? "relative overflow-hidden" : "",
                             isRowLoading && "opacity-50 pointer-events-none bg-muted/20"
@@ -465,12 +465,12 @@ export function DataTable<TData, TValue>({
                 table.setPageSize(Number(val))
               }}
             >
-              <SelectTrigger className="h-8 w-16 text-xs rounded-md bg-transparent border-input shadow-sm focus:ring-1 focus:ring-ring">
+              <SelectTrigger className="h-8 w-16 text-xs rounded-md bg-transparent border-input dark:border-neutral-700 dark:text-neutral-100 shadow-sm focus:ring-1 focus:ring-ring">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800">
                 {[10, 20, 50, 100].map(pageSize => (
-                  <SelectItem key={pageSize} value={String(pageSize)}>
+                  <SelectItem key={pageSize} value={String(pageSize)} className="text-slate-900 dark:text-neutral-100">
                     {pageSize}
                   </SelectItem>
                 ))}
@@ -481,7 +481,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full flex-1 sm:flex-none"
+              className="rounded-full flex-1 sm:flex-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
@@ -490,7 +490,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="sm"
-              className="rounded-full flex-1 sm:flex-none"
+              className="rounded-full flex-1 sm:flex-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >

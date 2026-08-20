@@ -116,64 +116,96 @@ class CajasService {
             actividadTurno: [],
             usuario: {
                 id: plain.empleadoId || 1,
-                nombre: "Cajero de Mostrador",
-                email: "mostrador@lavanderia.com"
+                nombre: plain.empleado ? `${plain.empleado.nombre || ''} ${plain.empleado.apellido || ''}`.trim() : "Empleado de Mostrador",
+                email: plain.empleado?.email || "mostrador@lavanderia.com"
             },
             pagos,
             gastos
         };
     }
 
-    // Obtener la caja activa actualmente (o la última caja)
-    async obtenerCajaActual(negocioId) {
+    // Obtener la caja activa actualmente (o la última caja) del usuario autenticado
+    async obtenerCajaActual(negocioId, empleadoId = null) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
+        const { Caja, MovimientoCaja, MetodoPago, Empleado } = await this._getModels(negocioId);
 
-        let caja = await Caja.findOne({
-            where: { estadoCaja: "Abierta" },
-            include: [{
+        const includeModels = [
+            {
                 model: MovimientoCaja,
                 as: "movimientos",
                 include: [{ model: MetodoPago, as: "metodoPago" }]
-            }],
+            },
+            {
+                model: Empleado,
+                as: "empleado"
+            }
+        ];
+
+        let caja = null;
+
+        // 1. Si viene un empleadoId específico, buscar la caja abierta de ESTE empleado
+        if (empleadoId) {
+            caja = await Caja.findOne({
+                where: { estadoCaja: "Abierta", empleadoId },
+                include: includeModels,
+                order: [["idCaja", "DESC"]]
+            });
+
+            // 2. Si este empleado no tiene caja abierta, buscar la última caja cerrada de ESTE empleado
+            if (!caja) {
+                caja = await Caja.findOne({
+                    where: { empleadoId },
+                    include: includeModels,
+                    order: [["idCaja", "DESC"]]
+                });
+            }
+
+            // Si este empleado no tiene ninguna caja registrada (ni abierta ni cerrada), retornar null
+            if (!caja) {
+                return null;
+            }
+
+            return this._formatCaja(caja);
+        }
+
+        // 3. Si no vino empleadoId (llamada de sistema), buscar cualquier caja abierta del negocio
+        caja = await Caja.findOne({
+            where: { estadoCaja: "Abierta" },
+            include: includeModels,
             order: [["idCaja", "DESC"]]
         });
 
+        // 4. Si no hay caja abierta, buscar la última caja del negocio
         if (!caja) {
             caja = await Caja.findOne({
-                include: [{
-                    model: MovimientoCaja,
-                    as: "movimientos",
-                    include: [{ model: MetodoPago, as: "metodoPago" }]
-                }],
+                include: includeModels,
                 order: [["idCaja", "DESC"]]
             });
         }
 
         if (!caja) {
-            caja = await Caja.create({
-                montoInicialEfectivo: 0,
-                estadoCaja: "Abierta",
-                observacionApertura: "Apertura inicial del sistema",
-                negocioId
-            });
+            return null;
         }
 
         return this._formatCaja(caja);
     }
 
-    // Abrir un nuevo turno de caja
+    // Abrir un nuevo turno de caja por usuario/empleado
     async abrirCaja(negocioId, data) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Caja } = await this._getModels(negocioId);
+        const { Caja, Empleado } = await this._getModels(negocioId);
 
-        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
-        if (cajaAbierta) {
-            throw new AppError("Ya existe un turno de caja abierto actualmente.", 400, "CASH_REGISTER_ALREADY_OPEN");
+        const empleadoId = data.empleadoId || data.usuarioId || null;
+
+        if (empleadoId) {
+            const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
+            if (cajaAbierta) {
+                throw new AppError("Ya posees un turno de caja abierto actualmente.", 400, "CASH_REGISTER_ALREADY_OPEN");
+            }
         }
 
         const montoInicial = parseFloat(data.montoInicial || data.montoInicialEfectivo || 0);
@@ -183,32 +215,56 @@ class CajasService {
             estadoCaja: "Abierta",
             observacionApertura: data.observaciones || "Apertura de turno",
             fechaHoraApertura: new Date(),
+            empleadoId,
             negocioId
         });
 
-        const formattedApertura = this._formatCaja(nuevaCaja);
+        const cajaConRelaciones = await Caja.findOne({
+            where: { idCaja: nuevaCaja.idCaja },
+            include: [{ model: Empleado, as: "empleado" }]
+        });
+
+        const formattedApertura = this._formatCaja(cajaConRelaciones || nuevaCaja);
         cajasSocket.emitirCajaAbierta(negocioId, formattedApertura);
         return formattedApertura;
     }
 
-    // Cerrar el turno de caja activo
-    async cerrarCaja(negocioId, idCaja, data) {
+    // Cerrar el turno de caja activo de forma segura por usuario u operador
+    async cerrarCaja(negocioId, idCaja, data, empleadoId = null, isGlobalAdmin = false) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
         const { Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
 
-        const caja = await Caja.findOne({
-            where: { idCaja },
-            include: [{
-                model: MovimientoCaja,
-                as: "movimientos",
-                include: [{ model: MetodoPago, as: "metodoPago" }]
-            }]
-        });
+        let caja = null;
+        if (idCaja === "actual") {
+            caja = await Caja.findOne({
+                where: { estadoCaja: "Abierta", ...(empleadoId ? { empleadoId } : {}) },
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                }],
+                order: [["idCaja", "DESC"]]
+            });
+        } else {
+            caja = await Caja.findOne({
+                where: { idCaja },
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                }]
+            });
+        }
 
         if (!caja) {
             throw new AppError("Caja no encontrada para cerrar.", 404, "CASH_REGISTER_NOT_FOUND");
+        }
+
+        // Si no es Administrador global, verificar que la caja a cerrar pertenezca al usuario autenticado
+        if (!isGlobalAdmin && empleadoId && Number(caja.empleadoId) !== Number(empleadoId)) {
+            throw new AppError("No posees permisos para cerrar la caja de otro operador.", 403, "FORBIDDEN");
         }
 
         if (caja.estadoCaja === "Cerrada") {
@@ -239,11 +295,17 @@ class CajasService {
         const limit = parseInt(query.limit) || 20;
         const offset = parseInt(query.offset) || 0;
 
+        const where = {};
+        if (query.empleadoId) {
+            where.empleadoId = query.empleadoId;
+        }
+
         let count = 0;
         let rows = [];
 
         try {
             const res = await Caja.findAndCountAll({
+                where,
                 include: [{
                     model: MovimientoCaja,
                     as: "movimientos",
@@ -256,8 +318,9 @@ class CajasService {
             count = res.count;
             rows = res.rows;
         } catch (err) {
-            count = await Caja.count();
+            count = await Caja.count({ where });
             rows = await Caja.findAll({
+                where,
                 include: [{
                     model: MovimientoCaja,
                     as: "movimientos",

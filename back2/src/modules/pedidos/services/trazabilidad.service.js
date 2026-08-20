@@ -12,11 +12,11 @@ class TrazabilidadService {
         if (estadoActual === nuevoEstado) return;
 
         const transicionesValidas = {
-            PENDIENTE: ["EN_PROCESO", "CANCELADO"],
-            EN_PROCESO: ["LISTO_PARA_RETIRAR", "LISTO", "PENDIENTE", "CANCELADO"],
-            LISTO_PARA_RETIRAR: ["ENTREGADO", "EN_PROCESO", "CANCELADO"],
-            LISTO: ["ENTREGADO", "EN_PROCESO", "CANCELADO"],
-            ENTREGADO: [],
+            PENDIENTE: ["EN_PROCESO", "LISTO_PARA_RETIRAR", "LISTO", "ENTREGADO", "CANCELADO"],
+            EN_PROCESO: ["LISTO_PARA_RETIRAR", "LISTO", "PENDIENTE", "ENTREGADO", "CANCELADO"],
+            LISTO_PARA_RETIRAR: ["ENTREGADO", "EN_PROCESO", "PENDIENTE", "CANCELADO"],
+            LISTO: ["ENTREGADO", "EN_PROCESO", "PENDIENTE", "CANCELADO"],
+            ENTREGADO: ["LISTO_PARA_RETIRAR", "LISTO", "EN_PROCESO", "PENDIENTE"],
             CANCELADO: []
         };
 
@@ -45,9 +45,15 @@ class TrazabilidadService {
         }
 
         let estadoActualNombre = pedido.estado || "PENDIENTE";
-        if (pedido.cambiosEstado && pedido.cambiosEstado.length > 0) {
-            const u = pedido.cambiosEstado[pedido.cambiosEstado.length - 1];
-            if (u.estado) estadoActualNombre = u.estado.nombre;
+        if (pedido.cambiosEstado && Array.isArray(pedido.cambiosEstado) && pedido.cambiosEstado.length > 0) {
+            const sorted = [...pedido.cambiosEstado].sort((a, b) => {
+                const timeA = new Date(a.fechaHoraInicio || a.createdAt || 0).getTime();
+                const timeB = new Date(b.fechaHoraInicio || b.createdAt || 0).getTime();
+                if (timeA !== timeB) return timeA - timeB;
+                return (a.id || 0) - (b.id || 0);
+            });
+            const u = sorted[sorted.length - 1];
+            if (u && u.estado) estadoActualNombre = u.estado.nombre;
         }
 
         this._validarTransicionEstado(estadoActualNombre, nuevoEstadoNombre);

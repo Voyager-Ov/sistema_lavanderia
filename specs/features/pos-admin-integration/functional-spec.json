@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "pos-admin-integration",
+  "title": "Integración del Punto de Venta (POS) en el Portal Admin con Gestión de Caja Obligatoria, Registro de Gastos y Resumen Gamificado de Partida/Turno",
+  "version": "1.0.0",
+  "scope": {
+    "in_scope": [
+      "Agregar ítem de navegación POS en el Sidebar del Portal de Administración (`/admin/pos`).",
+      "Control de acceso y guardián de apertura de caja antes de permitir la operabilidad del POS.",
+      "Card/Pantalla interactiva de 'Apertura de Caja' al ingresar a la vista de POS si no existe una caja en estado 'Abierta'.",
+      "Formulario de apertura de caja con ingreso de efectivo inicial y confirmación de apertura de turno.",
+      "Panel operativo del POS en el portal Admin manteniendo catálogo, búsqueda de clientes, carrito y producción (Kanban).",
+      "Módulo / Modal de 'Registrar Gasto' (Egreso) accesible directamente dentro del POS.",
+      "Botón de 'Cerrar POS / Resumen de Partida' en la cabecera de la terminal POS.",
+      "Modal gamificado tipo 'Resumen de Partida / End of Shift Summary' con animación GSAP de métricas (recuento de pedidos creados/actualizados, ingresos por efectivo/digitales, egresos por gastos, balance neto y calificación de turno).",
+      "Formulario de arqueo final de caja (efectivo real vs esperado) y confirmación de cierre dentro del resumen gamificado."
+    ],
+    "out_of_scope": [
+      "Modificación del esquema de la base de datos PostgreSQL en el backend (se reutiliza la arquitectura existente de Cajas, Movimientos, Pagos y Gastos).",
+      "Soporte para cobros multimonedas o criptomonedas."
+    ]
+  },
+  "user_journeys": [
+    {
+      "id": "UJ-01",
+      "name": "Navegación al POS y Apertura Obligatoria de Caja",
+      "description": "El administrador o empleado hace clic en 'POS' en la barra lateral del portal Admin. Si la caja no está abierta, el sistema presenta una card visual atractiva para abrir caja solicitando el efectivo inicial.",
+      "steps": [
+        "Navegar a /admin/pos desde el Sidebar Admin.",
+        "El sistema verifica el estado de la caja activa del negocio.",
+        "Al detectar caja cerrada o inexistente, oculta las funciones operativas del POS y muestra la card 'Apertura de Turno POS'.",
+        "El usuario ingresa el monto inicial de efectivo y presiona 'Abrir Caja y Comenzar'.",
+        "El sistema abre la caja y habilita inmediatamente la terminal POS completa."
+      ]
+    },
+    {
+      "id": "UJ-02",
+      "name": "Operación del POS y Registro de Gastos",
+      "description": "Con la caja abierta, el usuario opera la terminal POS (creación de pedidos, cobros, kanban) y puede registrar egresos de dinero rápidamente.",
+      "steps": [
+        "El usuario navega por las categorías, selecciona clientes y genera pedidos o cobros.",
+        "El usuario hace clic en el botón 'Registrar Gasto' en la barra de herramientas del POS.",
+        "Se abre un formulario limpio para ingresar monto, categoría, descripción y método de pago.",
+        "Al guardar, el gasto se registra en la caja activa actual y se descuenta del efectivo esperado."
+      ]
+    },
+    {
+      "id": "UJ-03",
+      "name": "Cierre de Turno POS con Resumen Gamificado (Resumen de Partida)",
+      "description": "Al finalizar el turno, el usuario presiona 'Cerrar POS'. Se despliega una vista estilo resumen de partida con animaciones de conteo, métricas de rendimiento del turno y el arqueo de efectivo.",
+      "steps": [
+        "El usuario presiona 'Cerrar POS' en el header del POS.",
+        "Se abre un modal con animación GSAP tipo 'Victory / Match Summary Screen'.",
+        "Se animan en tiempo real los contadores: Pedidos Procesados, Ingresos Totales (Efectivo vs Digital), Egresos por Gastos y Resultado Neto.",
+        "El usuario ingresa el 'Efectivo Real Contado' en la caja física.",
+        "El sistema calcula la diferencia (cuadre perfecto, sobrante o faltante) con retroalimentación visual.",
+        "El usuario confirma el cierre de caja, se ejecuta el cierre y la pantalla se resetea al estado de Apertura de Caja."
+      ]
+    }
+  ],
+  "business_rules": [
+    {
+      "code": "BR-POS-01",
+      "name": "Caja Abierta Requerida",
+      "description": "Ninguna operación de venta o cobro en el POS puede realizarse sin una caja activa en estado 'Abierta'. Si la caja está cerrada, se bloquea el acceso a la terminal hasta su apertura."
+    },
+    {
+      "code": "BR-POS-02",
+      "name": "Trazabilidad de Movimientos de Caja",
+      "description": "Todo gasto registrado en la vista de POS debe estar vinculado al ID de la caja activa y restar del saldo de efectivo de esa caja específica."
+    },
+    {
+      "code": "BR-POS-03",
+      "name": "Arqueo Atómico de Cierre",
+      "description": "El cierre de POS consolida los totales pagados y gastados en la caja activa actual. La diferencia entre el efectivo esperado y el real se muestra claramente antes de confirmar."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "given": "Un usuario administrador autenticado en el portal admin",
+      "when": "Hace clic en 'POS' en el sidebar de /admin",
+      "then": "Es redirigido a la vista de POS (/admin/pos) y la barra lateral resalta el ítem activo correctamente."
+    },
+    {
+      "id": "AC-02",
+      "given": "Un usuario en /admin/pos sin una caja abierta",
+      "when": "La pantalla de POS finaliza de consultar el estado de la caja",
+      "then": "Se muestra una card centrada de 'Apertura de Caja' con input de efectivo inicial y botón para abrir la caja."
+    },
+    {
+      "id": "AC-03",
+      "given": "Un usuario que completa el monto inicial (ej: $5000) y presiona 'Abrir Caja'",
+      "when": "El backend responde de forma exitosa",
+      "then": "La card de apertura se oculta con una transición fluida y se desbloquea la interfaz de la terminal POS."
+    },
+    {
+      "id": "AC-04",
+      "given": "Un usuario operando el POS con caja abierta",
+      "when": "Presiona el botón 'Registrar Gasto' y completa el formulario",
+      "then": "El egreso queda registrado en la caja activa, mostrando una notificación de éxito y actualizando los totales de la caja."
+    },
+    {
+      "id": "AC-05",
+      "given": "Un usuario que hace clic en 'Cerrar POS'",
+      "when": "Se abre el modal de Resumen de Partida",
+      "then": "Se ejecutan animaciones GSAP que muestran los números incrementando gradualmente, listando total de pedidos, ingresos, egresos y saldo final."
+    },
+    {
+      "id": "AC-06",
+      "given": "Un usuario que ingresa el efectivo contado y confirma el cierre de caja",
+      "when": "El backend procesa /cajas/:id/cerrar",
+      "then": "La caja pasa a estado cerrada y el POS regresa inmediatamente a la pantalla de Apertura de Caja para el siguiente turno."
+    }
+  ],
+  "ux_expectations": {
+    "design_tone": "Estilo gamer / arcade limpio y profesional, tarjetas elevadas, gradientes de alto impacto, insignias de estado con neón suave, animación de contadores GSAP de alto rendimiento.",
+    "animations": "GSAP to/from para conteo de números en resumen de partida, stagger de revelación de métricas, transición suave fade-in/out al abrir y cerrar caja.",
+    "responsiveness": "100% adaptable a escritorios, tablets y dispositivos móviles usando Tailwind CSS y ResponsiveSheet para overlays."
+  }
+}

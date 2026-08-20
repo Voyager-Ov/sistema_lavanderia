@@ -79,22 +79,22 @@ export function ServiceReportKpi({
         {/* FRONT FACE */}
         <div 
           className={cn(
-            "absolute inset-0 [backface-visibility:hidden] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between overflow-hidden bg-white text-gray-900 border border-gray-100"
+            "absolute inset-0 [backface-visibility:hidden] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-between overflow-hidden bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 border border-gray-100 dark:border-neutral-800"
           )}
         >
           <div className="flex justify-between items-start mb-6">
-            <h3 className="text-base font-medium text-gray-900">
+            <h3 className="text-base font-medium text-gray-900 dark:text-neutral-100">
               {title}
             </h3>
             
             {/* Pequeño indicador visual de que la tarjeta tiene acción */}
-            <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 flex items-center justify-center text-gray-400 dark:text-neutral-400 hover:text-gray-600 dark:hover:text-neutral-200 transition-colors">
               <span className="text-[10px] font-bold">i</span>
             </div>
           </div>
 
           <div>
-            <p className="text-4xl lg:text-5xl font-semibold tracking-tight mb-4 text-gray-900">
+            <p className="text-4xl lg:text-5xl font-semibold tracking-tight mb-4 text-gray-900 dark:text-neutral-50">
               {value}
             </p>
 
@@ -106,7 +106,7 @@ export function ServiceReportKpi({
                 </div>
               )}
               {subtitle && (
-                <span className="text-xs font-medium text-gray-400">
+                <span className="text-xs font-medium text-gray-400 dark:text-neutral-400">
                   {subtitle}
                 </span>
               )}
@@ -117,13 +117,13 @@ export function ServiceReportKpi({
         {/* BACK FACE */}
         <div 
           className={cn(
-            "absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-center items-center text-center border bg-gray-50 text-gray-900 border-gray-200"
+            "absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[2rem] p-6 lg:p-8 flex flex-col justify-center items-center text-center border bg-gray-50 dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 border-gray-200 dark:border-neutral-700"
           )}
         >
-          <h4 className="text-lg font-bold mb-2 text-brand-blue">
+          <h4 className="text-lg font-bold mb-2 text-brand-blue dark:text-blue-400">
             ¿Qué significa?
           </h4>
-          <p className="text-sm font-medium text-gray-600">
+          <p className="text-sm font-medium text-gray-600 dark:text-neutral-300">
             {backMessage}
           </p>
         </div>

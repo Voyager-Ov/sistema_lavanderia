@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "empleado-portal-audit",
+  "title": "Especificación Técnica para la Auditoría y Alineación de Contratos API del Portal del Empleado (/pos) contra back2",
+  "version": "1.0.0",
+  "architecture": {
+    "module_location": "front/src/app/pos/",
+    "pages_audited": [
+      {
+        "route": "/pos/dashboard",
+        "file": "front/src/app/pos/dashboard/page.tsx",
+        "consumed_apis": ["GET /api/dashboard/stats", "GET /api/cajas/actual", "GET /api/pedidos"],
+        "alignment_status": "Verificar estructura de pedidosDelDia, pedidosActivos y mapeo de ultimosPedidos."
+      },
+      {
+        "route": "/pos/terminal",
+        "file": "front/src/app/pos/terminal/page.tsx",
+        "consumed_apis": ["GET /api/categorias", "GET /api/servicios", "POST /api/pedidos", "POST /api/pagos"],
+        "alignment_status": "Garantizar que crearPedido envíe { clienteId, fechaEntregaEstimada, items: [{ productoId, cantidad }] } exigido por back2."
+      },
+      {
+        "route": "/pos/caja",
+        "file": "front/src/app/pos/caja/page.tsx",
+        "consumed_apis": ["GET /api/cajas/actual", "POST /api/cajas/abrir", "POST /api/gastos", "POST /api/cajas/:id/cerrar", "GET /api/cajas"],
+        "alignment_status": "Alinear el mapeo de movimientos, totales por método de pago y paginación de historial de turnos."
+      },
+      {
+        "route": "/pos/pedidos",
+        "file": "front/src/app/pos/pedidos/page.tsx",
+        "consumed_apis": ["GET /api/pedidos", "PATCH /api/pedidos/:id/estado", "GET /api/pedidos/:id"],
+        "alignment_status": "Garantizar paginación meta { totalItems, totalPages } y filtrado por estado en mayúsculas."
+      },
+      {
+        "route": "/pos/clientes",
+        "file": "front/src/app/pos/clientes/page.tsx",
+        "consumed_apis": ["GET /api/clientes", "POST /api/clientes", "GET /api/clientes/:id", "PUT /api/clientes/:id"],
+        "alignment_status": "Verificar que la creación de cliente soporte campos nombre, telefono, email, direccion requeridos."
+      },
+      {
+        "route": "/pos/servicios",
+        "file": "front/src/app/pos/servicios/page.tsx",
+        "consumed_apis": ["GET /api/servicios"],
+        "alignment_status": "Alinear filtrado de servicios activos del negocio."
+      },
+      {
+        "route": "/pos/perfil",
+        "file": "front/src/app/pos/perfil/page.tsx",
+        "consumed_apis": ["GET /api/auth/me"],
+        "alignment_status": "Renderizar datos del usuario autenticado en la sesión."
+      }
+    ]
+  },
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/dashboard/stats",
+      "expected_structure": {
+        "data": {
+          "ingresos": "object",
+          "pedidosDelDia": "object",
+          "pedidosActivos": "object",
+          "ultimosPedidos": "array"
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/cajas/actual",
+      "expected_structure": {
+        "data": {
+          "id": "number",
+          "estado": "string",
+          "montoInicial": "number|string",
+          "totalIngresosEnVivo": "number",
+          "totalEgresosEnVivo": "number",
+          "efectivoEsperadoEnVivo": "number",
+          "pagos": "array",
+          "gastos": "array"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/pedidos",
+      "expected_payload": {
+        "clienteId": "number",
+        "fechaEntregaEstimada": "string (ISO/Date)",
+        "items": "array of { productoId: number, cantidad: number }"
+      }
+    },
+    {
+      "endpoint": "POST /api/pagos",
+      "expected_payload": {
+        "pedidoId": "number",
+        "metodoPagoId": "number",
+        "montoRecibido": "number",
+        "dejarVueltoAFavor": "boolean",
+        "aplicarSaldoAFavor": "boolean"
+      }
+    }
+  ],
+  "dependencies": {
+    "libraries": ["apiClient", "sonner", "zustand", "lucide-react"]
+  },
+  "failure_modes": [
+    {
+      "scenario": "Error 400 por campos faltantes o formato de payload incorrecto en el Front-End",
+      "handling": "Interceptar el error en la capa de API del Front-End, notificar con toast.error descriptivo y asegurar la firma exacta exigida por el controlador en back2."
+    }
+  ]
+}

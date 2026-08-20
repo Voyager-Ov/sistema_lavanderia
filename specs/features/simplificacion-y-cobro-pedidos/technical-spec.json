@@ -1,0 +1,114 @@
+{
+  "feature_id": "simplificacion-y-cobro-pedidos",
+  "title": "Especificación Técnica: Cobro Unificado por Pedido, Trazabilidad Dual y Desmantelamiento de Cobros Masivos",
+  "architecture": {
+    "pattern": "Feature-First Architecture (SaaS Multitenant)",
+    "affected_modules": {
+      "backend": [
+        "back2/src/modules/finanzas/services/pagos.service.js",
+        "back2/src/modules/finanzas/controllers/pagos.controller.js",
+        "back2/src/modules/finanzas/pagos.routes.js",
+        "back2/src/modules/clientes/services/clientes.service.js",
+        "back2/src/modules/clientes/controllers/clientes.controller.js",
+        "back2/src/modules/clientes/clientes.routes.js"
+      ],
+      "frontend": [
+        "front/src/domains/pagos/api.ts",
+        "front/src/app/admin/pedidos/components/cobrar-pedido-sheet.tsx",
+        "front/src/app/admin/pedidos/page.tsx",
+        "front/src/app/admin/pedidos/components/pedidos-modals.tsx",
+        "front/src/app/admin/clientes/[id]/page.tsx",
+        "front/src/domains/pagos/components/cobrar-pedidos-sheet.tsx"
+      ]
+    }
+  },
+  "api_contracts": {
+    "POST /api/pagos": {
+      "request_body": {
+        "pedidoId": "number (required, ID o numeroPedido)",
+        "metodoPagoId": "number (optional if 100% covered by credit)",
+        "montoRecibido": "number (optional, efectivo entregado)",
+        "aplicarSaldoAFavor": "boolean (optional, default false)",
+        "dejarVueltoAFavor": "boolean (optional, default false)"
+      },
+      "responses": {
+        "201_CREATED": {
+          "success": true,
+          "message": "Pago registrado exitosamente",
+          "data": {
+            "id": "number (Cobro ID)",
+            "pedidoId": "number",
+            "montoTotal": "number",
+            "montoCreditoAplicado": "number",
+            "montoEfectivoAbonado": "number",
+            "vueltoEntregado": "number",
+            "saldoAFavorGenerado": "number",
+            "movimientoCajaId": "number | null",
+            "movimientoCuentaId": "number | null",
+            "estado": "COMPLETADO"
+          }
+        },
+        "400_BAD_REQUEST": [
+          { "code": "NO_OPEN_CASH_REGISTER", "message": "No hay una caja abierta actualmente. Debe abrir la caja antes de registrar un cobro." },
+          { "code": "ORDER_ALREADY_PAID", "message": "El pedido ya se encuentra cobrado." },
+          { "code": "CANNOT_CHARGE_CANCELLED_ORDER", "message": "No se puede cobrar un pedido cancelado." },
+          { "code": "INSUFFICIENT_PAYMENT", "message": "El monto ingresado no cubre el saldo restante del pedido." }
+        ]
+      }
+    }
+  },
+  "backend_implementation_details": {
+    "pagos_service_procesarCobro": {
+      "transaction_scope": "Sequelize ACID Transaction",
+      "algorithm_steps": [
+        "1. Obtener modelos multitenant (Pedido, DetallePedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente, MovimientoCuentaCorriente).",
+        "2. Forzar pedidoId como pedido único (throw error si se pasa un array de múltiples pedidos).",
+        "3. Cargar Pedido con detalles. Validar existencia, no cancelado y cobrado === false.",
+        "4. Validar Caja Chica activa (estadoCaja === 'Abierta'). Si no existe, lanzar AppError('NO_OPEN_CASH_REGISTER', 400).",
+        "5. Calcular monto real del pedido a partir de total o suma de detalles (precioHistorico * cantidad).",
+        "6. Manejar Saldo a Favor: Si aplicarSaldoAFavor === true y existe CuentaCorriente con saldo > 0:",
+        "   a. creditoUsado = Math.min(saldoCuenta, montoPedido).",
+        "   b. Actualizar CuentaCorriente.saldo -= creditoUsado.",
+        "   c. Crear MovimientoCuentaCorriente (tipo: 'DEBITO' / 'CONSUMO_CREDITO', monto: creditoUsado, concepto: 'Aplicación de crédito a pedido #X').",
+        "7. Calcular remanente a abonar en efectivo/tarjeta: remanenteAbonar = Math.max(0, montoPedido - creditoUsado).",
+        "8. Si remanenteAbonar > 0:",
+        "   a. Validar montoRecibido >= remanenteAbonar.",
+        "   b. Calcular exceso: exceso = montoRecibido - remanenteAbonar.",
+        "   c. Si exceso > 0 y dejarVueltoAFavor === true:",
+        "      - Actualizar CuentaCorriente.saldo += exceso.",
+        "      - Crear MovimientoCuentaCorriente (tipo: 'CREDITO' / 'VUELTO_A_FAVOR', monto: exceso, concepto: 'Vuelto a favor generado por pedido #X').",
+        "      - vueltoEntregado = 0, saldoGenerado = exceso.",
+        "   d. Sino: vueltoEntregado = exceso, saldoGenerado = 0.",
+        "   e. Crear MovimientoCaja (monto: remanenteAbonar, tipoMovimiento: 'Ingreso por Venta', observacion: 'Cobro Pedido #X', metodoPagoId, cajaIdCaja).",
+        "9. Crear registro en tabla Cobro (montoAbonado: montoPedido, montoRecibidoEfectivo: remanenteAbonar + vueltoEntregado, vueltoEntregado, movimientoCajaId).",
+        "10. Actualizar Pedido.cobrado = true."
+      ]
+    }
+  },
+  "frontend_implementation_details": {
+    "pedidos_page": [
+      "En `front/src/app/admin/pedidos/page.tsx`, actualizar la definición de `bulkActions` para remover por completo la opción 'Cobrar Masivamente'.",
+      "Cada fila de la tabla conserva su botón individual 'Cobrar' que invoca `CobrarPedidoSheet` pasando el pedido único."
+    ],
+    "cliente_detail_page": [
+      "En `front/src/app/admin/clientes/[id]/page.tsx`, remover la barra de acciones masivas `DataTableBulkActions` y el botón general de 'Cobrar Deuda'.",
+      "Remover checkboxes de selección múltiple en la tabla de pedidos impagos del cliente.",
+      "Cada fila de pedido impago en la tabla del cliente muestra exclusivamente su botón directo 'Cobrar' que abre `CobrarPedidoSheet` para ese pedido."
+    ],
+    "unified_sheet_component": [
+      "Consolidar `CobrarPedidoSheet` (`front/src/app/admin/pedidos/components/cobrar-pedido-sheet.tsx`) como la única sheet modal del sistema.",
+      "Eliminar o deprecart `CobrarPedidosClienteSheet` y `BulkChargeModal` para evitar duplicidad."
+    ]
+  },
+  "quality_gates_and_testing": {
+    "integration_scripts": [
+      "Actualizar `back2/scripts/stress_test_cobros.js` para probar las transacciones individuales por pedido.",
+      "Verificar en BD la creación emparejada de MovimientoCaja + MovimientoCuentaCorriente tras cada cobro."
+    ],
+    "acceptance_verification": [
+      "Cobro individual en efectivo -> 1 Cobro, 1 MovimientoCaja, 0 MovimientoCuentaCorriente.",
+      "Cobro con crédito parcial -> 1 Cobro, 1 MovimientoCaja, 1 MovimientoCuentaCorriente (Débito).",
+      "Cobro con vuelto a saldo a favor -> 1 Cobro, 1 MovimientoCaja, 1 MovimientoCuentaCorriente (Crédito)."
+    ]
+  }
+}

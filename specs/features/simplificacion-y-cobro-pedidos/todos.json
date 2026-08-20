@@ -1,0 +1,81 @@
+{
+  "feature_id": "simplificacion-y-cobro-pedidos",
+  "title": "Tareas de Implementación: Modelo de Cobro Unificado por Pedido",
+  "todos": [
+    {
+      "id": "TASK-BE-01",
+      "title": "Refactorizar pagos.service.js para Cobro Unificado de 1 Pedido y Trazabilidad Dual (Caja + Cuenta Corriente)",
+      "owner_role": "Backend Developer",
+      "status": "COMPLETED",
+      "parallelizable": false,
+      "depends_on": [],
+      "target_files": [
+        "back2/src/modules/finanzas/services/pagos.service.js"
+      ],
+      "exit_criteria": "procesarCobro exige 1 solo pedidoId. Si aplica crédito, genera MovimientoCuentaCorriente DÉBITO. Si genera vuelto a favor, genera MovimientoCuentaCorriente CRÉDITO. Genera MovimientoCaja si hay efectivo físico. Impide cobros si la caja está cerrada."
+    },
+    {
+      "id": "TASK-BE-02",
+      "title": "Actualizar clientes.service.js y controladores de clientes para delegar cobros al endpoint unificado /api/pagos",
+      "owner_role": "Backend Developer",
+      "status": "COMPLETED",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01"],
+      "target_files": [
+        "back2/src/modules/clientes/services/clientes.service.js",
+        "back2/src/modules/clientes/controllers/clientes.controller.js"
+      ],
+      "exit_criteria": "cobrarPedidosCliente redirige al cobro individual o rechaza llamadas masivas en el controlador, garantizando transacciones por pedido individual."
+    },
+    {
+      "id": "TASK-FE-01",
+      "title": "Consolidar y perfeccionar CobrarPedidoSheet en Frontend como Sheet Único",
+      "owner_role": "Frontend Developer",
+      "status": "COMPLETED",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01"],
+      "target_files": [
+        "front/src/app/admin/pedidos/components/cobrar-pedido-sheet.tsx",
+        "front/src/domains/pagos/api.ts"
+      ],
+      "exit_criteria": "CobrarPedidoSheet soporta cobro individual de 1 pedido, consulta caja abierta, saldo a favor y vuelto a favor. Llama a registrarPago POST /api/pagos."
+    },
+    {
+      "id": "TASK-FE-02",
+      "title": "Remover 'Cobrar Masivamente' y BulkChargeModal de la vista general de Pedidos",
+      "owner_role": "Frontend Developer",
+      "status": "COMPLETED",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "target_files": [
+        "front/src/app/admin/pedidos/page.tsx",
+        "front/src/app/admin/pedidos/components/pedidos-modals.tsx"
+      ],
+      "exit_criteria": "Se elimina la acción 'Cobrar Masivamente' del Bottom Island en Pedidos. Se mantiene la acción individual de cobro por fila."
+    },
+    {
+      "id": "TASK-FE-03",
+      "title": "Remover 'Cobrar Deuda' masivo y checkboxes de la vista del Cliente",
+      "owner_role": "Frontend Developer",
+      "status": "COMPLETED",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "target_files": [
+        "front/src/app/admin/clientes/[id]/page.tsx"
+      ],
+      "exit_criteria": "Se remueven checkboxes y botón 'Cobrar Deuda' masivo en la vista de detalle del Cliente. Cada pedido impago cuenta exclusivamente con su botón directo 'Cobrar' que abre CobrarPedidoSheet."
+    },
+    {
+      "id": "TASK-QA-01",
+      "title": "Ejecutar script de pruebas de resiliencia y verificar trazabilidad contable dual en Neon DB",
+      "owner_role": "QA / Lead Developer",
+      "status": "COMPLETED",
+      "parallelizable": false,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02", "TASK-FE-01", "TASK-FE-02", "TASK-FE-03"],
+      "target_files": [
+        "back2/scripts/stress_test_cobros.js"
+      ],
+      "exit_criteria": "El script stress_test_cobros.js pasa al 100% verificando cobros individuales, trazabilidad de MovimientoCaja y MovimientoCuentaCorriente sin falsos saldos a favor."
+    }
+  ]
+}

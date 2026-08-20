@@ -56,9 +56,9 @@ export function CerrarCajaModal({ open, onOpenChange, caja, onSuccess }: CerrarC
           </ResponsiveSheetDescription>
         </ResponsiveSheetHeader>
 
-        <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 mb-2 mt-6 flex justify-between items-center">
-          <span className="text-sm text-slate-600 font-medium">Efectivo Esperado (Sistema):</span>
-          <span className="text-xl font-bold text-slate-900">${esperado.toLocaleString('es-AR')}</span>
+        <div className="bg-slate-50 dark:bg-neutral-800/80 p-5 rounded-xl border border-slate-100 dark:border-neutral-700/60 mb-2 mt-6 flex justify-between items-center">
+          <span className="text-sm text-slate-600 dark:text-neutral-300 font-medium">Efectivo Esperado (Sistema):</span>
+          <span className="text-xl font-bold text-slate-900 dark:text-neutral-100">${esperado.toLocaleString('es-AR')}</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
@@ -66,7 +66,7 @@ export function CerrarCajaModal({ open, onOpenChange, caja, onSuccess }: CerrarC
             <Label>Efectivo Real (Contado)</Label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <DollarSign className="h-5 w-5 text-slate-400" />
+                <DollarSign className="h-5 w-5 text-slate-400 dark:text-neutral-500" />
               </div>
               <Input
                 type="number"
@@ -93,7 +93,7 @@ export function CerrarCajaModal({ open, onOpenChange, caja, onSuccess }: CerrarC
             </Alert>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-6 border-slate-100">
+          <div className="flex justify-end gap-3 pt-4 border-t mt-6 border-slate-100 dark:border-neutral-800">
             <Button
               type="button"
               variant="outline"

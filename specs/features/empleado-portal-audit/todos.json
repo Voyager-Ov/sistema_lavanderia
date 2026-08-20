@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "empleado-portal-audit",
+  "todos": [
+    {
+      "id": "TASK-EMP-01",
+      "title": "Auditar y alinear /pos/dashboard",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/dashboard/page.tsx"],
+      "exit_criteria": "El dashboard responde 200 OK y muestra correctamente ingresos, pedidos del día y alertas activas."
+    },
+    {
+      "id": "TASK-EMP-02",
+      "title": "Auditar y alinear /pos/caja",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/caja/page.tsx", "front/src/app/pos/caja/components/pos-caja-historial.tsx"],
+      "exit_criteria": "Muestra la caja actual, movimientos en vivo y permite abrir/cerrar caja y registrar gastos sin errores de contrato."
+    },
+    {
+      "id": "TASK-EMP-03",
+      "title": "Auditar y alinear /pos/pedidos",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/pedidos/page.tsx", "front/src/app/pos/pedidos/[id]/page.tsx"],
+      "exit_criteria": "Renderiza listado de pedidos paginado, detalle de pedido, cambio de estado y cancelación con retorno de dinero."
+    },
+    {
+      "id": "TASK-EMP-04",
+      "title": "Auditar y alinear /pos/clientes",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/clientes/page.tsx", "front/src/app/pos/clientes/nuevo/page.tsx"],
+      "exit_criteria": "Renderiza listado de clientes, búsqueda en vivo y creación de nuevos clientes."
+    },
+    {
+      "id": "TASK-EMP-05",
+      "title": "Auditar y alinear /pos/servicios",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/servicios/page.tsx"],
+      "exit_criteria": "Muestra catálogo de servicios activos del negocio con precios históricos e imágenes."
+    },
+    {
+      "id": "TASK-EMP-06",
+      "title": "Auditar y alinear /pos/perfil y /pos/configuracion",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/pos/perfil/page.tsx", "front/src/app/pos/configuracion/page.tsx"],
+      "exit_criteria": "Muestra los datos de la sesión del empleado autenticado y configuración del negocio."
+    },
+    {
+      "id": "TASK-EMP-07",
+      "title": "Script de Auditoría en Vivo 'Jugar' para Portal del Empleado",
+      "owner_role": "qa-developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-EMP-01", "TASK-EMP-02", "TASK-EMP-03", "TASK-EMP-04", "TASK-EMP-05", "TASK-EMP-06"],
+      "outputs": ["test_portal_empleados.js"],
+      "exit_criteria": "Ejecución completa del script de resiliencia validando 100% de los contratos del portal del empleado contra back2."
+    }
+  ]
+}

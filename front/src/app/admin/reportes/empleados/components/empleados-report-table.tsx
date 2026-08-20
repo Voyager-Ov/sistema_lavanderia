@@ -26,11 +26,11 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
     switch (rol) {
       case 'ADMIN':
       case 'SUPERADMIN':
-        return 'bg-purple-100 text-purple-700'
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
       case 'EMPLEADO':
-        return 'bg-blue-100 text-blue-700'
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
       default:
-        return 'bg-gray-100 text-gray-700'
+        return 'bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-neutral-300'
     }
   }
 
@@ -38,7 +38,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
     {
       accessorKey: "nombre",
       header: "Empleado",
-      cell: ({ row }) => <span className="font-bold text-gray-900 text-base">{row.original.nombre}</span>,
+      cell: ({ row }) => <span className="font-bold text-gray-900 dark:text-neutral-100 text-base">{row.original.nombre}</span>,
     },
     {
       accessorKey: "rol",
@@ -53,7 +53,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
       accessorKey: "cajasAbiertas",
       header: "Cajas",
       cell: ({ row }) => (
-        <span className="font-bold text-gray-600">
+        <span className="font-bold text-gray-600 dark:text-neutral-400">
           {row.original.cajasAbiertas} aperturas
         </span>
       ),
@@ -62,7 +62,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
       accessorKey: "pedidosGenerados",
       header: "Pedidos Creados",
       cell: ({ row }) => (
-        <span className="font-black text-blue-600 text-base">
+        <span className="font-black text-blue-600 dark:text-blue-400 text-base">
           {row.original.pedidosGenerados}
         </span>
       ),
@@ -71,7 +71,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
       accessorKey: "pedidosCancelados",
       header: "Cancelados",
       cell: ({ row }) => (
-        <span className={`font-bold ${row.original.pedidosCancelados > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+        <span className={`font-bold ${row.original.pedidosCancelados > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-neutral-500'}`}>
           {row.original.pedidosCancelados}
         </span>
       ),
@@ -80,7 +80,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
       accessorKey: "totalCobrado",
       header: "Recaudación Total",
       cell: ({ row }) => (
-        <span className="font-black text-gray-900 text-lg">
+        <span className="font-black text-gray-900 dark:text-neutral-100 text-lg">
           {formatCurrency(row.original.totalCobrado)}
         </span>
       ),
@@ -103,9 +103,9 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
   };
 
   return (
-    <div className={`bg-white rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 shadow-sm flex flex-col h-full ${className || ''}`}>
+    <div className={`bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-6 border border-gray-100 dark:border-neutral-800 shadow-sm flex flex-col h-full ${className || ''}`}>
       <div className="flex justify-between items-center mb-4 px-2">
-        <h3 className="text-lg font-extrabold text-gray-900 tracking-wider uppercase">
+        <h3 className="text-lg font-extrabold text-gray-900 dark:text-neutral-100 tracking-wider uppercase">
           Rendimiento por Empleado
         </h3>
       </div>
@@ -116,7 +116,7 @@ export function EmpleadosReportTable({ data, className }: EmpleadosReportTablePr
           data={data} 
           searchPlaceholder="Buscar empleado..."
           toolbarExtras={
-            <Button onClick={exportCsv} variant="outline" size="sm" className="rounded-full h-9 gap-2">
+            <Button onClick={exportCsv} variant="outline" size="sm" className="rounded-full h-9 gap-2 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700">
               <Download className="w-4 h-4" /> Exportar CSV
             </Button>
           }

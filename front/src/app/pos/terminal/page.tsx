@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
@@ -12,15 +12,20 @@ import { Cliente } from "@/domains/clientes/api"
 import { getCategorias, Categoria } from "@/domains/categorias/api"
 import { getProductos, Producto } from "@/domains/productos/api"
 import { crearPedido } from "@/domains/pedidos/api"
+import { obtenerCajaActual, CajaActual } from "@/domains/caja/caja.api"
 import { Button } from "@/shared/ui/forms/button"
 
 // Reuse Admin Components
 import { ServiceGrid } from "@/app/admin/pedidos/nuevo/components/service-grid"
 import { OrderCart, CartItem } from "@/app/admin/pedidos/nuevo/components/order-cart"
 
-// New POS Specific Components
+// POS Specific Components
 import { PosClientSearch } from "./components/pos-client-search"
 import { PosKanban } from "./components/pos-kanban"
+import { AbrirCajaPosCard } from "@/app/admin/pos/components/abrir-caja-pos-card"
+import { PosHeaderActions } from "@/app/admin/pos/components/pos-header-actions"
+import { RegistrarGastoModal } from "@/app/admin/caja/components/registrar-gasto-modal"
+import { ResumenCierreTurnoView } from "@/app/admin/pos/components/resumen-cierre-turno-view"
 
 interface ParkedCart {
   id: string
@@ -32,6 +37,12 @@ interface ParkedCart {
 
 export default function TerminalPage() {
   const router = useRouter()
+
+  // Caja State
+  const [cajaActual, setCajaActual] = useState<CajaActual | null>(null)
+  const [isLoadingCaja, setIsLoadingCaja] = useState<boolean>(true)
+  const [currentView, setCurrentView] = useState<"OPERATIVO" | "RESUMEN">("OPERATIVO")
+  const [openGastoModal, setOpenGastoModal] = useState<boolean>(false)
   
   // Tabs State
   const [activeTab, setActiveTab] = useState<"NUEVO" | "KANBAN">("NUEVO")
@@ -50,6 +61,24 @@ export default function TerminalPage() {
 
   // Parked Carts State
   const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>([])
+
+  // Fetch caja actual
+  const fetchCaja = useCallback(async () => {
+    try {
+      setIsLoadingCaja(true)
+      const data = await obtenerCajaActual()
+      setCajaActual(data)
+    } catch (err: any) {
+      console.error("Error al cargar la caja actual:", err)
+      setCajaActual(null)
+    } finally {
+      setIsLoadingCaja(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCaja()
+  }, [fetchCaja])
 
   // Fetch initial catalog
   useEffect(() => {
@@ -100,7 +129,6 @@ export default function TerminalPage() {
     const parked = parkedCarts.find(p => p.id === parkedId)
     if (!parked) return
     
-    // Si hay un carrito actual, lo mandamos a parqueo primero para no perderlo
     if (cart.length > 0) {
       const currentToPark: ParkedCart = {
         id: Math.random().toString(36).substring(7),
@@ -140,11 +168,9 @@ export default function TerminalPage() {
       })
       toast.success("¡Pedido creado con éxito!")
       
-      // Reset for next walk-in customer quickly
       setCart([])
       setSelectedClient(null)
       setFechaEntregaEstimada(undefined)
-      // We do not switch to Kanban tab automatically to allow rapid creation of multiple orders
       
     } catch (error) {
       toast.error("Hubo un error al crear el pedido")
@@ -154,13 +180,26 @@ export default function TerminalPage() {
     }
   }
 
-  return (
+  const isCajaAbierta = Boolean(
+    cajaActual && (cajaActual.estado === "ABIERTA" || cajaActual.estadoCaja === "Abierta")
+  )
+
+  if (isLoadingCaja) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[400px] gap-3 text-gray-500 dark:text-neutral-400">
+        <div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold">Verificando estado de caja POS...</p>
+      </div>
+    )
+  }
+
+  const renderTerminalContent = () => (
     <div className="flex-1 flex flex-col h-full gap-3 w-full p-2 sm:px-4 sm:pt-1 sm:pb-4 lg:overflow-hidden bg-gray-50/50 dark:bg-background transition-colors">
       
-      {/* Tabs compactos y Burbujas */}
-      <div className="fade-up-element flex items-center justify-between flex-shrink-0 z-20 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Tabs compactos, Filtros y Acciones rápidas de Caja */}
+      <div className="fade-up-element flex items-center justify-between flex-shrink-0 z-20 overflow-x-auto pb-1 gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <div className="flex bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-1 rounded-xl shadow-sm transition-colors flex-shrink-0">
             <button
               onClick={() => setActiveTab("NUEVO")}
@@ -244,6 +283,15 @@ export default function TerminalPage() {
             ))}
           </div>
         </div>
+
+        {/* Botones Estándar de Acciones Rápidas: Registrar Gasto & Cerrar Turno */}
+        {cajaActual && (
+          <PosHeaderActions
+            caja={cajaActual}
+            onOpenGastoModal={() => setOpenGastoModal(true)}
+            onOpenCierreModal={() => setCurrentView("RESUMEN")}
+          />
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -297,6 +345,44 @@ export default function TerminalPage() {
         </div>
 
       </div>
+
+      {/* Registrar Gasto Modal (usando ResponsiveSheet) */}
+      <RegistrarGastoModal
+        open={openGastoModal}
+        onOpenChange={setOpenGastoModal}
+        onSuccess={fetchCaja}
+      />
     </div>
   )
+
+  // Si la caja NO está abierta: renderizar POS desenfocado de fondo + modal de Apertura centrado
+  if (!isCajaAbierta) {
+    return (
+      <div className="relative flex-1 flex flex-col h-full w-full overflow-hidden">
+        <div className="flex-1 flex flex-col h-full w-full pointer-events-none select-none filter blur-[3px] opacity-85 transition-all duration-500 overflow-hidden">
+          {renderTerminalContent()}
+        </div>
+
+        <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/20 dark:bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
+          <AbrirCajaPosCard onCajaAbierta={(nuevaCaja) => setCajaActual(nuevaCaja)} />
+        </div>
+      </div>
+    )
+  }
+
+  // Si se presiona "Cerrar Turno POS": vista de Arqueo y Resumen
+  if (currentView === "RESUMEN" && cajaActual) {
+    return (
+      <ResumenCierreTurnoView
+        caja={cajaActual}
+        onVolverPos={() => setCurrentView("OPERATIVO")}
+        onCajaCerrada={() => {
+          fetchCaja()
+          setCurrentView("OPERATIVO")
+        }}
+      />
+    )
+  }
+
+  return renderTerminalContent()
 }

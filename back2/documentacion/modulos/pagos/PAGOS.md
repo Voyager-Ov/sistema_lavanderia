@@ -30,16 +30,16 @@ El módulo de Pagos es el motor de conciliación y liquidación contable de la p
 ### CU-31: Cobrar Pedido Individual Mostrador
 *   **Actores Autorizados:** `Empleado Operativo / Cajero` (`empleado`), `Administrador de Negocio` (`admin`).
 *   **Pantalla / Componente Frontend de Origen:**
-    *   **Dashboard de Pedidos:** `/admin/pedidos` y `/pos/pedidos`.
-    *   **Componentes UI:** `cobrar-pedido-sheet.tsx` (desplegado dentro de `ResponsiveSheet`) y `pedido-detail-view.tsx`.
+    *   **Dashboard de Pedidos:** `/admin/pedidos`, `/admin/clientes/[id]` y `/pos/pedidos`.
+    *   **Componente UI Canónico:** `cobrar-pedido-sheet.tsx` (desplegado dentro de `ResponsiveSheet`).
 *   **Funcionalidad con la que se Resuelve:**
-    *   *Frontend:* Formulario de cobro eligiendo Método de Pago (Efectivo, Tarjeta, QR, Personalizado), monto recibido y opción de aplicar Saldo a Favor.
-    *   *Backend (Endpoint `POST /api/pagos`):* Ejecución en `pago-core.service.js` dentro de una transacción Sequelize.
-    *   *Lógica Cruzada:*
-        1. Exige una `Caja` en estado `ABIERTA`.
-        2. Aplica bloqueo pesimista `t.LOCK.UPDATE` sobre el `Pedido` y los `CreditoCliente`.
-        3. Consume Saldo a Favor disponible en orden **FIFO (`id ASC`)** mediante `consumirCreditosFIFO()`.
-        4. El remanente a pagar se abona con el método de pago físico/digital y suma al dinero en caja.
+    *   *Frontend:* Formulario unificado de cobro para 1 único pedido. Permite elegir el Método de Pago (Efectivo, Tarjeta, QR, Personalizado), monto recibido, aplicar Saldo a Favor disponible y/o acreditar el vuelto sobrante.
+    *   *Backend (Endpoint `POST /api/pagos`):* Ejecución atómica en `pagos.service.js` dentro de una transacción SQL Sequelize.
+    *   *Lógica Cruzada y Trazabilidad Dual:*
+        1. Exige obligatoriamente un turno de `Caja` en estado `"Abierta"`. De lo contrario rechaza la solicitud con HTTP 400 Bad Request (`NO_OPEN_CASH_REGISTER`).
+        2. Bloquea pesimista `t.LOCK.UPDATE` sobre el `Pedido` objetivo.
+        3. Si `aplicarSaldoAFavor = true`, consume atómicamente el crédito disponible en la `CuentaCorriente` del cliente y genera un `MovimientoCuenta` de tipo **Débito**.
+        4. Si hubo abonado en dinero físico (`dineroIngresadoFisico > 0`), registra un `MovimientoCaja` vinculado al turno de caja activo. Si el cobro se saldó 100% con crédito o bonificación $0, omitirá la creación de `MovimientoCaja` para prevenir arqueos de dinero físico falsos.
         5. Actualiza `pedido.cobrado = true` y emite eventos WebSockets (`pago_registrado`, `pedido_actualizado`).
 
 ---
@@ -47,11 +47,11 @@ El módulo de Pagos es el motor de conciliación y liquidación contable de la p
 ### CU-32: Retener Vuelto en Efectivo como Saldo a Favor
 *   **Actores Autorizados:** `Empleado Operativo / Cajero` (`empleado`), `Administrador de Negocio` (`admin`).
 *   **Pantalla / Componente Frontend de Origen:**
-    *   **Modal de Cobro:** `/admin/pedidos` y `/pos/pedidos`.
-    *   **Componentes UI:** `cobrar-pedido-sheet.tsx` (`ResponsiveSheet`).
+    *   **Modal de Cobro:** `/admin/pedidos`, `/admin/clientes/[id]` y `/pos/pedidos`.
+    *   **Componente UI:** `cobrar-pedido-sheet.tsx` (`ResponsiveSheet`).
 *   **Funcionalidad con la que se Resuelve:**
-    *   *Frontend:* Checkbox *"Dejar vuelto en efectivo como saldo a favor del cliente"* (`dejarVueltoAFavor = true`).
-    *   *Backend:* Si `montoRecibido > montoRestanteAPagar`, el total en billetes ingresa a la caja física del turno (`montoEfectivoTarjeta = efectivoIngresado`) y se invoca `generarCreditoSobrepago()` en `credito.service.js`, emitiendo un `CreditoCliente` de tipo `SOBREPAGO_EFECTIVO` vinculado al cliente.
+    *   *Frontend:* Selector *"Acreditar saldo a favor"* (`dejarVueltoAFavor = true`).
+    *   *Backend:* Si `montoRecibido > remanenteAPagar`, se calcula el exceso en billetes como `excesoEfectivo = cashRecibidoReal - remanenteTotalEfectivo`. El exceso se acredita atómicamente al saldo de la `CuentaCorriente` del cliente y genera un `MovimientoCuenta` de tipo **Crédito** (`"Vuelto a favor generado por pedido #X"`).
 
 ---
 

@@ -51,18 +51,18 @@ export function BottomSheetWrapper({ isOpen, onClose, title, children, height = 
       {/* Sheet */}
       <div 
         ref={sheetRef}
-        className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-[2rem] shadow-[0_-8px_30px_rgb(0,0,0,0.12)] z-50 flex flex-col translate-y-[100%]
+        className={`fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-transparent dark:border-neutral-800 rounded-t-[2rem] shadow-[0_-8px_30px_rgb(0,0,0,0.12)] z-50 flex flex-col translate-y-[100%]
           ${height === "full" ? "h-[90vh]" : "max-h-[90vh] min-h-[40vh]"}
         `}
       >
-        <div className="flex justify-center pt-3 pb-2 flex-shrink-0" onClick={onClose}>
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+        <div className="flex justify-center pt-3 pb-2 flex-shrink-0 cursor-pointer" onClick={onClose}>
+          <div className="w-12 h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full" />
         </div>
         
         {title && (
-          <div className="px-6 pb-4 flex items-center justify-between flex-shrink-0 border-b border-gray-100">
-            <h3 className="font-bold text-lg text-gray-900">{title}</h3>
-            <button onClick={onClose} className="p-2 -mr-2 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 transition-colors">
+          <div className="px-6 pb-4 flex items-center justify-between flex-shrink-0 border-b border-gray-100 dark:border-neutral-800">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-neutral-100">{title}</h3>
+            <button onClick={onClose} className="p-2 -mr-2 bg-gray-50 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>

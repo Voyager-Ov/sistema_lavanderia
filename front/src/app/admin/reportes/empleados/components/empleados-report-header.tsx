@@ -25,25 +25,25 @@ export function EmpleadosReportHeader({
   onClearFilters
 }: EmpleadosReportHeaderProps) {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm stagger-block opacity-0">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 p-6 bg-white dark:bg-neutral-900 rounded-[2rem] border border-gray-100 dark:border-neutral-800 shadow-sm stagger-block opacity-0">
       <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-none mb-2">
+        <h1 className="text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight leading-none mb-2">
           Reporte de Empleados
         </h1>
-        <p className="text-gray-500 font-medium">
+        <p className="text-gray-500 dark:text-neutral-400 font-medium">
           Rendimiento, cajas y métodos de cobro
         </p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-          <Button variant="outline" size="sm" onClick={() => setQuickFilter("today")} className="rounded-full text-xs font-bold px-4">
+          <Button variant="outline" size="sm" onClick={() => setQuickFilter("today")} className="rounded-full text-xs font-bold px-4 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200">
             Hoy
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setQuickFilter("thisWeek")} className="rounded-full text-xs font-bold px-4">
+          <Button variant="outline" size="sm" onClick={() => setQuickFilter("thisWeek")} className="rounded-full text-xs font-bold px-4 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200">
             Semana
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setQuickFilter("thisMonth")} className="rounded-full text-xs font-bold px-4 bg-gray-50">
+          <Button variant="outline" size="sm" onClick={() => setQuickFilter("thisMonth")} className="rounded-full text-xs font-bold px-4 bg-gray-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200">
             Mes
           </Button>
         </div>
@@ -56,45 +56,45 @@ export function EmpleadosReportHeader({
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-[140px] justify-start text-left font-semibold rounded-full border-gray-200",
-                    !fechaInicio && "text-muted-foreground"
+                    "w-[140px] justify-start text-left font-semibold rounded-full border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200",
+                    !fechaInicio && "text-muted-foreground dark:text-neutral-500"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-brand-blue" />
+                  <CalendarIcon className="mr-2 h-4 w-4 text-brand-blue dark:text-blue-400" />
                   {fechaInicio ? format(fechaInicio, "dd MMM yyyy", { locale: es }) : "Inicio"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 rounded-2xl" align="end">
+              <PopoverContent className="w-auto p-0 rounded-2xl bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800" align="end">
                 <Calendar
                   mode="single"
                   selected={fechaInicio}
                   onSelect={setFechaInicio}
-                  className="rounded-2xl"
+                  className="rounded-2xl dark:bg-neutral-900"
                 />
               </PopoverContent>
             </Popover>
 
-            <span className="text-gray-300 font-bold">-</span>
+            <span className="text-gray-300 dark:text-neutral-600 font-bold">-</span>
 
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-[140px] justify-start text-left font-semibold rounded-full border-gray-200",
-                    !fechaFin && "text-muted-foreground"
+                    "w-[140px] justify-start text-left font-semibold rounded-full border-gray-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200",
+                    !fechaFin && "text-muted-foreground dark:text-neutral-500"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-brand-blue" />
+                  <CalendarIcon className="mr-2 h-4 w-4 text-brand-blue dark:text-blue-400" />
                   {fechaFin ? format(fechaFin, "dd MMM yyyy", { locale: es }) : "Fin"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 rounded-2xl" align="end">
+              <PopoverContent className="w-auto p-0 rounded-2xl bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800" align="end">
                 <Calendar
                   mode="single"
                   selected={fechaFin}
                   onSelect={setFechaFin}
-                  className="rounded-2xl"
+                  className="rounded-2xl dark:bg-neutral-900"
                 />
               </PopoverContent>
             </Popover>
@@ -104,7 +104,7 @@ export function EmpleadosReportHeader({
             variant="ghost"
             size="icon"
             onClick={onClearFilters}
-            className="rounded-full h-10 w-10 text-gray-400 hover:text-red-500 hover:bg-red-50"
+            className="rounded-full h-10 w-10 text-gray-400 dark:text-neutral-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
             title="Limpiar filtros"
           >
             <FilterX className="h-5 w-5" />

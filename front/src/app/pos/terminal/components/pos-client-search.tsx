@@ -74,7 +74,7 @@ export function PosClientSearch({ selectedClient, onSelectClient }: PosClientSea
             <Button 
               variant="outline" 
               onClick={handleConsumidorFinal}
-              className="flex-1 sm:flex-none border-blue-200 hover:bg-blue-50 text-blue-700 h-full rounded-xl whitespace-nowrap"
+              className="flex-1 sm:flex-none border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 dark:bg-neutral-800 h-full rounded-xl whitespace-nowrap"
             >
               <Users className="w-4 h-4 mr-2" />
               Consumidor Final

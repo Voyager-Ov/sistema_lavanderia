@@ -38,15 +38,15 @@ export function RadialSegmentedGauge({
 
   return (
     <div className={cn(
-      "bg-white rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm relative flex flex-col items-center overflow-hidden",
+      "bg-white dark:bg-neutral-900 rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 dark:border-neutral-800 shadow-sm relative flex flex-col items-center overflow-hidden",
       className
     )}>
       <div className="w-full flex justify-between items-start mb-6 z-10">
-        <h3 className="text-sm md:text-base font-extrabold text-gray-900 tracking-wider uppercase">
+        <h3 className="text-sm md:text-base font-extrabold text-gray-900 dark:text-neutral-100 tracking-wider uppercase">
           {title}
         </h3>
-        <div className="bg-gray-100 text-gray-900 text-xs font-bold px-3 py-1 rounded-full border border-gray-200">
-          This Month
+        <div className="bg-gray-100 dark:bg-neutral-800 text-gray-900 dark:text-neutral-200 text-xs font-bold px-3 py-1 rounded-full border border-gray-200 dark:border-neutral-700">
+          Este Mes
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export function RadialSegmentedGauge({
                 className="absolute w-[6px] h-[30%] origin-bottom transition-colors duration-500 ease-out"
                 style={{
                   transform: `rotate(${angle}deg) translateY(-220%)`,
-                  backgroundColor: isActive ? accentColor : "#E5E7EB", // gray-200 for inactive
+                  backgroundColor: isActive ? accentColor : "var(--gauge-inactive, #374151)",
                   borderRadius: "2px",
                 }}
               />
@@ -74,14 +74,14 @@ export function RadialSegmentedGauge({
 
         {/* Center Value */}
         <div className="z-10 flex flex-col items-center">
-          <span className="text-[4rem] font-black text-gray-900 leading-none tracking-tighter" style={{ color: accentColor }}>
+          <span className="text-[4rem] font-black text-gray-900 dark:text-neutral-50 leading-none tracking-tighter" style={{ color: accentColor }}>
             {Math.round(animatedValue)}<span className="text-[2.5rem]">%</span>
           </span>
         </div>
       </div>
 
       {subtitle && (
-        <p className="mt-4 text-sm font-bold text-gray-400 tracking-wide uppercase text-center w-full z-10">
+        <p className="mt-4 text-sm font-bold text-gray-400 dark:text-neutral-400 tracking-wide uppercase text-center w-full z-10">
           {subtitle}
         </p>
       )}

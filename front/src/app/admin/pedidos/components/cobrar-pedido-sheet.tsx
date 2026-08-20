@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Pedido } from "@/domains/pedidos/api"
 import { MetodoPago, obtenerMetodosPago, registrarPago, obtenerSaldosAFavorCliente } from "@/domains/pagos/api"
+import { obtenerCajaActual } from "@/domains/caja/caja.api"
 import { generarTicketsAPI } from "@/domains/pedidos/api"
 import {
   ResponsiveSheet,
@@ -28,7 +30,8 @@ import {
   Gem,
   DollarSign,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react"
 
 const ICON_MAP: Record<string, any> = {
@@ -48,9 +51,10 @@ interface CobrarPedidoSheetProps {
   onOpenChange: (open: boolean) => void
   pedido: Pedido | null
   onSuccess: () => void
+  onPrint?: (pedido: Pedido) => void
 }
 
-export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: CobrarPedidoSheetProps) {
+export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess, onPrint }: CobrarPedidoSheetProps) {
   const [metodos, setMetodos] = useState<MetodoPago[]>([])
   const [selectedMetodo, setSelectedMetodo] = useState<string>("")
   const [monto, setMonto] = useState<string>("")
@@ -58,10 +62,12 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
   const [saldoAFavorTotal, setSaldoAFavorTotal] = useState(0)
   const [aplicarCredito, setAplicarCredito] = useState(false)
   const [dejarVueltoAFavor, setDejarVueltoAFavor] = useState(false)
+  const [isCajaAbierta, setIsCajaAbierta] = useState(true)
 
   const { hardwareConfig } = useConfigStore()
+  const router = useRouter()
 
-  // Cargar métodos de pago y saldo a favor del cliente
+  // Cargar métodos de pago, estado de caja y saldo a favor del cliente
   useEffect(() => {
     if (open && pedido) {
       setAplicarCredito(false)
@@ -77,6 +83,13 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
           }
         })
         .catch(() => toast.error("Error al cargar los métodos de pago"))
+
+      obtenerCajaActual()
+        .then((caja) => {
+          const abierta = !!caja && (caja.estado === "ABIERTA" || (caja as any).estadoCaja === "Abierta")
+          setIsCajaAbierta(abierta)
+        })
+        .catch(() => setIsCajaAbierta(false))
 
       if (pedido.clienteId) {
         obtenerSaldosAFavorCliente(pedido.clienteId)
@@ -144,10 +157,16 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
       return
     }
 
+    const targetId = pedido.id || (pedido as any).numeroPedido
+    if (!targetId) {
+      toast.error("No se pudo identificar el ID del pedido a cobrar.")
+      return
+    }
+
     setLoading(true)
     try {
       await registrarPago({
-        pedidoId: pedido.id,
+        pedidoId: targetId,
         metodoPagoId: remanenteAPagar > 0 ? parseInt(selectedMetodo) : undefined,
         monto: remanenteAPagar > 0 ? remanenteAPagar : undefined,
         montoRecibido: remanenteAPagar > 0 && monto ? montoNum : undefined,
@@ -159,12 +178,16 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
       onSuccess()
       onOpenChange(false)
 
-      if (hardwareConfig.imprimirTicketAutomatico) {
-        try {
-          await generarTicketsAPI(pedido.id, 1)
-          setTimeout(() => window.print(), 300)
-        } catch {
-          // Ignore ticket errors
+      if (hardwareConfig.imprimirTicketAutomatico && pedido) {
+        if (onPrint) {
+          onPrint(pedido)
+        } else {
+          try {
+            await generarTicketsAPI(targetId, 1)
+            setTimeout(() => window.print(), 300)
+          } catch {
+            // Ignore ticket errors
+          }
         }
       }
     } catch (error: any) {
@@ -368,11 +391,26 @@ export function CobrarPedidoSheet({ open, onOpenChange, pedido, onSuccess }: Cob
           </div>
         )}
 
+        {!isCajaAbierta && (
+          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center justify-between text-amber-800 dark:text-amber-200 text-xs mb-4 mt-4">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <strong className="block text-amber-900 dark:text-amber-100 font-bold">Caja Cerrada</strong>
+                <span>Debe abrir la caja para poder cobrar.</span>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => router.push("/admin/caja")} className="text-xs h-8 font-bold border-amber-300 dark:border-amber-700">
+              Abrir Caja
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2.5 w-full mt-6 pt-4 border-t border-gray-100 dark:border-neutral-800">
           <Button
-            className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full h-12 rounded-xl text-base font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
             onClick={handleCobrar}
-            disabled={loading || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
+            disabled={loading || !isCajaAbierta || (remanenteAPagar > 0 && (!selectedMetodo || !monto))}
           >
             {loading ? "Registrando..." : `Registrar Cobro ($${totalPedido.toLocaleString("es-AR")})`}
           </Button>

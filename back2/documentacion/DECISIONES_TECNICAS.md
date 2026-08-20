@@ -105,29 +105,23 @@ Request ➔ Helmet ➔ Dynamic CORS ➔ Body Parser ➔ Rate Limiters ➔ Token 
 
 ---
 
-## 6. Estructura de Directorios del Proyecto
+## 7. Modelo de Cobro Unificado por Pedido y Trazabilidad Contable Dual
 
-El backend se organiza bajo el siguiente árbol estructural limpio:
+**Decisión:** Se simplificó la arquitectura de cobranza del sistema acotando las transacciones a **1 único pedido por operación de cobro** (`POST /api/pagos`) y aplicando un patrón de **Trazabilidad Contable Dual Estricta**.
 
-```
-back2/
-├── docs/                   # Especificaciones de negocio y diagramas
-├── src/
-│    ├── config/            # Ajustes del entorno (db, variables de entorno)
-│    ├── middlewares/       # Filtros transversales (auth, erroHandler, rateLimit)
-│    ├── models/            # Modelos Sequelize y ConnectionManager (Multi-Tenant)
-│    ├── modules/           # Módulos de Negocio (Feature-First)
-│    │    ├── auth/         # Autenticación, Login, Google OAuth y Usuarios
-│    │    ├── pedidos/      # Pedidos, Detalles e Historiales
-│    │    ├── clientes/     # Clientes y Cuenta Corriente
-│    │    ├── finanzas/     # Caja, Cobros, Gastos, Facturas y KPIs
-│    │    ├── servicios/    # Catálogo de Servicios y Categorías
-│    │    ├── rrhh/         # Registro de Asistencia y Reportes RRHH
-│    │    ├── dashboard/    # KPIs del Dashboard principal
-│    │    ├── reportes/     # Generador de Informes y Estadísticas
-│    │    ├── superadmin/   # Gestión de Plataforma General
-│    │    └── configuracion/# Ajustes de Tenant e Integración
-│    ├── utils/             # Funciones de soporte técnico generales (Helpers)
-│    ├── app.js             # Configuración del servidor Express
-│    └── server.js          # Inicialización del servidor (HTTP / WebSockets)
-```
+### Razón:
+La sobre-lógica previa de cobros masivos (lotes de múltiples pedidos desde la Bottom Island de Pedidos o la ficha de Clientes) generaba ambigüedad en la distribución de vuelto en efectivo, asignaciones erróneas de Saldo a Favor a pedidos anteriores del lote y fricción en la UI. Al simplificar el flujo a 1 pedido a la vez:
+1. Se elimina la ambigüedad en el cálculo de vuelto sobrante (`cashRecibidoReal - remanenteTotalEfectivo`).
+2. Se garantiza la consistencia ACID en la base de datos sin bloqueos masivos multitabla.
+3. Se unifican todas las vistas (`Pedidos`, `Clientes`, `POS`) bajo un único componente modal canónico: `CobrarPedidoSheet`.
+
+### Reglas de Trazabilidad Contable Dual:
+1. **Dinero Físico en Caja Chica (`MovimientoCaja`)**:
+   * Se crea un registro en `MovimientoCaja` **únicamente si hubo dinero físico abonado** (`dineroIngresadoFisico > 0`).
+   * Si un pedido se cancela 100% con Saldo a Favor (crédito) o se bonifica a $0,00, **no se genera registro en `MovimientoCaja`**. Esto evita sobrantes o desfasajes falsos en el arqueo físico al cerrar el turno.
+2. **Créditos y Débitos en Cuenta Corriente (`MovimientoCuenta`)**:
+   * Al consumir Saldo a Favor (`aplicarSaldoAFavor: true`), se crea atómicamente un `MovimientoCuenta` de tipo **Débito** (`"Aplicación de saldo a favor a pedido #X"`).
+   * Al acreditar vuelto de efectivo abonado (`dejarVueltoAFavor: true`), se crea atómicamente un `MovimientoCuenta` de tipo **Crédito** (`"Vuelto a favor generado por pedido #X"`).
+3. **Validación Preventiva deTurno de Caja Abierta**:
+   * Tanto el backend (`pagos.service.js`) como la interfaz frontend (`CobrarPedidoSheet`) exigen la existencia de un turno de caja activo con `estadoCaja: "Abierta"`. De lo contrario, se rechaza la operación (`400 BAD_REQUEST`, `NO_OPEN_CASH_REGISTER`).
+

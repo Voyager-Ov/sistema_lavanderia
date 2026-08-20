@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "feature": "pos-admin-integration",
+  "todos": [
+    {
+      "id": "TASK-01",
+      "title": "Añadir enlace POS al Sidebar del Portal Admin",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["front/src/app/admin/layout.tsx"],
+      "exit_criteria": "El sidebar incluye la opción 'POS Terminal' o 'POS' navegando a /admin/pos."
+    },
+    {
+      "id": "TASK-02",
+      "title": "Crear componente AbrirCajaPosCard",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/admin/pos/components/abrir-caja-pos-card.tsx"],
+      "exit_criteria": "Card interactiva para abrir caja con monto inicial, botones rápidos de preseteo y animación GSAP de entrada."
+    },
+    {
+      "id": "TASK-03",
+      "title": "Crear componente PosHeaderActions",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/admin/pos/components/pos-header-actions.tsx"],
+      "exit_criteria": "Barra superior en POS con estado de caja activa, efectivo esperado y botones para Registrar Gasto y Cerrar POS."
+    },
+    {
+      "id": "TASK-04",
+      "title": "Crear componente PosRegistrarGastoModal",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/admin/pos/components/pos-registrar-gasto-modal.tsx"],
+      "exit_criteria": "Modal intuitivo para registrar egresos de caja y actualizar saldos en vivo."
+    },
+    {
+      "id": "TASK-05",
+      "title": "Crear componente ResumenPartidaCierreModal con GSAP Core",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["front/src/app/admin/pos/components/resumen-partida-cierre-modal.tsx"],
+      "exit_criteria": "Modal gamificado de cierre de turno con contadores animados en tiempo real (GSAP), arqueo de efectivo y confirmación de cierre."
+    },
+    {
+      "id": "TASK-06",
+      "title": "Crear la página principal /admin/pos/page.tsx",
+      "owner_role": "frontend-developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-01", "TASK-02", "TASK-03", "TASK-04", "TASK-05"],
+      "outputs": ["front/src/app/admin/pos/page.tsx"],
+      "exit_criteria": "Vista completa en /admin/pos que controla el ciclo de vida de la caja (Abrir -> Operar POS -> Registrar Gastos -> Cerrar con Resumen Gamificado)."
+    },
+    {
+      "id": "TASK-07",
+      "title": "Prueba de Integración y Auditoría 'Jugar'",
+      "owner_role": "qa-developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-06"],
+      "outputs": ["test_pos_admin_caja.js"],
+      "exit_criteria": "Auditoría de endpoints de caja y gastos, verificando resiliencia sin errores 404 ni descalibres de tenant."
+    }
+  ]
+}

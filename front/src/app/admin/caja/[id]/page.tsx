@@ -45,12 +45,12 @@ export default function CajaDetallePage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.push("/admin/caja")}
-          className="p-2 -ml-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+          className="p-2 -ml-2 text-slate-400 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-xl transition-colors"
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-neutral-50 tracking-tight flex items-center gap-3">
             Detalle de Caja
             {caja && (
               <Badge 
@@ -61,7 +61,7 @@ export default function CajaDetallePage() {
               </Badge>
             )}
           </h1>
-          <p className="text-slate-500 mt-1">Visualizando los datos históricos del turno #{id}.</p>
+          <p className="text-slate-500 dark:text-neutral-400 mt-1">Visualizando los datos históricos del turno #{id}.</p>
         </div>
       </div>
 
@@ -77,15 +77,15 @@ export default function CajaDetallePage() {
             </div>
           </div>
         ) : error || !caja ? (
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center">
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-3xl border border-slate-100 dark:border-neutral-800 shadow-sm p-12 text-center">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Wallet className="w-8 h-8 text-red-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">No se pudo cargar la caja</h3>
-            <p className="text-slate-500 max-w-md mx-auto">{error || "La caja solicitada no existe o no tienes permisos para verla."}</p>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-neutral-100 mb-2">No se pudo cargar la caja</h3>
+            <p className="text-slate-500 dark:text-neutral-400 max-w-md mx-auto">{error || "La caja solicitada no existe o no tienes permisos para verla."}</p>
             <button
               onClick={() => router.push("/admin/caja")}
-              className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors"
+              className="mt-6 px-6 py-2.5 bg-slate-900 dark:bg-neutral-100 text-white dark:text-slate-900 rounded-xl font-medium hover:bg-slate-800 dark:hover:bg-neutral-200 transition-colors"
             >
               Volver a Caja
             </button>

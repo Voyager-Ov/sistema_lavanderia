@@ -2,38 +2,55 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuthStore } from "@/shared/store/useAuthStore";
 import { LoadingBars } from "@/shared/ui/feedback/loading-bars";
 
 interface RoleGuardProps {
   children: React.ReactNode;
   allowedRoles: string[]; // e.g. ["admin", "superadmin"]
-  redirectTo?: string; // Where to go if unauthorized
+  redirectTo?: string; // Ruta de retorno opcional si no está autorizado
 }
 
-export function RoleGuard({ children, allowedRoles, redirectTo = "/login" }: RoleGuardProps) {
+export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps) {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Wait for zustand persist to load on client side
+    // Pequeña espera para asegurar que zustand persist se hidrate en el cliente
     const timer = setTimeout(() => {
-      if (!isAuthenticated || !user) {
+      if (!isAuthenticated || !user || !user.rol) {
         router.replace("/login");
-      } else {
-        // Normalizar los roles para la comparación (minúsculas y sin espacios)
-        const userRole = user.rol.toLowerCase().trim();
-        const allowed = allowedRoles.map(r => r.toLowerCase().trim());
-
-        if (!allowed.includes(userRole)) {
-          // Si el usuario no tiene permiso, lo mandamos al login o a una pantalla default
-          router.replace(redirectTo);
-        } else {
-          setIsChecking(false);
-        }
+        return;
       }
-    }, 100); // Pequeño delay para hidratación de zustand
+
+      // Normalizar el rol del usuario (minúsculas, sin espacios ni guiones bajos)
+      const userRole = user.rol.toLowerCase().trim().replace("_", "");
+      const allowedNormalized = allowedRoles.map(r => r.toLowerCase().trim().replace("_", ""));
+
+      // Verificar si el rol del usuario coincide con alguno de los roles permitidos
+      const hasPermission = allowedNormalized.some(allowed => {
+        if (allowed === "admin" && (userRole === "admin" || userRole.includes("admin"))) {
+          return true;
+        }
+        if (allowed === "superadmin" && (userRole === "superadmin" || userRole.includes("superadmin"))) {
+          return true;
+        }
+        return userRole === allowed;
+      });
+
+      if (!hasPermission) {
+        toast.error("Acceso denegado", {
+          description: "Se requieren permisos de Administrador para acceder a esta sección.",
+        });
+        // Si el usuario ya está autenticado pero no tiene permisos, dirigirlo al portal POS
+        const targetRoute = redirectTo || "/pos/pedidos";
+        router.replace(targetRoute);
+      } else {
+        setIsChecking(false);
+      }
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [user, isAuthenticated, allowedRoles, redirectTo, router]);
@@ -53,3 +70,4 @@ export function RoleGuard({ children, allowedRoles, redirectTo = "/login" }: Rol
 
   return <>{children}</>;
 }
+

@@ -41,9 +41,9 @@ La instrucción **"Jugar"** define la cultura de desarrollo proactivo, auditorí
    - El saldo a favor se genera mediante el vuelto de pagos en efectivo (`dejarVueltoAFavor: true`) o mediante ajustes manuales acreditados en la `CuentaCorriente` del cliente.
    - Al cobrar un nuevo pedido con `aplicarSaldoAFavor: true`, el servidor consume atómicamente el crédito disponible hasta cubrir el monto del pedido.
 
-3. **Transaccionalidad en Cobros Masivos (Lotes)**:
-   - Toda operación de cobro (`procesarCobro`) debe ejecutarse dentro de una transacción SQL atómica.
-   - Si un lote contiene al menos 1 pedido en estado `CANCELADO` o previamente `COBRADO`, **se revierte la transacción completa** y no se registra ningún cobro ni movimiento.
+3. **Paradigma de Cobro Unificado por Pedido (1 Pedido por Transacción)**:
+   - Toda operación de cobro (`procesarCobro` / `POST /api/pagos`) se ejecuta dentro de una transacción SQL atómica procesando **1 único pedido por operación**. Quedan prohibidos los cobros en lote masivos para prevenir inconsistencias en vuelto y saldos a favor.
+   - Si el pedido se encuentra en estado `CANCELADO` o previamente `COBRADO`, se revierte la transacción atómicamente y se retorna error explícito (`400 BAD_REQUEST`).
 
 ---
 

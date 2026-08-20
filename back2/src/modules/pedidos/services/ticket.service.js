@@ -17,7 +17,12 @@ class TicketService {
         const { Pedido, Cliente, DetallePedido, Servicio, Cobro } = await this._getModels(negocioId);
         const { Negocio } = connectionManager.centralModels;
 
-        const negocio = await Negocio.findByPk(negocioId);
+        let negocio = null;
+        try {
+            negocio = await Negocio.findByPk(negocioId);
+        } catch (e) {
+            console.warn("⚠️ [TicketService] No se pudo cargar Negocio:", e.message);
+        }
         const pedido = await Pedido.findOne({
             where: { numeroPedido },
             include: [
@@ -80,13 +85,17 @@ class TicketService {
         const entregaStr = pedido.fechaHoraEntregaEstimada ? new Date(pedido.fechaHoraEntregaEstimada).toLocaleString("es-AR") : "A confirmar";
         const estadoCobroText = pedido.cobrado || totalCobrado >= total ? "PAGADO" : "PENDIENTE DE PAGO";
 
+        const anchoPapel = negocio?.anchoPapel === "58mm" ? "58mm" : "80mm";
+        const widthPx = anchoPapel === "58mm" ? "220px" : "280px";
+
         const token = crypto
             .createHmac("sha256", "SECRET_TRACKING_KEY")
             .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
             .digest("hex")
             .substring(0, 16);
 
-        const trackingUrl = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/tracking/LAV-${pedido.numeroPedido}?token=${token}` : `http://localhost:3000/tracking/LAV-${pedido.numeroPedido}?token=${token}`;
+        const baseUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, '') : "http://localhost:3000";
+        const trackingUrl = `${baseUrl}/tracking/${negocioId}/LAV-${pedido.numeroPedido}?token=${token}`;
 
         return `
         <!DOCTYPE html>
@@ -95,14 +104,18 @@ class TicketService {
             <meta charset="utf-8">
             <title>Ticket #LAV-${pedido.numeroPedido}</title>
             <style>
-                body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px; color: #000; background: #fff; }
+                @page { size: ${anchoPapel} auto; margin: 0; }
+                body { box-sizing: border-box; font-family: 'Courier New', Courier, monospace; font-size: ${anchoPapel === "58mm" ? "11px" : "12px"}; width: ${widthPx}; margin: 0 auto; padding: 10px 14px; color: #000; background: #fff; text-align: left; word-break: break-word; }
                 .center { text-align: center; }
                 .bold { font-weight: bold; }
-                .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+                .line { border-bottom: 1px dashed #000; margin: 6px 0; }
                 table { width: 100%; border-collapse: collapse; }
-                td, th { padding: 3px 0; font-size: 11px; }
-                .qr-container { text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #000; }
-                .qr-img { width: 110px; height: 110px; margin: 6px auto; display: block; }
+                td, th { padding: 2px 0; font-size: ${anchoPapel === "58mm" ? "10px" : "11px"}; }
+                .qr-container { text-align: center; margin-top: 10px; padding-top: 6px; border-top: 1px dashed #000; }
+                .qr-img { width: ${anchoPapel === "58mm" ? "90px" : "110px"}; height: ${anchoPapel === "58mm" ? "90px" : "110px"}; margin: 4px auto; display: block; }
+                @media print {
+                    body { margin: 0 auto; padding: 10px 14px; width: 100%; box-sizing: border-box; }
+                }
             </style>
         </head>
         <body onload="window.print()">

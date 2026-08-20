@@ -64,7 +64,7 @@ export const getMovimientos = async (req, res, next) => {
 		const { fechaDesde, fechaHasta, page = 1, limit = 10, search } = req.query;
 		const negocioId = req.user.negocioId;
 
-		const { Cobro, Gasto, Pedido, Empleado, MetodoPago, MovimientoCaja, Caja } = await getModels(negocioId);
+		const { Cobro, Gasto, Pedido, Empleado, MetodoPago, MovimientoCaja, Caja, CategoriaGasto } = await getModels(negocioId);
 
 		const parsedRange = parseDateRange(fechaDesde, fechaHasta);
 		const dateFilter = parsedRange ? { fechaHora: parsedRange } : {};
@@ -95,6 +95,7 @@ export const getMovimientos = async (req, res, next) => {
 			where: { ...dateFilter, negocioId, ...searchFilter },
 			include: [
 				{ model: MetodoPago, as: "metodoPago", attributes: ["nombre"] },
+				{ model: CategoriaGasto, as: "categoria", attributes: ["nombre"] },
 				{ 
 					model: MovimientoCaja, as: "movimientoCaja", include: [
 						{ model: Caja, as: "caja", include: [{ model: Empleado, as: "empleado", attributes: ["nombre", "apellido"] }] }
@@ -104,14 +105,61 @@ export const getMovimientos = async (req, res, next) => {
 			order: [["fechaHora", "DESC"]]
 		});
 
+		// Map of category IDs to names as fallback
+		const categoriasGastoMap = {};
+		if (CategoriaGasto) {
+			const todasCat = await CategoriaGasto.findAll();
+			todasCat.forEach(cat => {
+				categoriasGastoMap[cat.id] = cat.nombre;
+			});
+		}
+
+		// Fetch all Cajas with Empleado to resolve historic transactions without explicit movimientoCaja link
+		const cajas = await Caja.findAll({
+			where: { negocioId },
+			include: [{ model: Empleado, as: "empleado", attributes: ["nombre", "apellido"] }]
+		});
+
+		// Fetch first active Empleado as fallback if historic caja records lacked an explicit empleadoId
+		let primerEmpleado = await Empleado.findOne({ where: { negocioId }, order: [["id", "ASC"]] });
+		if (!primerEmpleado) {
+			primerEmpleado = await Empleado.findOne({ order: [["id", "ASC"]] });
+		}
+		const defaultNombreEmpleado = primerEmpleado 
+			? `${primerEmpleado.nombre || ''} ${primerEmpleado.apellido || ''}`.trim() 
+			: (req.user?.nombre || "Empleado de Mostrador");
+
+		// Helper to resolve real Empleado name for a transaction based on its specific Caja turn
+		const resolveRegistradoPor = (movimientoCajaObj, fechaHoraMov) => {
+			if (movimientoCajaObj?.caja?.empleado) {
+				const emp = movimientoCajaObj.caja.empleado;
+				const full = `${emp.nombre || ''} ${emp.apellido || ''}`.trim();
+				if (full) return full;
+			}
+
+			// Match by timestamp range in historic cajas if explicit link is missing
+			if (fechaHoraMov) {
+				const fMov = new Date(fechaHoraMov);
+				const matchingCaja = cajas.find(cj => {
+					const fApertura = new Date(cj.fechaHoraApertura);
+					const fCierre = cj.fechaHoraCierre ? new Date(cj.fechaHoraCierre) : new Date();
+					return fMov >= fApertura && fMov <= fCierre;
+				});
+				if (matchingCaja?.empleado) {
+					const emp = matchingCaja.empleado;
+					const full = `${emp.nombre || ''} ${emp.apellido || ''}`.trim();
+					if (full) return full;
+				}
+			}
+
+			return defaultNombreEmpleado;
+		};
+
 		// Format and combine
 		let movimientos = [];
 
 		cobros.forEach(c => {
-			let registradoPor = "Sistema";
-			if (c.movimientoCaja && c.movimientoCaja.caja && c.movimientoCaja.caja.empleado) {
-				registradoPor = `${c.movimientoCaja.caja.empleado.nombre} ${c.movimientoCaja.caja.empleado.apellido || ''}`.trim();
-			}
+			const registradoPor = resolveRegistradoPor(c.movimientoCaja, c.fechaHora);
 
 			// Applying search filter manually for cobros since search by 'descripcion' isn't natively in the Cobro model
 			const descripcionBase = `Cobro de Pedido #${c.pedidoNumeroPedido}`;
@@ -136,9 +184,13 @@ export const getMovimientos = async (req, res, next) => {
 		});
 
 		gastos.forEach(g => {
-			let registradoPor = "Sistema";
-			if (g.movimientoCaja && g.movimientoCaja.caja && g.movimientoCaja.caja.empleado) {
-				registradoPor = `${g.movimientoCaja.caja.empleado.nombre} ${g.movimientoCaja.caja.empleado.apellido || ''}`.trim();
+			const registradoPor = resolveRegistradoPor(g.movimientoCaja, g.fechaHora);
+			let nombreCategoria = g.categoria?.nombre;
+			if (!nombreCategoria && g.categoriaGastoId) {
+				nombreCategoria = categoriasGastoMap[g.categoriaGastoId];
+			}
+			if (!nombreCategoria) {
+				nombreCategoria = "Gastos Generales";
 			}
 
 			movimientos.push({
@@ -148,7 +200,7 @@ export const getMovimientos = async (req, res, next) => {
 				monto: g.montoTotal,
 				fecha: g.fechaHora,
 				descripcion: g.descripcion || "Gasto sin descripción",
-				referenciaId: g.categoriaGastoId,
+				referenciaId: nombreCategoria,
 				metodoPago: g.metodoPago ? g.metodoPago.nombre : "Desconocido",
 				registradoPor: registradoPor,
 				estado: g.estadoGasto,

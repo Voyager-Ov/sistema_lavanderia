@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { getJwtSecret } from "../../../config/env.config.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -14,30 +15,56 @@ class LoginService {
     async _getEmpleadoYNegocioStrict(usuario) {
         const { Negocio } = connectionManager.centralModels;
         
-        if (!usuario || !usuario.empleadoId) {
-            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
+        if (!usuario) {
+            throw new AppError("Usuario no especificado.", 400, "MISSING_USER");
         }
 
         const negocios = await Negocio.findAll();
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 
-        for (const neg of negocios) {
-            try {
-                const tenantDb = await connectionManager.getTenantDb(neg.id);
-                const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
-                if (emp) {
-                    empleadoEncontrado = emp;
-                    negocioEncontrado = neg;
-                    break;
+        // 1. Si el usuario ya tiene un empleadoId asignado, buscar por clave primaria
+        if (usuario.empleadoId) {
+            for (const neg of negocios) {
+                try {
+                    const tenantDb = await connectionManager.getTenantDb(neg.id);
+                    const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
+                    if (emp) {
+                        empleadoEncontrado = emp;
+                        negocioEncontrado = neg;
+                        break;
+                    }
+                } catch (err) {
+                    // Continuar si falla un tenant específico
                 }
-            } catch (err) {
-                // Continuar si falla un tenant específico
+            }
+        }
+
+        // 2. Si no se encontró por PK o usuario.empleadoId era null, buscar por email en los tenants
+        if (!empleadoEncontrado && usuario.email) {
+            const emailLower = usuario.email.toLowerCase().trim();
+            for (const neg of negocios) {
+                try {
+                    const tenantDb = await connectionManager.getTenantDb(neg.id);
+                    const emp = await tenantDb.models.Empleado.findOne({
+                        where: { email: emailLower }
+                    });
+                    if (emp) {
+                        empleadoEncontrado = emp;
+                        negocioEncontrado = neg;
+                        // Vincular automáticamente el empleadoId en el usuario central para futuras autenticaciones
+                        usuario.empleadoId = emp.id;
+                        await usuario.save();
+                        break;
+                    }
+                } catch (err) {
+                    // Continuar
+                }
             }
         }
 
         if (!empleadoEncontrado || !negocioEncontrado) {
-            throw new AppError("No se encontró el registro de empleado o negocio en la base de datos.", 404, "TENANT_NOT_FOUND");
+            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
         }
 
         if (negocioEncontrado.activo === false) {
@@ -79,11 +106,9 @@ class LoginService {
             throw new AppError("Debes verificar tu email antes de ingresar.", 403, "EMAIL_NOT_VERIFIED");
         }
 
-        const rolNombre = usuario.Roles && usuario.Roles.length > 0 ? usuario.Roles[0].nombre : "ADMIN";
-        const secret = process.env.JWT_SECRET || "desarrollo_secret_key_lavanderia";
-
         // Caso especial para SUPER_ADMIN: No requiere Empleado ni Negocio
-        if (rolNombre === "SUPER_ADMIN") {
+        if (usuario.Roles && usuario.Roles.length > 0 && usuario.Roles[0].nombre === "SUPER_ADMIN") {
+            const secret = getJwtSecret();
             const token = jwt.sign(
                 { email: usuario.email, rol: "SUPER_ADMIN" },
                 secret,
@@ -104,6 +129,13 @@ class LoginService {
         // Obtener Empleado y Negocio de forma estricta desde PostgreSQL para roles normales
         const { empleado, negocio } = await this._getEmpleadoYNegocioStrict(usuario);
 
+        let rolNombre = "EMPLEADO";
+        if (usuario.Roles && usuario.Roles.length > 0 && usuario.Roles[0].nombre) {
+            rolNombre = usuario.Roles[0].nombre.toUpperCase();
+        } else if (empleado && empleado.rol) {
+            rolNombre = empleado.rol.toUpperCase();
+        }
+
         // Registrar auditoría de sesión en el esquema tenant
         try {
             const tenantDb = await connectionManager.getTenantDb(negocio.id);
@@ -115,6 +147,7 @@ class LoginService {
             // Ignore session logging error
         }
 
+        const secret = getJwtSecret();
         const token = jwt.sign(
             {
                 email: usuario.email,
@@ -193,8 +226,14 @@ class LoginService {
         }
 
         const { empleado, negocio } = await this._getEmpleadoYNegocioStrict(usuario);
-        const rolNombre = usuario.Roles && usuario.Roles.length > 0 ? usuario.Roles[0].nombre : "ADMIN";
-        const secret = process.env.JWT_SECRET || "desarrollo_secret_key_lavanderia";
+
+        let rolNombre = "EMPLEADO";
+        if (usuario.Roles && usuario.Roles.length > 0 && usuario.Roles[0].nombre) {
+            rolNombre = usuario.Roles[0].nombre.toUpperCase();
+        } else if (empleado && empleado.rol) {
+            rolNombre = empleado.rol.toUpperCase();
+        }
+        const secret = getJwtSecret();
 
         const appToken = jwt.sign(
             {

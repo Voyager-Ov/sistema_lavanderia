@@ -85,7 +85,7 @@ export function GlobalSearch({ placeholder = "Buscar clientes, productos...", cl
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverAnchor asChild>
           <div className="relative w-full">
-            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400 z-10" />
+            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400 dark:text-neutral-500 z-10" />
             <CommandInput 
               ref={inputRef}
               placeholder={placeholder}
@@ -93,7 +93,7 @@ export function GlobalSearch({ placeholder = "Buscar clientes, productos...", cl
               onValueChange={setSearch}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              className="pl-10 pr-10 h-11 w-full rounded-full !bg-gray-100 border-2 border-transparent hover:!bg-gray-200/80 focus:!bg-white focus:border-brand-blue/50 focus:ring-4 focus:ring-brand-blue/10 shadow-none transition-all text-sm font-medium outline-none !text-gray-900 placeholder:!text-gray-500"
+              className="pl-10 pr-10 h-11 w-full rounded-full bg-gray-100 dark:bg-neutral-800 border-2 border-transparent hover:bg-gray-200/80 dark:hover:bg-neutral-700/80 focus:bg-white dark:focus:bg-neutral-900 focus:border-brand-blue/50 focus:ring-4 focus:ring-brand-blue/10 shadow-none transition-all text-sm font-medium outline-none text-gray-900 dark:text-neutral-100 placeholder:text-gray-500 dark:placeholder:text-neutral-400"
             />
             
             {search.length > 0 ? (
@@ -103,12 +103,12 @@ export function GlobalSearch({ placeholder = "Buscar clientes, productos...", cl
                   setSearch("")
                   inputRef.current?.focus()
                 }}
-                className="absolute right-2.5 top-2.5 p-1 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 z-10 transition-colors"
+                className="absolute right-2.5 top-2.5 p-1 rounded-full bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-300 dark:hover:bg-neutral-600 z-10 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
             ) : (
-              <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-5 select-none items-center gap-1 rounded border bg-white/50 px-1.5 font-mono text-[10px] font-medium text-gray-400 sm:flex z-10">
+              <kbd className="pointer-events-none absolute right-2.5 top-2.5 hidden h-5 select-none items-center gap-1 rounded border border-gray-200 dark:border-neutral-700 bg-white/50 dark:bg-neutral-800/50 px-1.5 font-mono text-[10px] font-medium text-gray-400 dark:text-neutral-400 sm:flex z-10">
                 <span className="text-xs">⌘</span>K
               </kbd>
             )}
@@ -117,39 +117,39 @@ export function GlobalSearch({ placeholder = "Buscar clientes, productos...", cl
         
         <PopoverContent 
           ref={popoverRef}
-          className="w-[var(--radix-popover-trigger-width)] p-0 shadow-2xl border-gray-100 rounded-xl overflow-hidden"
+          className="w-[var(--radix-popover-trigger-width)] p-0 shadow-2xl border-gray-100 dark:border-neutral-800 rounded-xl overflow-hidden"
           align="start"
           sideOffset={8}
           onOpenAutoFocus={(e) => e.preventDefault()} 
         >
-          <CommandList className="max-h-[300px] overflow-y-auto p-2 bg-white/80 backdrop-blur-xl">
-            <CommandEmpty className="py-6 text-center text-sm text-gray-500">
+          <CommandList className="max-h-[300px] overflow-y-auto p-2 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl">
+            <CommandEmpty className="py-6 text-center text-sm text-gray-500 dark:text-neutral-400">
               No se encontraron resultados para "{search}".
             </CommandEmpty>
             
-            <CommandGroup heading="Sugerencias rápidas" className="text-gray-500">
-              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 data-[selected=true]:bg-brand-blue/10 data-[selected=true]:text-brand-blue">
+            <CommandGroup heading="Sugerencias rápidas" className="text-gray-500 dark:text-neutral-400">
+              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 text-gray-800 dark:text-neutral-200 data-[selected=true]:bg-brand-blue/10 data-[selected=true]:text-brand-blue dark:data-[selected=true]:bg-brand-blue/20">
                 <User className="mr-2 h-4 w-4" />
                 <span className="font-medium">Cliente: Juan Pérez</span>
               </CommandItem>
-              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 data-[selected=true]:bg-brand-green/10 data-[selected=true]:text-brand-green">
+              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 text-gray-800 dark:text-neutral-200 data-[selected=true]:bg-brand-green/10 data-[selected=true]:text-brand-green dark:data-[selected=true]:bg-brand-green/20">
                 <Calendar className="mr-2 h-4 w-4" />
                 <span className="font-medium">Turno: Hoy 14:00</span>
               </CommandItem>
-              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 data-[selected=true]:bg-brand-yellow/10 data-[selected=true]:text-brand-yellow">
+              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 text-gray-800 dark:text-neutral-200 data-[selected=true]:bg-brand-yellow/10 data-[selected=true]:text-brand-yellow dark:data-[selected=true]:bg-brand-yellow/20">
                 <Smile className="mr-2 h-4 w-4" />
                 <span className="font-medium">Ver todos los clientes</span>
               </CommandItem>
             </CommandGroup>
             
-            <CommandSeparator className="my-1 bg-gray-100" />
+            <CommandSeparator className="my-1 bg-gray-100 dark:bg-neutral-800" />
             
-            <CommandGroup heading="Configuración" className="text-gray-500">
-              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 data-[selected=true]:bg-gray-100">
+            <CommandGroup heading="Configuración" className="text-gray-500 dark:text-neutral-400">
+              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 text-gray-800 dark:text-neutral-200 data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-neutral-800">
                 <CreditCard className="mr-2 h-4 w-4" />
                 <span className="font-medium">Facturación</span>
               </CommandItem>
-              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 data-[selected=true]:bg-gray-100">
+              <CommandItem onSelect={() => setOpen(false)} className="gsap-item rounded-lg cursor-pointer my-0.5 text-gray-800 dark:text-neutral-200 data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-neutral-800">
                 <Settings className="mr-2 h-4 w-4" />
                 <span className="font-medium">Ajustes del sistema</span>
               </CommandItem>

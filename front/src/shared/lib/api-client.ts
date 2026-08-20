@@ -63,7 +63,7 @@ export const apiClient = {
         if (response.status === 401 && !endpoint.includes('/auth/login')) {
           if (typeof window !== 'undefined') {
             try {
-              // Import dinámico del store para evitar ciclos de dependencia o usar localStorage
+              // Limpiar credenciales caducadas e invocar redirección a login
               localStorage.removeItem('auth-storage');
               window.location.href = '/login?expired=true';
             } catch (e) {}

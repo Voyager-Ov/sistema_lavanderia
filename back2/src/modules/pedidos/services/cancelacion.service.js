@@ -61,7 +61,16 @@ class CancelacionService {
                 });
             } else if (data.accionDinero === "DEVOLVER") {
                 const { Caja, MovimientoCaja } = await this._getModels(negocioId);
-                const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
+                const empleadoId = data.empleadoId || data.usuarioId;
+                let cajaAbierta = null;
+                if (empleadoId) {
+                    cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
+                } else {
+                    cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
+                }
+                if (!cajaAbierta) {
+                    throw new AppError("No posees una caja abierta actualmente. Debes abrir tu turno de caja antes de realizar una devolución.", 400, "NO_OPEN_CASH_REGISTER");
+                }
 
                 let movimientoCajaId = null;
                 if (cajaAbierta) {

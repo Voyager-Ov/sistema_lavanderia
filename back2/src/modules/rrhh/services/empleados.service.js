@@ -56,7 +56,7 @@ class EmpleadosService {
         // Crear credencial en base de datos central
         const nuevoUsuario = await centralModels.Usuario.create({
             email: emailLower,
-            passwordHash,
+            password: passwordHash,
             emailVerificado: true,
             negocioIdActual: negocioId
         });
@@ -83,6 +83,10 @@ class EmpleadosService {
             usuarioIdCentral: nuevoUsuario.id
         });
 
+        // Vincular empleadoId en el registro de Usuario central
+        nuevoUsuario.empleadoId = nuevoEmpleado.id;
+        await nuevoUsuario.save();
+
         return nuevoEmpleado;
     }
 
@@ -98,18 +102,47 @@ class EmpleadosService {
     async actualizarEmpleado(negocioId, id, data) {
         if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         const { Empleado } = await this._getModels(negocioId);
+        const centralModels = connectionManager.centralModels;
 
         const empleado = await Empleado.findByPk(id);
         if (!empleado) throw new AppError("Empleado no encontrado.", 404, "EMPLOYEE_NOT_FOUND");
 
         const updateFields = {};
         if (data.nombre) updateFields.nombre = data.nombre.trim();
-        if (data.telefono !== undefined) updateFields.telefono = data.telefono;
+        if (data.telefono !== undefined) updateFields.telefono = data.telefono ? data.telefono.trim() : null;
         if (data.rol) updateFields.rol = data.rol.toLowerCase();
         if (data.sueldoBase !== undefined) updateFields.sueldoBase = parseFloat(data.sueldoBase);
         if (data.horasSemanalesObjetivo !== undefined) updateFields.horasSemanalesObjetivo = parseInt(data.horasSemanalesObjetivo);
 
         await empleado.update(updateFields);
+
+        // Buscar registro de usuario central vinculado para actualizar clave o rol si fueron enviados
+        let usuarioCentral = null;
+        if (empleado.usuarioIdCentral) {
+            usuarioCentral = await centralModels.Usuario.findByPk(empleado.usuarioIdCentral);
+        } else if (empleado.email) {
+            usuarioCentral = await centralModels.Usuario.findOne({ where: { email: empleado.email } });
+        }
+
+        if (usuarioCentral) {
+            // Actualizar contraseña si fue proporcionada y es válida
+            if (data.password && data.password.trim().length >= 6) {
+                const passwordHash = await bcrypt.hash(data.password.trim(), 10);
+                usuarioCentral.password = passwordHash;
+                await usuarioCentral.save();
+            }
+
+            // Sincronizar rol en base central
+            if (data.rol) {
+                const rolNombre = data.rol.toLowerCase() === "admin" ? "admin" : "empleado";
+                const rolObj = await centralModels.Rol.findOne({ where: { nombre: rolNombre } });
+                if (rolObj) {
+                    await centralModels.UsuarioRoles.destroy({ where: { usuarioId: usuarioCentral.id } });
+                    await centralModels.UsuarioRoles.create({ usuarioId: usuarioCentral.id, rolId: rolObj.id });
+                }
+            }
+        }
+
         return empleado;
     }
 }

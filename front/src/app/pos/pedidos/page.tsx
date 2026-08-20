@@ -18,10 +18,25 @@ import { PedidosModals } from "@/app/admin/pedidos/components/pedidos-modals"
 import { getPosPedidoColumns } from "./components/pos-pedido-columns"
 
 import { Clock, Printer, XCircle, CheckCircle2 } from "lucide-react"
+import { useConfigStore } from "@/app/admin/configuraciones/_store/useConfigStore"
+import { obtenerConfiguracion } from "@/domains/configuracion/api"
+
+import { useSocket } from "@/shared/hooks/useSocket"
 
 export default function PosPedidosPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { setAllConfig, isLoaded, setIsLoaded } = useConfigStore()
+  const { socket } = useSocket()
+
+  React.useEffect(() => {
+    if (!isLoaded) {
+      obtenerConfiguracion().then((data) => {
+        if (data) setAllConfig(data)
+        setIsLoaded(true)
+      }).catch(() => setIsLoaded(true))
+    }
+  }, [isLoaded, setAllConfig, setIsLoaded])
 
   const {
     pedidos, setPedidos,
@@ -46,6 +61,27 @@ export default function PosPedidosPage() {
   } = usePedidosActions({ pedidos, setPedidos, fetchOrders, fetchStats })
 
   const { modalsProps, handlePrintTicket } = usePedidosModals()
+
+  const refreshAll = React.useCallback(() => {
+    fetchOrders()
+    fetchStats()
+  }, [fetchOrders, fetchStats])
+
+  React.useEffect(() => {
+    if (!socket) return
+
+    const handleUpdate = () => {
+      refreshAll()
+    }
+
+    socket.on("pedido:creado", handleUpdate)
+    socket.on("pedido:estado_cambiado", handleUpdate)
+
+    return () => {
+      socket.off("pedido:creado", handleUpdate)
+      socket.off("pedido:estado_cambiado", handleUpdate)
+    }
+  }, [socket, refreshAll])
 
   gsap.registerPlugin(useGSAP)
   useGSAP(() => {
@@ -88,11 +124,6 @@ export default function PosPedidosPage() {
       }
     }
   ]
-
-  const refreshAll = () => {
-    fetchOrders()
-    fetchStats()
-  }
 
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full gap-6 p-4 lg:p-8">

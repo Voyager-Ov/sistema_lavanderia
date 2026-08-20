@@ -86,9 +86,10 @@ export function PrintQueueManager({ pedidos, onComplete }: PrintQueueManagerProp
                   body {
                       font-family: 'Courier New', Courier, monospace;
                       font-size: 12px;
-                      width: 300px;
+                      width: 280px;
                       margin: 0 auto;
-                      padding: 10px;
+                      padding: 14px 18px;
+                      box-sizing: border-box;
                       color: #000;
                   }
                   .text-center { text-align: center; }
@@ -97,7 +98,8 @@ export function PrintQueueManager({ pedidos, onComplete }: PrintQueueManagerProp
                   .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
                   table { width: 100%; border-collapse: collapse; }
                   @media print {
-                      body { margin: 0; padding: 0; width: 100%; }
+                      html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; width: 100% !important; }
+                      body { display: flex !important; flex-direction: column !important; align-items: center !important; }
                   }
                 </style>
               </head>

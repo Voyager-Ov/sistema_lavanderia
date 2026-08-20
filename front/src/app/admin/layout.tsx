@@ -6,6 +6,7 @@ import { RoleGuard } from "@/shared/ui/layout/guards/RoleGuard";
 import { useAuthStore } from "@/shared/store/useAuthStore";
 import { 
   LayoutDashboard, 
+  Store,
   Users, 
   Settings,
   Building,
@@ -18,6 +19,7 @@ import {
 
 const adminMainMenu = [
   { title: "Dashboard", icon: LayoutDashboard, href: "/admin/dashboard" },
+  { title: "POS Terminal", icon: Store, href: "/admin/pos" },
   { title: "Pedidos", icon: FileText, href: "/admin/pedidos" },
   { title: "Caja", icon: Wallet, href: "/admin/caja" },
   { title: "Clientes", icon: Users, href: "/admin/clientes" },
@@ -56,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   });
 
   return (
-    <RoleGuard allowedRoles={["admin", "superadmin"]} redirectTo="/login">
+    <RoleGuard allowedRoles={["admin", "superadmin"]}>
       <AppLayout
         title="Admin Dashboard"
         breadcrumbs={breadcrumbs}

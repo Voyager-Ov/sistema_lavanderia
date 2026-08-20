@@ -11,7 +11,7 @@ let socketInstance: Socket | null = null;
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const token = useAuthStore((state) => state.token);
+  const { token, user } = useAuthStore();
 
   useEffect(() => {
     if (!token) return;
@@ -19,21 +19,29 @@ export const useSocket = () => {
     if (!socketInstance) {
       socketInstance = io(SOCKET_URL, {
         auth: { token },
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
       });
     }
 
     setSocket(socketInstance);
 
-    const onConnect = () => setIsConnected(true);
+    const onConnect = () => {
+      setIsConnected(true);
+      if (user?.negocioId) {
+        socketInstance?.emit('join:tenant', user.negocioId);
+      }
+    };
     const onDisconnect = () => setIsConnected(false);
 
     socketInstance.on('connect', onConnect);
     socketInstance.on('disconnect', onDisconnect);
-    
+
     // Si ya está conectado al momento de montar
     if (socketInstance.connected) {
       setIsConnected(true);
+      if (user?.negocioId) {
+        socketInstance.emit('join:tenant', user.negocioId);
+      }
     }
 
     return () => {
@@ -42,7 +50,7 @@ export const useSocket = () => {
         socketInstance.off('disconnect', onDisconnect);
       }
     };
-  }, [token]);
+  }, [token, user?.negocioId]);
 
   return { socket, isConnected };
 };

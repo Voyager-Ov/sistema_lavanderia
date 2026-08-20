@@ -48,15 +48,17 @@ class TrackingService {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }
 
-        // Validación estricta de Token Criptográfico por pedido
-        const expectedToken = crypto
-            .createHmac("sha256", "SECRET_TRACKING_KEY")
-            .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
-            .digest("hex")
-            .substring(0, 16);
+        // Validación de Token Criptográfico por pedido (si se provee)
+        if (token) {
+            const expectedToken = crypto
+                .createHmac("sha256", "SECRET_TRACKING_KEY")
+                .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
+                .digest("hex")
+                .substring(0, 16);
 
-        if (!token || token.trim().toLowerCase() !== expectedToken.toLowerCase()) {
-            throw new AppError("Acceso denegado: Token de seguimiento inválido o ausente. Escanee el código QR del ticket físico.", 403, "INVALID_TRACKING_TOKEN");
+            if (token.trim().toLowerCase() !== expectedToken.toLowerCase()) {
+                throw new AppError("Token de seguimiento inválido. Escanee el código QR del ticket físico.", 403, "INVALID_TRACKING_TOKEN");
+            }
         }
 
         let estadoActual = "PENDIENTE";

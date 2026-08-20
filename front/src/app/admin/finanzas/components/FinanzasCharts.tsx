@@ -34,8 +34,11 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
     if (!movimientos.length) return [];
     const gastos = movimientos.filter(m => m.tipoMovimiento === 'EGRESO');
     const grouped = gastos.reduce((acc, g) => {
-      const cat = String(g.referenciaId);
-      acc[cat] = (acc[cat] || 0) + g.monto;
+      let catName = String(g.referenciaId || 'Gastos Generales');
+      if (/^\d+$/.test(catName)) {
+        catName = `Categoría #${catName}`;
+      }
+      acc[catName] = (acc[catName] || 0) + g.monto;
       return acc;
     }, {} as Record<string, number>);
 

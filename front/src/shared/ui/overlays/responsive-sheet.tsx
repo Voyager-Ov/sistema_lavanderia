@@ -35,7 +35,7 @@ export const ResponsiveSheetContent = React.forwardRef<
       ref={ref}
       side={isDesktop ? "right" : "bottom"} 
       className={`
-        flex flex-col bg-white
+        flex flex-col bg-white dark:bg-neutral-900 text-slate-900 dark:text-neutral-100 border-slate-200 dark:border-neutral-800
         ${isDesktop 
           ? "w-full !max-w-[500px] overflow-y-auto p-6 sm:p-8" 
           : "h-[85vh] w-full rounded-t-[2rem] overflow-y-auto p-6"

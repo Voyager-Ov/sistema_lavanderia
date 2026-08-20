@@ -14,6 +14,7 @@ export interface ConfiguracionResponse {
   mensajeTicket: string | null
   imprimirTicketAutomatico: boolean
   mostrarQrTicket: boolean
+  anchoPapel?: '58mm' | '80mm' | string | null
   afipActivo: boolean
   afipModoFacturacion: "AUTOMATICO" | "MANUAL" | "DESACTIVADO"
   afipPuntoVenta: number | null

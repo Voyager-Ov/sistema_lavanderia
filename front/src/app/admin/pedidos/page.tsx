@@ -12,11 +12,23 @@ import { PedidosModals } from "./components/pedidos-modals"
 import { usePedidosData } from "./hooks/usePedidosData"
 import { usePedidosActions } from "./hooks/usePedidosActions"
 import { usePedidosModals } from "./hooks/usePedidosModals"
+import { useConfigStore } from "../configuraciones/_store/useConfigStore"
+import { obtenerConfiguracion } from "@/domains/configuracion/api"
 import { CheckCircle2, Clock, Printer, XCircle } from "lucide-react"
 
 export default function PedidosPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { setAllConfig, isLoaded, setIsLoaded } = useConfigStore()
+
+  React.useEffect(() => {
+    if (!isLoaded) {
+      obtenerConfiguracion().then((data) => {
+        if (data) setAllConfig(data)
+        setIsLoaded(true)
+      }).catch(() => setIsLoaded(true))
+    }
+  }, [isLoaded, setAllConfig, setIsLoaded])
 
   const {
     pedidos, setPedidos,
@@ -117,16 +129,6 @@ export default function PedidosPage() {
         modalsProps.setPedidosToBulkPrint(selectedRows)
         modalsProps.setIsBulkPrintActive(true)
         ;(window as any)._clearPrintSelection = clearSelection
-      }
-    },
-    {
-      label: "Cobrar Masivamente",
-      icon: Clock,
-      colorClass: "bg-green-50/80 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100/90 dark:hover:bg-green-500/20 border-green-100 dark:border-green-500/20 hover:shadow-md backdrop-blur-md transition-colors",
-      onClick: (selectedRows: any, clearSelection: any) => {
-        modalsProps.setPedidosToBulkCharge(selectedRows)
-        modalsProps.setIsBulkChargeOpen(true)
-        ;(window as any)._clearChargeSelection = clearSelection
       }
     },
     {
