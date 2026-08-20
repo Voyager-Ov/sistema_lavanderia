@@ -463,10 +463,10 @@ export function CobrarPedidosSheet({
               <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
               <div>
                 <strong className="block text-amber-900 dark:text-amber-100 font-bold">Caja Cerrada</strong>
-                <span>Debe abrir la caja para poder cobrar.</span>
+                <span>Debe abrir su turno de caja para poder registrar cobros.</span>
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => router.push("/admin/caja")} className="text-xs h-8 font-bold border-amber-300 dark:border-amber-700">
+            <Button size="sm" variant="outline" onClick={() => router.push(window.location.pathname.startsWith("/pos") ? "/pos/caja" : "/admin/caja")} className="text-xs h-8 font-bold border-amber-300 dark:border-amber-700">
               Abrir Caja
             </Button>
           </div>
