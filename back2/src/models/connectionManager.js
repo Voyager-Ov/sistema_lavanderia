@@ -103,9 +103,9 @@ class ConnectionManager {
                 const dbUrl = process.env.DATABASE_URL;
                 const schemaName = `tenant_${negocioId}`;
                 
-                if (forceSync) {
-                    await this.centralDb.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName};`);
-                }
+                await this.centralDb.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}";`).catch((err) => {
+                    console.warn(`⚠️ [ConnectionManager] No se pudo auto-crear esquema ${schemaName}:`, err.message);
+                });
 
                 tenantDb = new Sequelize(dbUrl, {
                     dialect: "postgres",

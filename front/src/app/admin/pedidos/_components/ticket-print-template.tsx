@@ -93,7 +93,7 @@ export const TicketPrintTemplate = React.forwardRef<HTMLDivElement, TicketPrintT
         )}
 
         {(tickets.length > 0 ? [tickets[0]] : [{ id: 1, codigo: pedido.codigoSeguimiento || 'TAG-1' }]).map((ticket) => {
-          const negocioId = (pedido as any).negocioId || 1;
+          const negocioId = (pedido as any).negocioId || (businessConfig as any).id || 13;
           const orderCode = pedido.codigoSeguimiento || (pedido as any).numeroPedido || ticket.codigo;
           const origin = typeof window !== 'undefined' ? window.location.origin : (trackingBaseUrl || '');
           const cleanBase = origin.startsWith('http') ? origin : `http://localhost:3000`;

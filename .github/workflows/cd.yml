@@ -1,0 +1,113 @@
+name: Continuous Deployment (CD)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  db-migration:
+    name: Database Schema Migration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: back2/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd back2
+          npm ci
+
+      - name: Run Neon Schema Migration
+        if: ${{ env.DATABASE_URL != '' }}
+        run: |
+          cd back2
+          node migrate_neon_schemas.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  deploy-backend:
+    name: Deploy Backend to Vercel (back2)
+    needs: db-migration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information (Backend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_BACK != '' }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: back2
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACK }}
+
+      - name: Build Project Artifacts (Backend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_BACK != '' }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: back2
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACK }}
+
+      - name: Deploy Project Artifacts to Production (Backend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_BACK != '' }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: back2
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACK }}
+
+  deploy-frontend:
+    name: Deploy Frontend to Vercel (front)
+    needs: db-migration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information (Frontend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_FRONT != '' }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: front
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_FRONT }}
+
+      - name: Build Project Artifacts (Frontend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_FRONT != '' }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: front
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_FRONT }}
+
+      - name: Deploy Project Artifacts to Production (Frontend)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_PROJECT_ID_FRONT != '' }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: front
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_FRONT }}

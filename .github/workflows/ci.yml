@@ -1,0 +1,71 @@
+name: Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ main, master, dev, "feature/**" ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-ci:
+    name: Backend CI (back2)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: back2/package-lock.json
+
+      - name: Install Backend Dependencies
+        run: |
+          cd back2
+          npm ci
+
+      - name: Run Backend Tests
+        run: |
+          cd back2
+          npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci_jwt_secret_key_test_12345
+
+  frontend-ci:
+    name: Frontend CI (front)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: front/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd front
+          npm ci
+
+      - name: Check TypeScript Types
+        run: |
+          cd front
+          npx tsc --noEmit
+
+      - name: Run ESLint
+        run: |
+          cd front
+          npm run lint
+
+      - name: Build Next.js Application
+        run: |
+          cd front
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api
