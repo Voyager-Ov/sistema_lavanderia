@@ -21,6 +21,16 @@ export const obtenerCajaActual = async (req, res, next) => {
     }
 };
 
+export const obtenerCajasAbiertas = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const cajas = await cajasService.obtenerCajasAbiertas(negocioId);
+        return successResponse(res, 200, "Cajas abiertas recuperadas exitosamente", cajas);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const abrirCaja = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);

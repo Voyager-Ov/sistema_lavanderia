@@ -35,8 +35,6 @@ class GastosService {
         let cajaAbierta = null;
         if (empleadoId) {
             cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
-        } else {
-            cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
         }
         if (!cajaAbierta) {
             throw new AppError("No posees una caja abierta actualmente. Debes abrir tu turno de caja antes de registrar un gasto.", 400, "NO_OPEN_CASH_REGISTER");

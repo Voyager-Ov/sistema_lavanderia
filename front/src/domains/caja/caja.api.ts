@@ -114,6 +114,11 @@ export async function obtenerCajaActual(): Promise<CajaActual> {
   return response.data;
 }
 
+export async function obtenerCajasAbiertas(): Promise<CajaActual[]> {
+  const response = await apiClient.get<ApiResponse<CajaActual[]>>('/cajas/abiertas');
+  return response.data;
+}
+
 export async function abrirCaja(montoInicial: number): Promise<CajaActual> {
   const response = await apiClient.post<ApiResponse<CajaActual>>('/cajas/abrir', { montoInicial });
   return response.data;

@@ -143,53 +143,58 @@ class CajasService {
             }
         ];
 
-        let caja = null;
-
-        // 1. Si viene un empleadoId específico, buscar la caja abierta de ESTE empleado
-        if (empleadoId) {
-            caja = await Caja.findOne({
-                where: { estadoCaja: "Abierta", empleadoId },
-                include: includeModels,
-                order: [["idCaja", "DESC"]]
-            });
-
-            // 2. Si este empleado no tiene caja abierta, buscar la última caja cerrada de ESTE empleado
-            if (!caja) {
-                caja = await Caja.findOne({
-                    where: { empleadoId },
-                    include: includeModels,
-                    order: [["idCaja", "DESC"]]
-                });
-            }
-
-            // Si este empleado no tiene ninguna caja registrada (ni abierta ni cerrada), retornar null
-            if (!caja) {
-                return null;
-            }
-
-            return this._formatCaja(caja);
+        if (!empleadoId) {
+            return null;
         }
 
-        // 3. Si no vino empleadoId (llamada de sistema), buscar cualquier caja abierta del negocio
-        caja = await Caja.findOne({
-            where: { estadoCaja: "Abierta" },
+        // 1. Buscar la caja abierta de ESTE empleado especifico
+        let caja = await Caja.findOne({
+            where: { estadoCaja: "Abierta", empleadoId },
             include: includeModels,
             order: [["idCaja", "DESC"]]
         });
 
-        // 4. Si no hay caja abierta, buscar la última caja del negocio
+        // 2. Si este empleado no tiene caja abierta, buscar la última caja cerrada de ESTE empleado
         if (!caja) {
             caja = await Caja.findOne({
+                where: { empleadoId },
                 include: includeModels,
                 order: [["idCaja", "DESC"]]
             });
         }
 
+        // Si este empleado no tiene ninguna caja registrada, retornar null
         if (!caja) {
             return null;
         }
 
         return this._formatCaja(caja);
+    }
+
+    // Obtener todas las cajas abiertas activas del negocio (Para vista de Administrador)
+    async obtenerCajasAbiertas(negocioId) {
+        if (!negocioId) {
+            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        const { Caja, MovimientoCaja, MetodoPago, Empleado } = await this._getModels(negocioId);
+
+        const cajasAbiertas = await Caja.findAll({
+            where: { estadoCaja: "Abierta" },
+            include: [
+                {
+                    model: MovimientoCaja,
+                    as: "movimientos",
+                    include: [{ model: MetodoPago, as: "metodoPago" }]
+                },
+                {
+                    model: Empleado,
+                    as: "empleado"
+                }
+            ],
+            order: [["idCaja", "DESC"]]
+        });
+
+        return cajasAbiertas.map(c => this._formatCaja(c));
     }
 
     // Abrir un nuevo turno de caja por usuario/empleado
