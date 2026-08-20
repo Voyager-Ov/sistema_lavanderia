@@ -93,13 +93,16 @@ class CajasService {
         const efectivoEsperadoEnVivo = montoInicial + totalIngresosEfectivo - totalEgresosEfectivo;
         const totalesPorMetodo = Object.values(metodoMap);
 
+        const isAbierta = plain.abierta === true || plain.estadoCaja === "Abierta" || plain.estado === "ABIERTA";
+
         return {
             id: plain.idCaja,
             idCaja: plain.idCaja,
             negocioId: plain.negocioId,
             usuarioId: plain.empleadoId || 1,
-            estado: plain.estadoCaja === "Abierta" ? "ABIERTA" : "CERRADA",
-            estadoCaja: plain.estadoCaja,
+            abierta: isAbierta,
+            estado: isAbierta ? "ABIERTA" : "CERRADA",
+            estadoCaja: isAbierta ? "Abierta" : "Cerrada",
             montoInicial,
             fechaApertura: plain.fechaHoraApertura || plain.createdAt,
             fechaCierre: plain.fechaHoraCierre,

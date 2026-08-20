@@ -132,7 +132,7 @@ export function CobrarPedidosSheet({
 
       obtenerCajaActual()
         .then((caja) => {
-          const abierta = !!caja && (caja.estado === "ABIERTA" || (caja as any).estadoCaja === "Abierta")
+          const abierta = !!caja && (caja.abierta ?? (caja.estado === "ABIERTA" || (caja as any).estadoCaja === "Abierta"))
           setIsCajaAbierta(abierta)
         })
         .catch(() => setIsCajaAbierta(false))

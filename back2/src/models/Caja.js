@@ -38,6 +38,15 @@ export default (sequelize, DataTypes) => {
 				allowNull: false,
 				defaultValue: "Abierta",
 			},
+			abierta: {
+				type: DataTypes.VIRTUAL,
+				get() {
+					return this.estadoCaja === "Abierta";
+				},
+				set(val) {
+					this.setDataValue("estadoCaja", val ? "Abierta" : "Cerrada");
+				}
+			},
 		},
 		{
 			tableName: "cajas",

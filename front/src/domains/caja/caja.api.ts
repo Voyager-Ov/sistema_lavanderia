@@ -66,6 +66,7 @@ export interface CajaActual {
   idCaja?: number;
   negocioId: number;
   usuarioId: number;
+  abierta?: boolean;
   estado: string;
   estadoCaja?: string;
   montoInicial: number | string;

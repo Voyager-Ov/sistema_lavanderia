@@ -23,8 +23,45 @@ class LoginService {
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 
-        // 1. Si el usuario ya tiene un empleadoId asignado, buscar por clave primaria
-        if (usuario.empleadoId) {
+        const emailLower = (usuario.email || "").toLowerCase().trim();
+
+        // 1. Buscar prioritariamente por email en los tenants para garantizar coincidencia exacta de cuenta
+        if (emailLower) {
+            for (const neg of negocios) {
+                try {
+                    const tenantDb = await connectionManager.getTenantDb(neg.id);
+                    let emp = await tenantDb.models.Empleado.findOne({
+                        where: { email: emailLower }
+                    });
+
+                    // Si no existe perfil de Empleado para este email en el tenant y el usuario es ADMIN/SUPER_ADMIN, crearlo automáticamente
+                    if (!emp && usuario.Roles && usuario.Roles.some(r => r.nombre === "ADMIN" || r.nombre === "SUPER_ADMIN")) {
+                        emp = await tenantDb.models.Empleado.create({
+                            nombre: usuario.nombre || "Administrador",
+                            apellido: usuario.apellido || "",
+                            email: emailLower,
+                            rol: "admin",
+                            activo: true
+                        });
+                    }
+
+                    if (emp) {
+                        empleadoEncontrado = emp;
+                        negocioEncontrado = neg;
+                        if (usuario.empleadoId !== emp.id) {
+                            usuario.empleadoId = emp.id;
+                            await usuario.save();
+                        }
+                        break;
+                    }
+                } catch (err) {
+                    // Continuar
+                }
+            }
+        }
+
+        // 2. Si no se encontró por email, intentar por clave primaria usuario.empleadoId
+        if (!empleadoEncontrado && usuario.empleadoId) {
             for (const neg of negocios) {
                 try {
                     const tenantDb = await connectionManager.getTenantDb(neg.id);
@@ -32,29 +69,6 @@ class LoginService {
                     if (emp) {
                         empleadoEncontrado = emp;
                         negocioEncontrado = neg;
-                        break;
-                    }
-                } catch (err) {
-                    // Continuar si falla un tenant específico
-                }
-            }
-        }
-
-        // 2. Si no se encontró por PK o usuario.empleadoId era null, buscar por email en los tenants
-        if (!empleadoEncontrado && usuario.email) {
-            const emailLower = usuario.email.toLowerCase().trim();
-            for (const neg of negocios) {
-                try {
-                    const tenantDb = await connectionManager.getTenantDb(neg.id);
-                    const emp = await tenantDb.models.Empleado.findOne({
-                        where: { email: emailLower }
-                    });
-                    if (emp) {
-                        empleadoEncontrado = emp;
-                        negocioEncontrado = neg;
-                        // Vincular automáticamente el empleadoId en el usuario central para futuras autenticaciones
-                        usuario.empleadoId = emp.id;
-                        await usuario.save();
                         break;
                     }
                 } catch (err) {

@@ -20,15 +20,20 @@ async function testCajaLifecycle() {
         // -------------------------------------------------------------------------
         // TEST 1: Estado inicial de Caja
         // -------------------------------------------------------------------------
+        const empleadoIdTest = 1;
         console.log("📦 TEST 1: Consultando Caja Actual...");
-        let cajaActual = await cajasService.obtenerCajaActual(negocioId);
-        console.log(`   Estado Caja: ${cajaActual.estado} | Monto Inicial: $${cajaActual.montoInicial} | Efectivo Esperado: $${cajaActual.efectivoEsperadoEnVivo}`);
+        let cajaActual = await cajasService.obtenerCajaActual(negocioId, empleadoIdTest);
+        if (cajaActual) {
+            console.log(`   Estado Caja: ${cajaActual.estado} (Abierta: ${cajaActual.abierta}) | Monto Inicial: $${cajaActual.montoInicial} | Efectivo Esperado: $${cajaActual.efectivoEsperadoEnVivo}`);
+        } else {
+            console.log("   Sin caja abierta previamente.");
+        }
         console.log("   ✅ PASÓ TEST 1: Obtención de estado de caja exitoso.");
 
         // Si estaba abierta, la cerramos para probar el ciclo de apertura fresco
-        if (cajaActual.estado === "ABIERTA") {
+        if (cajaActual && cajaActual.abierta) {
             console.log("\n🧹 Cerrando turno anterior para iniciar prueba de ciclo completo...");
-            await cajasService.cerrarCaja(negocioId, cajaActual.idCaja, { efectivoReal: cajaActual.efectivoEsperadoEnVivo });
+            await cajasService.cerrarCaja(negocioId, cajaActual.idCaja, { efectivoReal: cajaActual.efectivoEsperadoEnVivo }, empleadoIdTest, true);
         }
 
         // -------------------------------------------------------------------------
@@ -37,6 +42,7 @@ async function testCajaLifecycle() {
         console.log("\n🔓 TEST 2: Abriendo nuevo turno de caja con $5.000 de fondo...");
         const nuevaCaja = await cajasService.abrirCaja(negocioId, {
             montoInicial: 5000,
+            empleadoId: empleadoIdTest,
             observaciones: "Apertura de turno de prueba automática"
         });
 
@@ -75,6 +81,7 @@ async function testCajaLifecycle() {
         const cobro = await pagosService.procesarCobro(negocioId, {
             pedidosIds: [pedido.numeroPedido],
             clienteId: cliente.id,
+            empleadoId: empleadoIdTest,
             montoRecibido: 8000
         });
 
@@ -87,7 +94,8 @@ async function testCajaLifecycle() {
         const gasto = await gastosService.registrarGasto(negocioId, {
             monto: 2000,
             categoria: "Insumos Lavandería",
-            descripcion: "Compra de detergente y suavizante"
+            descripcion: "Compra de detergente y suavizante",
+            empleadoId: empleadoIdTest
         });
 
         console.log(`   Gasto registrado ID #${gasto.id} por $2.000.`);
@@ -96,7 +104,7 @@ async function testCajaLifecycle() {
         // TEST 5: Verificación de Totales y Arqueo en Vivo
         // -------------------------------------------------------------------------
         console.log("\n📊 TEST 5: Verificando métricas y arqueo de caja en vivo...");
-        cajaActual = await cajasService.obtenerCajaActual(negocioId);
+        cajaActual = await cajasService.obtenerCajaActual(negocioId, empleadoIdTest);
 
         console.log(`   Monto Inicial: $${cajaActual.montoInicial}`);
         console.log(`   Total Ingresos en Efectivo: $${cajaActual.totalIngresosEfectivo}`);

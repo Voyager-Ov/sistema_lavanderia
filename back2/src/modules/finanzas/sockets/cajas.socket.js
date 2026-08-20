@@ -6,6 +6,9 @@ class CajasSocket {
         if (!negocioId || !caja) return;
         getIO().to(`tenant_${negocioId}`).emit("caja:apertura", {
             idCaja: caja.idCaja || caja.id,
+            usuarioId: caja.usuarioId || caja.empleadoId,
+            empleadoId: caja.usuarioId || caja.empleadoId,
+            abierta: true,
             montoInicial: caja.montoInicial || caja.montoInicialEfectivo || 0,
             fechaApertura: caja.fechaApertura || new Date().toISOString(),
             usuarioCajero: caja.usuarioCajero || "Cajero",
@@ -18,6 +21,9 @@ class CajasSocket {
         if (!negocioId || !caja) return;
         getIO().to(`tenant_${negocioId}`).emit("caja:cierre", {
             idCaja: caja.idCaja || caja.id,
+            usuarioId: caja.usuarioId || caja.empleadoId,
+            empleadoId: caja.usuarioId || caja.empleadoId,
+            abierta: false,
             efectivoReal: caja.efectivoReal || caja.montoFinalEfectivoReal || 0,
             fechaCierre: caja.fechaCierre || new Date().toISOString(),
             timestamp: new Date().toISOString()

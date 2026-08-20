@@ -61,7 +61,7 @@ export default function PosCajaPage() {
     try {
       if (showLoading && !caja) setIsLoading(true)
       const data = await obtenerCajaActual()
-      if (data && (data.estado === "ABIERTA" || (data as any).estadoCaja === "Abierta")) {
+      if (data && (data.abierta ?? (data.estado === "ABIERTA" || (data as any).estadoCaja === "Abierta"))) {
         setCaja(data)
         setUltimaCajaState(null)
       } else {
