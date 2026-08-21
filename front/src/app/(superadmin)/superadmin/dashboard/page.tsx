@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Activity, ShieldCheck, Key } from "lucide-react";
+import { RefreshCw, Activity, Key } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { OverviewStatsGrid } from "./_components/overview-stats-grid";
+import { apiClient } from "@/shared/lib/api-client";
 
 function DashboardContent() {
   const [data, setData] = useState<any>(null);
@@ -14,7 +15,6 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const fetchDashboardData = async () => {
     try {
@@ -24,34 +24,22 @@ function DashboardContent() {
         return;
       }
 
-      const apiUrl = getApiUrl();
-      const [dashRes, healthRes, solicitudesRes] = await Promise.all([
-        fetch(`${apiUrl}/api/superadmin/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${apiUrl}/api/superadmin/health-check`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${apiUrl}/api/superadmin/solicitudes`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      const [dashRes, healthRes, solicitudesRes]: any[] = await Promise.all([
+        apiClient.get("/superadmin/dashboard").catch(() => null),
+        apiClient.get("/superadmin/health-check").catch(() => null),
+        apiClient.get("/superadmin/solicitudes").catch(() => null)
       ]);
 
-      if (dashRes.status === 401 || healthRes.status === 401) {
+      if (dashRes) setData(dashRes);
+      if (healthRes) setHealth(healthRes);
+      if (solicitudesRes) setSolicitudes(solicitudesRes.data || []);
+    } catch (error: any) {
+      console.error("Error fetching dashboard data", error);
+      if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
-
-      const dashData = await dashRes.json();
-      const healthData = await healthRes.json();
-      const solicitudesData = await solicitudesRes.json();
-
-      setData(dashData);
-      setHealth(healthData);
-      setSolicitudes(solicitudesData.data || []);
-    } catch (error) {
-      console.error("Error fetching dashboard data", error);
       toast.error("Error al cargar datos del sistema");
     } finally {
       setLoading(false);
@@ -69,20 +57,10 @@ function DashboardContent() {
     if (!confirm(`¿Enviar enlace seguro con token para cambiar contraseña a ${targetEmail}?`)) return;
 
     try {
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail })
-      });
-      const resData = await res.json();
-      if (res.ok) {
-        toast.success(`🔑 Enlace seguro enviado a ${targetEmail}`);
-      } else {
-        toast.error("Error al solicitar enlace", { description: resData.message });
-      }
-    } catch (e) {
-      toast.error("Error de conexión al solicitar restablecimiento");
+      await apiClient.post("/auth/forgot-password", { email: targetEmail });
+      toast.success(`🔑 Enlace seguro enviado a ${targetEmail}`);
+    } catch (e: any) {
+      toast.error("Error al solicitar restablecimiento", { description: e.message });
     }
   };
 

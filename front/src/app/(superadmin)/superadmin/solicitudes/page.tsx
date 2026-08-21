@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { SolicitudesTable } from "./_components/solicitudes-table";
 import { RechazoModalSheet } from "./_components/rechazo-modal-sheet";
+import { apiClient } from "@/shared/lib/api-client";
 
 function SolicitudesContent() {
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
@@ -18,7 +19,6 @@ function SolicitudesContent() {
   const [motivoRechazoInput, setMotivoRechazoInput] = useState("");
 
   const router = useRouter();
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const fetchSolicitudes = async () => {
     try {
@@ -28,21 +28,15 @@ function SolicitudesContent() {
         return;
       }
 
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/superadmin/solicitudes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.status === 401) {
+      const res: any = await apiClient.get("/superadmin/solicitudes");
+      setSolicitudes(res?.data || []);
+    } catch (error: any) {
+      console.error("Error fetching solicitudes", error);
+      if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
-
-      const data = await res.json();
-      setSolicitudes(data.data || []);
-    } catch (error) {
-      console.error("Error fetching solicitudes", error);
       toast.error("Error al cargar lista de solicitudes");
     } finally {
       setLoading(false);
@@ -57,24 +51,12 @@ function SolicitudesContent() {
     if (!confirm("¿Aprobar esta solicitud y crear la base de datos del negocio?")) return;
     setProcessing(true);
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-
-      const res = await fetch(`${apiUrl}/api/superadmin/solicitudes/${solicitudId}/aprobar`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const resData = await res.json();
-      if (res.ok && resData.success) {
-        toast.success("¡Solicitud Aprobada!", { description: "El negocio y su base de datos fueron aprovisionados correctamente." });
-        fetchSolicitudes();
-      } else {
-        toast.error("Error al aprobar solicitud", { description: resData.message || "Inténtalo nuevamente" });
-      }
-    } catch (error) {
+      await apiClient.patch(`/superadmin/solicitudes/${solicitudId}/aprobar`, {});
+      toast.success("¡Solicitud Aprobada!", { description: "El negocio y su base de datos fueron aprovisionados correctamente." });
+      fetchSolicitudes();
+    } catch (error: any) {
       console.error("Error al aprobar solicitud", error);
-      toast.error("Error de conexión al aprobar solicitud");
+      toast.error("Error al aprobar solicitud", { description: error?.message || "Inténtalo nuevamente" });
     } finally {
       setProcessing(false);
     }
@@ -84,30 +66,17 @@ function SolicitudesContent() {
     if (!selectedSolicitudForRechazo) return;
     setProcessing(true);
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-
-      const res = await fetch(`${apiUrl}/api/superadmin/solicitudes/${selectedSolicitudForRechazo.id}/rechazar`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ motivo: motivoRechazoInput })
+      await apiClient.patch(`/superadmin/solicitudes/${selectedSolicitudForRechazo.id}/rechazar`, {
+        motivo: motivoRechazoInput
       });
 
-      const resData = await res.json();
-      if (res.ok && resData.success) {
-        toast.success("Solicitud Rechazada", { description: "Se notificó al usuario por correo electrónico." });
-        setSelectedSolicitudForRechazo(null);
-        setMotivoRechazoInput("");
-        fetchSolicitudes();
-      } else {
-        toast.error("Error al rechazar solicitud", { description: resData.message });
-      }
-    } catch (error) {
+      toast.success("Solicitud Rechazada", { description: "Se notificó al usuario por correo electrónico." });
+      setSelectedSolicitudForRechazo(null);
+      setMotivoRechazoInput("");
+      fetchSolicitudes();
+    } catch (error: any) {
       console.error("Error al rechazar solicitud", error);
-      toast.error("Error de conexión al rechazar solicitud");
+      toast.error("Error al rechazar solicitud", { description: error?.message });
     } finally {
       setProcessing(false);
     }

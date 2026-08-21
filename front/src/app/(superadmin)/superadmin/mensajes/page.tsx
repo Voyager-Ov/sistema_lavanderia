@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { MensajesTable } from "./_components/mensajes-table";
 import { NuevoMensajeSheet } from "./_components/nuevo-mensaje-sheet";
+import { apiClient } from "@/shared/lib/api-client";
 
 function MensajesContent() {
   const [mensajesBroadcast, setMensajesBroadcast] = useState<any[]>([]);
@@ -21,7 +22,6 @@ function MensajesContent() {
   const [publicandoMensaje, setPublicandoMensaje] = useState(false);
 
   const router = useRouter();
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const fetchMensajes = async () => {
     try {
@@ -31,21 +31,15 @@ function MensajesContent() {
         return;
       }
 
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/superadmin/mensajes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.status === 401) {
+      const res: any = await apiClient.get("/superadmin/mensajes");
+      setMensajesBroadcast(res?.data || []);
+    } catch (error: any) {
+      console.error("Error fetching mensajes", error);
+      if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
-
-      const data = await res.json();
-      setMensajesBroadcast(data.data || []);
-    } catch (error) {
-      console.error("Error fetching mensajes", error);
       toast.error("Error al cargar mensajes broadcast");
     } finally {
       setLoading(false);
@@ -63,38 +57,23 @@ function MensajesContent() {
     }
     setPublicandoMensaje(true);
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-
-      const res = await fetch(`${apiUrl}/api/superadmin/mensajes`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          titulo: nuevoTitulo,
-          contenido: nuevoContenido,
-          tipo: nuevoTipo,
-          negocioId: nuevoNegocioId ? Number(nuevoNegocioId) : null
-        })
+      await apiClient.post("/superadmin/mensajes", {
+        titulo: nuevoTitulo,
+        contenido: nuevoContenido,
+        tipo: nuevoTipo,
+        negocioId: nuevoNegocioId ? Number(nuevoNegocioId) : null
       });
 
-      const resData = await res.json();
-      if (res.ok) {
-        toast.success("📢 Anuncio Broadcast Publicado Exitosamente");
-        setShowNewMessageSheet(false);
-        setNuevoTitulo("");
-        setNuevoContenido("");
-        setNuevoTipo("INFO");
-        setNuevoNegocioId("");
-        fetchMensajes();
-      } else {
-        toast.error("Error al publicar anuncio", { description: resData.message });
-      }
-    } catch (error) {
+      toast.success("📢 Anuncio Broadcast Publicado Exitosamente");
+      setShowNewMessageSheet(false);
+      setNuevoTitulo("");
+      setNuevoContenido("");
+      setNuevoTipo("INFO");
+      setNuevoNegocioId("");
+      fetchMensajes();
+    } catch (error: any) {
       console.error("Error al publicar anuncio", error);
-      toast.error("Error de conexión al publicar anuncio");
+      toast.error("Error al publicar anuncio", { description: error?.message });
     } finally {
       setPublicandoMensaje(false);
     }
@@ -103,20 +82,12 @@ function MensajesContent() {
   const handleDesactivarMensaje = async (id: number) => {
     if (!confirm("¿Desactivar este anuncio broadcast para todos los negocios?")) return;
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-
-      const res = await fetch(`${apiUrl}/api/superadmin/mensajes/${id}/desactivar`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        toast.success("Anuncio desactivado correctamente");
-        fetchMensajes();
-      }
-    } catch (error) {
+      await apiClient.patch(`/superadmin/mensajes/${id}/desactivar`, {});
+      toast.success("Anuncio desactivado correctamente");
+      fetchMensajes();
+    } catch (error: any) {
       console.error("Error al desactivar mensaje", error);
+      toast.error("Error al desactivar anuncio", { description: error?.message });
     }
   };
 

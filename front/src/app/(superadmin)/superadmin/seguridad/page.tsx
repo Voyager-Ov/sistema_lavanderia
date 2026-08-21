@@ -6,13 +6,12 @@ import { ShieldCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { SecurityLogsTable } from "./_components/security-logs-table";
+import { apiClient } from "@/shared/lib/api-client";
 
 function SeguridadContent() {
   const [securityLogs, setSecurityLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const router = useRouter();
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const fetchLogs = async () => {
     try {
@@ -22,22 +21,18 @@ function SeguridadContent() {
         return;
       }
 
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/superadmin/seguridad/logs`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.status === 401) {
+      const res: any = await apiClient.get("/superadmin/seguridad/logs");
+      setSecurityLogs(res?.data || []);
+    } catch (error: any) {
+      console.error("Error fetching security logs", error);
+      if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
-
-      const data = await res.json();
-      setSecurityLogs(data.data || []);
-    } catch (error) {
-      console.error("Error fetching security logs", error);
-      toast.error("Error al cargar logs de seguridad");
+      toast.error("Error al cargar logs de seguridad", {
+        description: error?.message || "Verifica que el servidor backend esté disponible."
+      });
     } finally {
       setLoading(false);
     }

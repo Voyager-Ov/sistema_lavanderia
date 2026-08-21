@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { NegociosTable } from "./_components/negocios-table";
 import { CuotasModalSheet } from "./_components/cuotas-modal-sheet";
+import { apiClient } from "@/shared/lib/api-client";
 
 function NegociosContent() {
   const [negocios, setNegocios] = useState<any[]>([]);
@@ -19,7 +20,6 @@ function NegociosContent() {
   const [savingCuotas, setSavingCuotas] = useState(false);
 
   const router = useRouter();
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const fetchNegocios = async () => {
     try {
@@ -29,21 +29,15 @@ function NegociosContent() {
         return;
       }
 
-      const apiUrl = getApiUrl();
-      const res = await fetch(`${apiUrl}/api/superadmin/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.status === 401) {
+      const res: any = await apiClient.get("/superadmin/dashboard");
+      setNegocios(res?.negocios || []);
+    } catch (error: any) {
+      console.error("Error fetching negocios", error);
+      if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
-
-      const data = await res.json();
-      setNegocios(data.negocios || []);
-    } catch (error) {
-      console.error("Error fetching negocios", error);
       toast.error("Error al cargar lista de negocios");
     } finally {
       setLoading(false);
@@ -58,26 +52,12 @@ function NegociosContent() {
     if (!confirm(`¿Estás seguro de que quieres ${currentStatus ? 'desactivar' : 'activar'} este negocio?`)) return;
 
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-      
-      const res = await fetch(`${apiUrl}/api/superadmin/negocios/${id}/status`, {
-        method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ activo: !currentStatus })
-      });
-      
-      if (res.ok) {
-        toast.success(`Negocio ${!currentStatus ? 'activado' : 'suspendido'} exitosamente`);
-        fetchNegocios();
-      } else {
-        toast.error("No se pudo cambiar el estado del negocio");
-      }
-    } catch (error) {
+      await apiClient.put(`/superadmin/negocios/${id}/status`, { activo: !currentStatus });
+      toast.success(`Negocio ${!currentStatus ? 'activado' : 'suspendido'} exitosamente`);
+      fetchNegocios();
+    } catch (error: any) {
       console.error("Error toggling status", error);
+      toast.error("No se pudo cambiar el estado del negocio", { description: error?.message });
     }
   };
 
@@ -91,32 +71,17 @@ function NegociosContent() {
     if (!selectedNegocioForCuotas) return;
     setSavingCuotas(true);
     try {
-      const token = localStorage.getItem("superadmin_token");
-      const apiUrl = getApiUrl();
-
-      const res = await fetch(`${apiUrl}/api/superadmin/negocios/${selectedNegocioForCuotas.id}/limites`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          maxImagenes: maxImagenesInput,
-          maxStorageGB: maxStorageGBInput
-        })
+      await apiClient.put(`/superadmin/negocios/${selectedNegocioForCuotas.id}/limites`, {
+        maxImagenes: maxImagenesInput,
+        maxStorageGB: maxStorageGBInput
       });
 
-      const resData = await res.json();
-      if (res.ok && resData.success) {
-        toast.success("Límites de almacenamiento actualizados exitosamente");
-        setSelectedNegocioForCuotas(null);
-        fetchNegocios();
-      } else {
-        toast.error("Error al actualizar cuotas", { description: resData.message });
-      }
-    } catch (error) {
+      toast.success("Límites de almacenamiento actualizados exitosamente");
+      setSelectedNegocioForCuotas(null);
+      fetchNegocios();
+    } catch (error: any) {
       console.error("Error saving limits", error);
-      toast.error("Error al guardar cuotas");
+      toast.error("Error al guardar cuotas", { description: error?.message });
     } finally {
       setSavingCuotas(false);
     }
