@@ -14,6 +14,7 @@ import { getProductos, Producto } from "@/domains/productos/api"
 import { crearPedido } from "@/domains/pedidos/api"
 import { obtenerCajaActual, CajaActual } from "@/domains/caja/caja.api"
 import { Button } from "@/shared/ui/forms/button"
+import { useSocket } from "@/shared/hooks/useSocket"
 
 // Reuse Admin Components
 import { ServiceGrid } from "@/app/admin/pedidos/nuevo/components/service-grid"
@@ -37,6 +38,7 @@ interface ParkedCart {
 
 export default function TerminalPage() {
   const router = useRouter()
+  const { socket } = useSocket()
 
   // Caja State
   const [cajaActual, setCajaActual] = useState<CajaActual | null>(null)
@@ -63,22 +65,51 @@ export default function TerminalPage() {
   const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>([])
 
   // Fetch caja actual
-  const fetchCaja = useCallback(async () => {
+  const fetchCaja = useCallback(async (showLoading = true) => {
     try {
-      setIsLoadingCaja(true)
+      if (showLoading && !cajaActual) setIsLoadingCaja(true)
       const data = await obtenerCajaActual()
       setCajaActual(data)
     } catch (err: any) {
       console.error("Error al cargar la caja actual:", err)
       setCajaActual(null)
     } finally {
-      setIsLoadingCaja(false)
+      if (showLoading) setIsLoadingCaja(false)
     }
-  }, [])
+  }, [cajaActual])
 
   useEffect(() => {
-    fetchCaja()
-  }, [fetchCaja])
+    fetchCaja(true)
+  }, [])
+
+  // WebSockets en vivo para actualizar cajaActual automáticamente
+  useEffect(() => {
+    if (!socket) return
+
+    const handleUpdate = () => {
+      fetchCaja(false)
+    }
+
+    socket.on("caja_actualizada", handleUpdate)
+    socket.on("pago_registrado", handleUpdate)
+    socket.on("pago_anulado", handleUpdate)
+    socket.on("caja:apertura", handleUpdate)
+    socket.on("caja:cierre", handleUpdate)
+    socket.on("gasto:registrado", handleUpdate)
+    socket.on("pedido:creado", handleUpdate)
+    socket.on("pedido:estado_cambiado", handleUpdate)
+
+    return () => {
+      socket.off("caja_actualizada", handleUpdate)
+      socket.off("pago_registrado", handleUpdate)
+      socket.off("pago_anulado", handleUpdate)
+      socket.off("caja:apertura", handleUpdate)
+      socket.off("caja:cierre", handleUpdate)
+      socket.off("gasto:registrado", handleUpdate)
+      socket.off("pedido:creado", handleUpdate)
+      socket.off("pedido:estado_cambiado", handleUpdate)
+    }
+  }, [socket, fetchCaja])
 
   // Fetch initial catalog
   useEffect(() => {
@@ -289,7 +320,10 @@ export default function TerminalPage() {
           <PosHeaderActions
             caja={cajaActual}
             onOpenGastoModal={() => setOpenGastoModal(true)}
-            onOpenCierreModal={() => setCurrentView("RESUMEN")}
+            onOpenCierreModal={async () => {
+              await fetchCaja(false)
+              setCurrentView("RESUMEN")
+            }}
           />
         )}
       </div>

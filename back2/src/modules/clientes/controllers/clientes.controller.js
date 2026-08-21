@@ -73,7 +73,8 @@ export const obtenerPedidosImpagosCliente = async (req, res, next) => {
 export const cobrarPedidosCliente = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await clientesService.cobrarPedidosCliente(negocioId, req.params.id, req.body);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const result = await clientesService.cobrarPedidosCliente(negocioId, req.params.id, { ...req.body, empleadoId });
         return successResponse(res, 200, "Cobro de pedidos del cliente registrado exitosamente", result);
     } catch (error) {
         next(error);
@@ -103,7 +104,8 @@ export const obtenerMovimientosCuentaCliente = async (req, res, next) => {
 export const ajustarCreditoCliente = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await clientesService.ajustarCreditoCliente(negocioId, req.params.id, req.body);
+        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const result = await clientesService.ajustarCreditoCliente(negocioId, req.params.id, { ...req.body, empleadoId });
         return successResponse(res, 200, "Ajuste de crédito registrado exitosamente", result);
     } catch (error) {
         next(error);

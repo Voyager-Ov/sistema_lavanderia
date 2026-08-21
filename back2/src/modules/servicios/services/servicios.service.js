@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
+import { storageService } from "../../../services/storage.service.js";
 import { AppError } from "../../../utils/appError.js";
 
 class ServiciosService {
@@ -159,6 +160,20 @@ class ServiciosService {
 
         const precioNum = parseFloat(precioFinal);
 
+        if (imagenPath) {
+            const fotosActuales = await Servicio.count({
+                where: { activo: true, imagenUrl: { [Op.ne]: null } }
+            });
+            if (fotosActuales >= 30) {
+                await storageService.deleteFile(imagenPath);
+                throw new AppError(
+                    "Este negocio ha alcanzado el límite máximo permitido de 30 imágenes de servicios activos.",
+                    400,
+                    "TENANT_PHOTO_LIMIT_EXCEEDED"
+                );
+            }
+        }
+
         const nuevoServicio = await Servicio.create({
             nombre: data.nombre,
             descripcion: data.descripcion || null,
@@ -208,7 +223,31 @@ class ServiciosService {
         if (data.tiempoEstimadoMinutos !== undefined) updateFields.tiempoEstimadoMinutos = parseInt(data.tiempoEstimadoMinutos);
         if (data.disponible !== undefined) updateFields.disponible = data.disponible === "true" || data.disponible === true;
         if (data.categoriaId !== undefined) updateFields.categoriaId = parseInt(data.categoriaId);
-        if (imagenPath) updateFields.imagenUrl = imagenPath;
+        if (imagenPath) {
+            const yaTeniaFoto = Boolean(servicio.imagenUrl);
+            if (!yaTeniaFoto) {
+                const fotosActuales = await Servicio.count({
+                    where: { activo: true, imagenUrl: { [Op.ne]: null } }
+                });
+                if (fotosActuales >= 30) {
+                    await storageService.deleteFile(imagenPath);
+                    throw new AppError(
+                        "Este negocio ha alcanzado el límite máximo permitido de 30 imágenes de servicios activos.",
+                        400,
+                        "TENANT_PHOTO_LIMIT_EXCEEDED"
+                    );
+                }
+            }
+            if (servicio.imagenUrl && servicio.imagenUrl !== imagenPath) {
+                await storageService.deleteFile(servicio.imagenUrl);
+            }
+            updateFields.imagenUrl = imagenPath;
+        } else if (data.eliminarImagen === "true" || data.eliminarImagen === true || data.imagenUrl === "") {
+            if (servicio.imagenUrl) {
+                await storageService.deleteFile(servicio.imagenUrl);
+            }
+            updateFields.imagenUrl = null;
+        }
 
         let nuevoPrecio = data.precioActual !== undefined ? parseFloat(data.precioActual) : (data.precio !== undefined ? parseFloat(data.precio) : undefined);
 

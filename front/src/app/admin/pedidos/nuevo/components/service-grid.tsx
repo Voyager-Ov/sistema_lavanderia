@@ -9,6 +9,8 @@ import { CartItem } from "./order-cart"
 import { Loader2, Package, Tag, Clock } from "lucide-react"
 import { clsx } from "clsx"
 
+import { getImageUrl } from "@/shared/lib/utils"
+
 interface ServiceGridProps {
   categorias: Categoria[]
   productos: Producto[]
@@ -18,8 +20,6 @@ interface ServiceGridProps {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>
   isLoading: boolean
 }
-
-
 
 export function ServiceGrid({
   categorias,
@@ -64,8 +64,7 @@ export function ServiceGrid({
 
   const renderProduct = (producto: Producto) => {
     const cartItem = cart.find(item => item.producto.id === producto.id)
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
-    const imageUrl = producto.imagenUrl ? (producto.imagenUrl.startsWith('http') ? producto.imagenUrl : `${baseUrl}${producto.imagenUrl}`) : null
+    const imageUrl = getImageUrl(producto.imagenUrl)
     
     return (
       <button

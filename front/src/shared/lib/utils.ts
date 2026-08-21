@@ -27,3 +27,14 @@ export function safeFormatDate(
     return fallback;
   }
 }
+
+export function getImageUrl(path: string | null | undefined): string | null {
+  if (!path || typeof path !== "string" || path.trim() === "") return null;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+  const baseUrl = rawApiUrl.replace(/\/api\/?$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  return `${baseUrl}${cleanPath}`;
+}

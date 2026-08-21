@@ -22,7 +22,7 @@ interface AllServicesProgressProps {
 export function AllServicesProgress({
   title,
   subtitle,
-  data,
+  data = [],
   accentColor = "#3b82f6", // Default blue-500
   badgeText = "Servicios",
   className
@@ -60,12 +60,13 @@ export function AllServicesProgress({
 
       <div className="flex-1 pr-4 overflow-y-auto overflow-x-hidden">
         <div className="flex flex-col gap-5 pb-4">
-          {data.map((item) => {
+          {data.map((item, index) => {
             const percentage = maxVal === 0 ? 0 : (item.value / maxVal) * 100
             const isEmpty = item.value === 0
+            const uniqueKey = item.id ? `item-${item.id}-${index}` : `item-${index}`
             
             return (
-              <div key={item.id} className="w-full">
+              <div key={uniqueKey} className="w-full">
                 <div className="flex justify-between items-end mb-2 px-1">
                   <span className={cn(
                     "text-sm font-medium",

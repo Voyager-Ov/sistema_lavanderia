@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import rateLimit from "express-rate-limit";
 
 import {
     listarServicios,
@@ -40,7 +41,17 @@ const productosStorage = multer.diskStorage({
 
 const uploadProducto = multer({
     storage: productosStorage,
-    limits: { fileSize: 2 * 1024 * 1024 } // 2MB máximo
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB máximo por archivo original
+});
+
+// Rate Limiter estricto anti-fraude y anti-DDoS para subidas de imágenes
+const uploadRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 15, // Máximo 15 subidas de archivos por ventana de 15 minutos
+    message: { error: "Has superado el límite de subida de imágenes (máximo 15 subidas cada 15 minutos). Por seguridad se ha bloqueado temporalmente la acción." },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => process.env.NODE_ENV === "test"
 });
 
 const router = Router();
@@ -67,11 +78,11 @@ router.put("/:id/disponibilidad", verificarToken, cambiarDisponibilidad);
 // Obtener por ID
 router.get("/:id", verificarToken, obtenerServicioPorId);
 
-// Crear servicio (Form Data + Imagen)
-router.post("/", verificarToken, uploadProducto.single("imagen"), validateServicio, crearServicio);
+// Crear servicio (Form Data + Imagen + Rate Limiter)
+router.post("/", verificarToken, uploadRateLimiter, uploadProducto.single("imagen"), validateServicio, crearServicio);
 
-// Actualizar servicio (Form Data + Imagen)
-router.put("/:id", verificarToken, uploadProducto.single("imagen"), validateServicio, actualizarServicio);
+// Actualizar servicio (Form Data + Imagen + Rate Limiter)
+router.put("/:id", verificarToken, uploadRateLimiter, uploadProducto.single("imagen"), validateServicio, actualizarServicio);
 
 // Eliminar servicio
 router.delete("/:id", verificarToken, eliminarServicio);

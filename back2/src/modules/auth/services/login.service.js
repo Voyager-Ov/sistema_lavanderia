@@ -19,7 +19,7 @@ class LoginService {
             throw new AppError("Usuario no especificado.", 400, "MISSING_USER");
         }
 
-        const negocios = await Negocio.findAll();
+        const negocios = await Negocio.findAll({ order: [["id", "ASC"]] });
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 

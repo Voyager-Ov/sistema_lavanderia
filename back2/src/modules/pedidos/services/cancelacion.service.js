@@ -29,17 +29,20 @@ class CancelacionService {
             throw new AppError("No se puede cancelar un pedido que ya ha sido entregado.", 400, "ORDER_ALREADY_DELIVERED");
         }
 
-        // Registrar motivo y descripción en las observaciones o campos del pedido
+        // Registrar motivo y descripción en las observaciones del pedido
         const motivoText = data.motivoCancelacion ? `Motivo: ${data.motivoCancelacion}` : "";
         const descText = data.descripcionCancelacion ? `Detalle: ${data.descripcionCancelacion}` : "";
         const obsFinales = [pedido.observaciones, "[CANCELADO]", motivoText, descText].filter(Boolean).join(" | ");
 
-        await pedido.update({ estado: "CANCELADO", observaciones: obsFinales });
+        await pedido.update({ estado: "CANCELADO", observaciones: obsFinales, cobrado: false });
 
-        // Procesar acción de dinero cobrado
+        // Calcular total cobrado previamente en este pedido usando la propiedad correcta (montoAbonado)
         let totalCobrado = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
-            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.monto) || 0), 0);
+            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.montoAbonado) || 0), 0);
+        }
+        if (totalCobrado <= 0 && pedido.cobrado) {
+            totalCobrado = parseFloat(pedido.total) || 0;
         }
 
         if (totalCobrado > 0) {
@@ -62,9 +65,13 @@ class CancelacionService {
             } else if (data.accionDinero === "DEVOLVER") {
                 const { Caja, MovimientoCaja } = await this._getModels(negocioId);
                 const empleadoId = data.empleadoId || data.usuarioId;
+                
                 let cajaAbierta = null;
                 if (empleadoId) {
                     cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
+                }
+                if (!cajaAbierta) {
+                    cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", negocioId } });
                 }
                 if (!cajaAbierta) {
                     throw new AppError("No posees una caja abierta actualmente. Debes abrir tu turno de caja antes de realizar una devolución.", 400, "NO_OPEN_CASH_REGISTER");
@@ -84,7 +91,7 @@ class CancelacionService {
                 await Cobro.create({
                     pedidoNumeroPedido: numeroPedido,
                     montoAbonado: -Math.abs(totalCobrado),
-                    montoRecibidoEfectivo: 0,
+                    montoRecibidoEfectivo: -Math.abs(totalCobrado),
                     vueltoEntregado: 0,
                     fechaHora: new Date(),
                     movimientoCajaId

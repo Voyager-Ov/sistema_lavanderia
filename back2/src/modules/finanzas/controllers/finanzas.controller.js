@@ -18,18 +18,26 @@ export const getKPIs = async (req, res, next) => {
 		const parsedRange = parseDateRange(fechaDesde, fechaHasta);
 		const dateFilter = parsedRange ? { fechaHora: parsedRange } : {};
 
-		// 1. Total Ingresos (Cobros)
+		// 1. Total Ingresos (Cobros donde montoAbonado > 0)
 		const ingresosQuery = {
-			where: { ...dateFilter },
+			where: { ...dateFilter, montoAbonado: { [Op.gt]: 0 } },
 			include: [{ model: Pedido, as: "pedido", where: { negocioId }, attributes: [] }],
 		};
 		const totalIngresos = await Cobro.sum("montoAbonado", ingresosQuery) || 0;
 
-		// 2. Total Egresos (Gastos) - Only "Pagado" as requested
+		// 2. Total Egresos (Gastos "Pagado" + Devoluciones por cancelación donde montoAbonado < 0)
 		const egresosQuery = {
 			where: { ...dateFilter, negocioId, estadoGasto: "Pagado" },
 		};
-		const totalEgresos = await Gasto.sum("montoTotal", egresosQuery) || 0;
+		const totalGastos = await Gasto.sum("montoTotal", egresosQuery) || 0;
+
+		const devolucionesQuery = {
+			where: { ...dateFilter, montoAbonado: { [Op.lt]: 0 } },
+			include: [{ model: Pedido, as: "pedido", where: { negocioId }, attributes: [] }],
+		};
+		const totalDevoluciones = Math.abs(await Cobro.sum("montoAbonado", devolucionesQuery) || 0);
+
+		const totalEgresos = totalGastos + totalDevoluciones;
 
 		// 3. Balance Neto
 		const balanceNeto = totalIngresos - totalEgresos;
@@ -161,23 +169,33 @@ export const getMovimientos = async (req, res, next) => {
 		cobros.forEach(c => {
 			const registradoPor = resolveRegistradoPor(c.movimientoCaja, c.fechaHora);
 
-			// Applying search filter manually for cobros since search by 'descripcion' isn't natively in the Cobro model
-			const descripcionBase = `Cobro de Pedido #${c.pedidoNumeroPedido}`;
+			const isRefund = parseFloat(c.montoAbonado) < 0 || (c.movimientoCaja && parseFloat(c.movimientoCaja.monto) < 0);
+			const descripcionBase = isRefund 
+				? `Devolución por Cancelación del Pedido #${c.pedidoNumeroPedido}`
+				: `Cobro de Pedido #${c.pedidoNumeroPedido}`;
+
 			if (search && !descripcionBase.toLowerCase().includes(search.toLowerCase())) return;
 
-			const montoEfectivo = c.movimientoCaja ? parseFloat(c.movimientoCaja.monto) : (parseFloat(c.montoRecibidoEfectivo) || 0);
+			let montoAbs = 0;
+			if (c.movimientoCaja) {
+				montoAbs = Math.abs(parseFloat(c.movimientoCaja.monto) || 0);
+			} else {
+				montoAbs = Math.abs(parseFloat(c.montoAbonado) || 0);
+			}
 
 			movimientos.push({
 				id: `cobro-${c.id}`,
 				originalId: c.id,
-				tipoMovimiento: "INGRESO",
-				monto: montoEfectivo,
+				tipoMovimiento: isRefund ? "EGRESO" : "INGRESO",
+				monto: montoAbs,
 				fecha: c.fechaHora,
-				descripcion: montoEfectivo === 0 && parseFloat(c.montoAbonado) > 0
-					? `${descripcionBase} (Saldado con Saldo a Favor)`
-					: descripcionBase,
+				descripcion: isRefund 
+					? descripcionBase
+					: (montoAbs === 0 && parseFloat(c.montoAbonado) > 0
+						? `${descripcionBase} (Saldado con Saldo a Favor)`
+						: descripcionBase),
 				referenciaId: c.pedidoNumeroPedido,
-				metodoPago: c.metodoPago ? c.metodoPago.nombre : (montoEfectivo === 0 ? "Saldo a Favor" : "Desconocido"),
+				metodoPago: c.metodoPago ? c.metodoPago.nombre : "Efectivo",
 				registradoPor: registradoPor,
 				estado: "COMPLETADO",
 			});

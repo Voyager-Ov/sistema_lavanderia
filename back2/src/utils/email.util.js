@@ -143,6 +143,88 @@ class EmailService {
             console.log(`🚨 [SECURITY MOCK ALERT] Enviada a: ${destinoMail} | Usuario: ${usuarioEmail} | Endpoint: ${metodo} ${endpoint}`);
         }
     }
+
+    async enviarAlertaFotosNegocio({ negocioId, usuarioEmail, totalFotos, ip }) {
+        const destinoMail = process.env.EMAIL_USER || "octavio.velo2022@gmail.com";
+        const asunto = `🚨 [ALERTA DE ALMACENAMIENTO] Intento de Exceder 30 Fotos - Negocio #${negocioId}`;
+        const fechaHora = new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 650px; border: 2px solid #e11d48; border-radius: 10px;">
+                <div style="background-color: #be123c; color: white; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                    🚨 ALERTA: Límite de 30 Imágenes Superado
+                </div>
+                <div style="padding: 15px 0;">
+                    <p style="font-size: 15px;">Se ha bloqueado un intento de subir más de 30 fotos para el mismo negocio:</p>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #f4f4f5;"><td style="padding: 10px; font-weight: bold; width: 180px;">Negocio ID:</td><td style="padding: 10px; color: #e11d48; font-weight: bold;">#${negocioId}</td></tr>
+                        <tr><td style="padding: 10px; font-weight: bold;">Usuario Solicitante:</td><td style="padding: 10px;">${usuarioEmail || "Empleado / Admin"}</td></tr>
+                        <tr style="background: #f4f4f5;"><td style="padding: 10px; font-weight: bold;">Fotos Activas Actuales:</td><td style="padding: 10px;">${totalFotos} / 30 Máximo</td></tr>
+                        <tr><td style="padding: 10px; font-weight: bold;">Dirección IP:</td><td style="padding: 10px;">${ip || "Desconocida"}</td></tr>
+                        <tr style="background: #f4f4f5;"><td style="padding: 10px; font-weight: bold;">Fecha / Hora:</td><td style="padding: 10px;">${fechaHora} hs (ARG)</td></tr>
+                    </table>
+                </div>
+                <div style="background: #fff1f2; padding: 12px; border-radius: 6px; color: #9f1239; font-size: 13px; font-weight: bold; margin-top: 10px;">
+                    🛡️ Medida de Seguridad: Se ha bloqueado el procesamiento de la imagen para prevenir sobrecostos en Cloudflare R2.
+                </div>
+            </div>
+        `;
+
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: process.env.SMTP_FROM || '"Seguridad Sistema" <no-reply@lavanderia.com>',
+                    to: destinoMail,
+                    subject: asunto,
+                    html,
+                });
+                console.log(`🚨 [Alerta Almacenamiento] Correo enviado a ${destinoMail}`);
+            } catch (err) {
+                console.error(`❌ [Email Error]:`, err.message);
+            }
+        }
+    }
+
+    async enviarAlertaLimiteStorage({ espacioConsumidoBytes, maxBytes, negocioId, ip }) {
+        const destinoMail = process.env.EMAIL_USER || "octavio.velo2022@gmail.com";
+        const asunto = `🔥 [ALERTA CRÍTICA 1 GB] Límite de Almacenamiento Alcanzado`;
+        const fechaHora = new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
+        const mbOcupados = (espacioConsumidoBytes / (1024 * 1024)).toFixed(2);
+
+        const html = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 650px; border: 2px solid #b91c1c; border-radius: 10px;">
+                <div style="background-color: #991b1b; color: white; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                    🔥 CRÍTICO: Límite de 1 GB Almacenamiento Alcanzado
+                </div>
+                <div style="padding: 15px 0;">
+                    <p style="font-size: 15px;">El sistema ha alcanzado o superado el tope de seguridad de 1 GB en Cloudflare R2 / Disco:</p>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #f4f4f5;"><td style="padding: 10px; font-weight: bold; width: 180px;">Consumo Actual:</td><td style="padding: 10px; color: #b91c1c; font-weight: bold;">${mbOcupados} MB / 1024 MB (1 GB)</td></tr>
+                        <tr><td style="padding: 10px; font-weight: bold;">Negocio Intentando Subir:</td><td style="padding: 10px;">#${negocioId || "Global"}</td></tr>
+                        <tr style="background: #f4f4f5;"><td style="padding: 10px; font-weight: bold;">IP Origen:</td><td style="padding: 10px;">${ip || "Desconocida"}</td></tr>
+                        <tr><td style="padding: 10px; font-weight: bold;">Fecha / Hora:</td><td style="padding: 10px;">${fechaHora} hs (ARG)</td></tr>
+                    </table>
+                </div>
+                <div style="background: #fee2e2; padding: 12px; border-radius: 6px; color: #991b1b; font-size: 13px; font-weight: bold; margin-top: 10px;">
+                    🛑 Candado de Seguridad Activo: Todas las subidas adicionales están congeladas automáticamente para proteger la tarjeta de crédito.
+                </div>
+            </div>
+        `;
+
+        if (this.transporter) {
+            try {
+                await this.transporter.sendMail({
+                    from: process.env.SMTP_FROM || '"Seguridad Sistema" <no-reply@lavanderia.com>',
+                    to: destinoMail,
+                    subject: asunto,
+                    html,
+                });
+                console.log(`🔥 [Alerta Crítica 1GB] Correo enviado a ${destinoMail}`);
+            } catch (err) {
+                console.error(`❌ [Email Error]:`, err.message);
+            }
+        }
+    }
 }
 
 export const emailService = new EmailService();

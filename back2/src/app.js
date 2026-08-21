@@ -36,7 +36,9 @@ import categoriasGastosRoutes from "./modules/gastos/categoriasGastos.routes.js"
 const app = express();
 
 // Security headers
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // CORS Configuration
 app.use(dynamicCors);

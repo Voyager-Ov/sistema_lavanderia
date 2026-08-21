@@ -1,5 +1,7 @@
 "use client"
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useRef } from "react"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 import { FinanzasHeader } from "./components/FinanzasHeader"
 import { FinanzasKPIs } from "./components/FinanzasKPIs"
 import { FinanzasTable } from "./components/FinanzasTable"
@@ -10,6 +12,8 @@ import { MovimientoDetailSheet } from "./components/movimiento-detail-sheet"
 import { useFinanzasData } from "./hooks/useFinanzasData"
 import { getFinanzasColumns } from "./components/finanzas-columns"
 import { toast } from "sonner"
+
+gsap.registerPlugin(useGSAP)
 
 export default function FinanzasPage() {
   const {
@@ -39,6 +43,8 @@ export default function FinanzasPage() {
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [selectedMovimiento, setSelectedMovimiento] = useState<any>(null)
 
+  const pageContainerRef = useRef<HTMLDivElement>(null)
+
   const columns = useMemo(() => getFinanzasColumns(), [])
 
   const handleClearFilters = () => {
@@ -48,25 +54,57 @@ export default function FinanzasPage() {
     setPagination((p: any) => ({ ...p, pageIndex: 0 }))
   }
 
+  useGSAP(() => {
+    if (!pageContainerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from(".finanzas-header-item", {
+        y: -15,
+        autoAlpha: 0,
+        duration: 0.5,
+        ease: "power3.out"
+      });
+      gsap.from(".finanzas-kpis-section", {
+        y: 20,
+        autoAlpha: 0,
+        duration: 0.5,
+        delay: 0.1,
+        ease: "power3.out"
+      });
+      gsap.from(".finanzas-table-section", {
+        y: 25,
+        autoAlpha: 0,
+        duration: 0.55,
+        delay: 0.2,
+        ease: "power3.out"
+      });
+    }, pageContainerRef);
+
+    return () => ctx.revert();
+  }, { scope: pageContainerRef });
+
   return (
-    <div className="w-full flex flex-col gap-6">
-      <FinanzasHeader 
-        fechaInicio={fechaInicio}
-        setFechaInicio={setFechaInicio}
-        fechaFin={fechaFin}
-        setFechaFin={setFechaFin}
-        setQuickFilter={setQuickFilter}
-        onClearFilters={handleClearFilters}
-        onOpenGasto={() => setModalGastoOpen(true)}
-        onOpenCategorias={() => setCategoriasOpen(true)}
-      />
+    <div ref={pageContainerRef} className="w-full flex flex-col gap-6">
+      <div className="finanzas-header-item">
+        <FinanzasHeader 
+          fechaInicio={fechaInicio}
+          setFechaInicio={setFechaInicio}
+          fechaFin={fechaFin}
+          setFechaFin={setFechaFin}
+          setQuickFilter={setQuickFilter}
+          onClearFilters={handleClearFilters}
+          onOpenGasto={() => setModalGastoOpen(true)}
+          onOpenCategorias={() => setCategoriasOpen(true)}
+        />
+      </div>
 
-      <FinanzasKPIs 
-        data={kpis || { totalIngresos: 0, totalEgresos: 0, balanceNeto: 0, totalNoCobrado: 0 }} 
-        isLoading={isKpisLoading} 
-      />
+      <div className="finanzas-kpis-section">
+        <FinanzasKPIs 
+          data={kpis || { totalIngresos: 0, totalEgresos: 0, balanceNeto: 0, totalNoCobrado: 0 }} 
+          isLoading={isKpisLoading} 
+        />
+      </div>
 
-      <div className="flex flex-col gap-6 w-full">
+      <div className="finanzas-table-section flex flex-col gap-6 w-full">
         <FinanzasTable 
           movimientos={movimientos}
           columns={columns}

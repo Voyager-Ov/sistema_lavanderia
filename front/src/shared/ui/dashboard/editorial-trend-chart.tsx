@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts"
 import { cn } from "@/shared/lib/utils"
 
@@ -22,12 +22,24 @@ interface EditorialTrendChartProps {
 export function EditorialTrendChart({
   data,
   dataKeyX,
-  categories,
+  categories = [],
   title,
   subtitle,
   className
 }: EditorialTrendChartProps) {
   
+  // Deduplicate categories by key/name to prevent duplicate React keys & duplicate SVG IDs
+  const uniqueCategories = useMemo(() => {
+    if (!categories || !Array.isArray(categories)) return []
+    const seen = new Set<string>()
+    return categories.filter((cat, idx) => {
+      const rawKey = cat.key || cat.name || `cat_${idx}`
+      if (seen.has(rawKey)) return false
+      seen.add(rawKey)
+      return true
+    })
+  }, [categories])
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -80,12 +92,16 @@ export function EditorialTrendChart({
               margin={{ top: 20, right: 10, left: -20, bottom: 0 }}
             >
               <defs>
-                {categories.map((cat, index) => (
-                  <linearGradient key={`grad-${cat.key}`} id={`grad-${cat.key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={cat.color} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={cat.color} stopOpacity={0}/>
-                  </linearGradient>
-                ))}
+                {uniqueCategories.map((cat, index) => {
+                  const safeKey = String(cat.key || cat.name || index).replace(/[^a-zA-Z0-9_-]/g, "_")
+                  const gradId = `grad_${safeKey}_${index}`
+                  return (
+                    <linearGradient key={`grad-${cat.key || index}-${index}`} id={gradId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={cat.color} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={cat.color} stopOpacity={0}/>
+                    </linearGradient>
+                  )
+                })}
               </defs>
               
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -109,20 +125,24 @@ export function EditorialTrendChart({
                 wrapperStyle={{ fontSize: '12px', fontWeight: 500, paddingTop: '20px' }}
               />
               
-              {categories.map((cat, index) => (
-                <Area 
-                  key={cat.key}
-                  type="monotone" 
-                  dataKey={cat.key}
-                  name={cat.name}
-                  stroke={cat.color}
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill={`url(#grad-${cat.key})`}
-                  activeDot={{ r: 6, stroke: cat.color, strokeWidth: 2, fill: '#fff' }}
-                  dot={false}
-                />
-              ))}
+              {uniqueCategories.map((cat, index) => {
+                const safeKey = String(cat.key || cat.name || index).replace(/[^a-zA-Z0-9_-]/g, "_")
+                const gradId = `grad_${safeKey}_${index}`
+                return (
+                  <Area 
+                    key={`area-${cat.key || index}-${index}`}
+                    type="monotone" 
+                    dataKey={cat.key}
+                    name={cat.name}
+                    stroke={cat.color}
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill={`url(#${gradId})`}
+                    activeDot={{ r: 6, stroke: cat.color, strokeWidth: 2, fill: '#fff' }}
+                    dot={false}
+                  />
+                )
+              })}
             </AreaChart>
           </ResponsiveContainer>
         )}

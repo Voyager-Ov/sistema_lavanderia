@@ -1,10 +1,23 @@
 "use client"
-import React, { useMemo } from "react"
+import React, { useMemo, useRef } from "react"
+import { useTheme } from "next-themes"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 import { MovimientoFinanciero } from "@/domains/finanzas/finanzas.api"
+import { GraphicDonutChart } from "@/shared/ui/dashboard/graphic-donut-chart"
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, Cell, PieChart, Pie, ComposedChart, LineChart, Line
+  BarChart, Bar, Legend, ComposedChart, LineChart, Line
 } from "recharts"
+import { 
+  TrendingUp, 
+  BarChart3, 
+  Users, 
+  DollarSign, 
+  Activity 
+} from "lucide-react"
+
+gsap.registerPlugin(useGSAP)
 
 interface FinanzasChartsProps {
   movimientos: MovimientoFinanciero[]
@@ -12,6 +25,14 @@ interface FinanzasChartsProps {
 }
 
 export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const chartsContainerRef = useRef<HTMLDivElement>(null)
+
+  // Chart SVG Theme Constants
+  const gridStroke = isDark ? "rgba(255, 255, 255, 0.08)" : "#f1f5f9"
+  const tickColor = isDark ? "#a3a3a3" : "#94a3b8"
+  const catTickColor = isDark ? "#d4d4d4" : "#64748b"
   
   // Transform data for AreaChart (Evolution over time)
   const evolutionData = useMemo(() => {
@@ -138,16 +159,39 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
   const COLORS = ['#2563eb', '#059669', '#ea580c', '#e11d48', '#8b5cf6'];
   const COLORS_ALT = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'];
 
+  // GSAP Entrance Animations
+  useGSAP(() => {
+    if (!chartsContainerRef.current || isLoading) return;
+    const cards = chartsContainerRef.current.querySelectorAll('.chart-card');
+    if (cards.length === 0) return;
+
+    gsap.fromTo(cards, 
+      { y: 30, autoAlpha: 0 },
+      {
+        y: 0,
+        autoAlpha: 1,
+        duration: 0.55,
+        stagger: 0.08,
+        ease: "power3.out",
+        clearProps: "transform,opacity"
+      }
+    );
+  }, { scope: chartsContainerRef, dependencies: [isLoading, movimientos.length] });
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-          <p className="font-bold text-gray-900 mb-2">{label}</p>
+        <div className="bg-white/95 dark:bg-neutral-900/95 p-4 rounded-2xl shadow-xl border border-gray-100 dark:border-neutral-800 backdrop-blur-md transition-colors">
+          <p className="font-bold text-gray-900 dark:text-neutral-100 mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm font-medium">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-gray-500">{entry.name}:</span>
-              <span className="text-gray-900">${entry.value.toLocaleString('es-AR')}</span>
+              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+              <span className="text-gray-500 dark:text-neutral-400">{entry.name}:</span>
+              <span className="text-gray-900 dark:text-neutral-100 font-bold">
+                {typeof entry.value === 'number' && entry.name !== 'Cant. Transacciones' 
+                  ? `$${entry.value.toLocaleString('es-AR')}` 
+                  : entry.value}
+              </span>
             </div>
           ))}
         </div>
@@ -159,10 +203,10 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2 xl:col-span-3 h-[400px] bg-gray-100 animate-pulse rounded-3xl" />
-        <div className="h-[350px] bg-gray-100 animate-pulse rounded-3xl" />
-        <div className="lg:col-span-2 h-[350px] bg-gray-100 animate-pulse rounded-3xl" />
-        <div className="h-[350px] bg-gray-100 animate-pulse rounded-3xl" />
+        <div className="lg:col-span-2 xl:col-span-3 h-[400px] bg-gray-100 dark:bg-neutral-800/60 animate-pulse rounded-3xl" />
+        <div className="h-[350px] bg-gray-100 dark:bg-neutral-800/60 animate-pulse rounded-3xl" />
+        <div className="lg:col-span-2 h-[350px] bg-gray-100 dark:bg-neutral-800/60 animate-pulse rounded-3xl" />
+        <div className="h-[350px] bg-gray-100 dark:bg-neutral-800/60 animate-pulse rounded-3xl" />
       </div>
     )
   }
@@ -172,26 +216,29 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
+    <div ref={chartsContainerRef} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mt-6">
       
       {/* 1. Evolución Temporal */}
-      <div className="lg:col-span-2 xl:col-span-3 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Evolución de Flujos</h3>
+      <div className="chart-card bg-white dark:bg-neutral-900/90 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800/80 backdrop-blur-sm hover:border-gray-200 dark:hover:border-neutral-700 transition-colors lg:col-span-2 xl:col-span-3">
+        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-neutral-100 mb-6 flex items-center justify-between">
+          <span>Evolución de Flujos</span>
+          <TrendingUp className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+        </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={evolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
               <XAxis 
                 dataKey="date" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 12, fill: '#94a3b8' }} 
+                tick={{ fontSize: 12, fill: tickColor }} 
                 dy={10}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 12, fill: '#94a3b8' }}
+                tick={{ fontSize: 12, fill: tickColor }}
                 tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`}
               />
               <Tooltip content={<CustomTooltip />} />
@@ -201,7 +248,7 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
                 name="Ingresos"
                 stroke="#059669" 
                 fill="#10b981" 
-                fillOpacity={0.2}
+                fillOpacity={0.25}
                 strokeWidth={3}
                 activeDot={{ r: 6, strokeWidth: 0, fill: '#059669' }}
               />
@@ -211,7 +258,7 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
                 name="Egresos"
                 stroke="#e11d48" 
                 fill="#f43f5e" 
-                fillOpacity={0.2}
+                fillOpacity={0.25}
                 strokeWidth={3}
                 activeDot={{ r: 6, strokeWidth: 0, fill: '#e11d48' }}
               />
@@ -221,16 +268,19 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
       </div>
 
       {/* 2. Día de la semana */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Flujo por Día</h3>
+      <div className="chart-card bg-white dark:bg-neutral-900/90 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800/80 backdrop-blur-sm hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
+        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-neutral-100 mb-6 flex items-center justify-between">
+          <span>Flujo por Día</span>
+          <BarChart3 className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+        </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={diaSemanaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>}/>
+              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">{value}</span>}/>
               <Bar dataKey="ingresos" name="Ingresos" stackId="a" fill="#10b981" />
               <Bar dataKey="egresos" name="Egresos" stackId="a" fill="#f43f5e" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -239,17 +289,20 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
       </div>
 
       {/* 3. Volumen vs Transacciones */}
-      <div className="lg:col-span-2 xl:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Volumen vs Transacciones</h3>
+      <div className="chart-card bg-white dark:bg-neutral-900/90 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800/80 backdrop-blur-sm hover:border-gray-200 dark:hover:border-neutral-700 transition-colors lg:col-span-2 xl:col-span-2">
+        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-neutral-100 mb-6 flex items-center justify-between">
+          <span>Volumen vs Transacciones</span>
+          <Activity className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+        </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={volumenData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
-              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} dy={10} />
+              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>}/>
+              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">{value}</span>}/>
               <Bar yAxisId="left" dataKey="montoTotal" name="Volumen ($)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
               <Line yAxisId="right" type="monotone" dataKey="cantidad" name="Cant. Transacciones" stroke="#ea580c" strokeWidth={3} dot={{ r: 4 }} />
             </ComposedChart>
@@ -258,14 +311,17 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
       </div>
 
       {/* 4. Ticket Promedio */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Ticket Promedio</h3>
+      <div className="chart-card bg-white dark:bg-neutral-900/90 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800/80 backdrop-blur-sm hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
+        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-neutral-100 mb-6 flex items-center justify-between">
+          <span>Ticket Promedio</span>
+          <DollarSign className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+        </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={ticketPromedioData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `$${val.toFixed(0)}`} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} tickFormatter={(val) => `$${val.toFixed(0)}`} />
               <Tooltip content={<CustomTooltip />} />
               <Line type="monotone" dataKey="promedio" name="Ticket Promedio" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
             </LineChart>
@@ -274,14 +330,17 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
       </div>
 
       {/* 5. Ranking Cajeros */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Ranking Cajeros</h3>
+      <div className="chart-card bg-white dark:bg-neutral-900/90 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-neutral-800/80 backdrop-blur-sm hover:border-gray-200 dark:hover:border-neutral-700 transition-colors">
+        <h3 className="text-lg font-black tracking-tight text-gray-900 dark:text-neutral-100 mb-6 flex items-center justify-between">
+          <span>Ranking Cajeros</span>
+          <Users className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+        </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={rankingCajerosData} layout="vertical" margin={{ top: 0, right: 10, left: 20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
-              <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }} />
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridStroke} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: tickColor }} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+              <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: catTickColor, fontWeight: 500 }} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" name="Ingresos" fill="#2563eb" radius={[0, 4, 4, 0]} barSize={24} />
             </BarChart>
@@ -290,103 +349,40 @@ export function FinanzasCharts({ movimientos, isLoading }: FinanzasChartsProps) 
       </div>
 
       {/* 6. Top Gastos */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Top 5 Gastos</h3>
-        {gastosPorCategoria.length > 0 ? (
-          <div className="h-[300px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={gastosPorCategoria}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {gastosPorCategoria.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-[300px] flex items-center justify-center">
-            <p className="text-gray-400 font-medium">No hay egresos</p>
-          </div>
-        )}
-      </div>
+      <GraphicDonutChart
+        title="Top 5 Gastos"
+        subtitle="Por categoría de egreso"
+        data={gastosPorCategoria}
+        dataKey="value"
+        nameKey="name"
+        valueFormatter={(val) => `$${val.toLocaleString('es-AR')}`}
+        colors={COLORS}
+        className="chart-card h-[380px]"
+      />
 
       {/* 7. Ingresos por Método */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Ingresos por Método</h3>
-        {ingresosPorMetodo.length > 0 ? (
-          <div className="h-[300px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={ingresosPorMetodo}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {ingresosPorMetodo.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS_ALT[index % COLORS_ALT.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-[300px] flex items-center justify-center">
-            <p className="text-gray-400 font-medium">No hay ingresos</p>
-          </div>
-        )}
-      </div>
+      <GraphicDonutChart
+        title="Ingresos por Método"
+        subtitle="Formas de pago recibidas"
+        data={ingresosPorMetodo}
+        dataKey="value"
+        nameKey="name"
+        valueFormatter={(val) => `$${val.toLocaleString('es-AR')}`}
+        colors={COLORS_ALT}
+        className="chart-card h-[380px]"
+      />
 
       {/* 8. Egresos por Método */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Egresos por Método</h3>
-        {egresosPorMetodo.length > 0 ? (
-          <div className="h-[300px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={egresosPorMetodo}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {egresosPorMetodo.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-[300px] flex items-center justify-center">
-            <p className="text-gray-400 font-medium">No hay egresos</p>
-          </div>
-        )}
-      </div>
+      <GraphicDonutChart
+        title="Egresos por Método"
+        subtitle="Salidas por canal de pago"
+        data={egresosPorMetodo}
+        dataKey="value"
+        nameKey="name"
+        valueFormatter={(val) => `$${val.toLocaleString('es-AR')}`}
+        colors={COLORS}
+        className="chart-card h-[380px]"
+      />
 
     </div>
   )

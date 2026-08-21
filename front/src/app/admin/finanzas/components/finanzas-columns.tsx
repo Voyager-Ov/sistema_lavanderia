@@ -65,17 +65,22 @@ export const getFinanzasColumns = (): ColumnDef<MovimientoFinanciero>[] => [
       const metodo = (row.getValue("metodoPago") as string) || "Desconocido"
       const lower = metodo.toLowerCase()
       let badgeVariant: "success" | "secondary" | "warning" | "outline" = "outline"
-      
+      let customClasses = ""
+
       if (lower.includes("efectivo")) {
         badgeVariant = "success"
-      } else if (lower.includes("transferencia") || lower.includes("mercadopago") || lower.includes("qr") || lower.includes("tarjeta")) {
-        badgeVariant = "secondary"
+      } else if (lower.includes("mercadopago") || lower.includes("mp") || lower.includes("qr")) {
+        customClasses = "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/40 font-bold"
+      } else if (lower.includes("transferencia")) {
+        customClasses = "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/40 font-bold"
+      } else if (lower.includes("tarjeta")) {
+        customClasses = "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/40 font-bold"
       } else if (lower.includes("saldo")) {
         badgeVariant = "warning"
       }
 
       return (
-        <Badge variant={badgeVariant} className="font-semibold text-xs px-2.5 py-0.5 rounded-md truncate max-w-[150px]">
+        <Badge variant={badgeVariant} className={`font-semibold text-xs px-2.5 py-0.5 rounded-md truncate max-w-[160px] ${customClasses}`}>
           {metodo}
         </Badge>
       )

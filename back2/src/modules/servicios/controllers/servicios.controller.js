@@ -1,5 +1,6 @@
 import { serviciosService } from "../services/servicios.service.js";
 import { categoriasService } from "../services/categorias.service.js";
+import { storageService } from "../../../services/storage.service.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -46,7 +47,7 @@ export const obtenerServicioPorId = async (req, res, next) => {
 export const crearServicio = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const imagenPath = req.file ? `/uploads/productos/${req.file.filename}` : null;
+        const imagenPath = req.file ? await storageService.uploadFile(req.file, "productos") : null;
         
         const servicio = await serviciosService.crearServicio(negocioId, req.body, imagenPath);
         return successResponse(res, 201, "Servicio creado exitosamente", servicio);
@@ -58,7 +59,7 @@ export const crearServicio = async (req, res, next) => {
 export const actualizarServicio = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const imagenPath = req.file ? `/uploads/productos/${req.file.filename}` : null;
+        const imagenPath = req.file ? await storageService.uploadFile(req.file, "productos") : null;
 
         const servicio = await serviciosService.actualizarServicio(negocioId, req.params.id, req.body, imagenPath);
         return successResponse(res, 200, "Servicio actualizado exitosamente", servicio);
@@ -80,8 +81,8 @@ export const cambiarDisponibilidad = async (req, res, next) => {
 export const actualizarPreciosMasivo = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await serviciosService.actualizarPreciosMasivo(negocioId, req.body.updates);
-        return successResponse(res, 200, "Precios actualizados masivamente exitosamente", result);
+        const result = await serviciosService.actualizarPreciosMasivo(negocioId, req.body.servicios || req.body);
+        return successResponse(res, 200, "Precios actualizados masivamente", result);
     } catch (error) {
         next(error);
     }
@@ -90,8 +91,9 @@ export const actualizarPreciosMasivo = async (req, res, next) => {
 export const actualizarDisponibilidadMasiva = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await serviciosService.actualizarDisponibilidadMasiva(negocioId, req.body.ids, req.body.disponible);
-        return successResponse(res, 200, "Disponibilidad masiva actualizada exitosamente", result);
+        const { ids, disponible } = req.body;
+        const result = await serviciosService.actualizarDisponibilidadMasiva(negocioId, ids, disponible);
+        return successResponse(res, 200, "Disponibilidad actualizada masivamente", result);
     } catch (error) {
         next(error);
     }
@@ -112,48 +114,6 @@ export const eliminarServicio = async (req, res, next) => {
         const negocioId = getTenantId(req);
         const result = await serviciosService.eliminarServicio(negocioId, req.params.id);
         return successResponse(res, 200, "Servicio eliminado exitosamente", result);
-    } catch (error) {
-        next(error);
-    }
-};
-
-// ─── CONTROLADORES DE CATEGORÍAS ───
-
-export const listarCategorias = async (req, res, next) => {
-    try {
-        const negocioId = getTenantId(req);
-        const result = await categoriasService.listarCategorias(negocioId);
-        return successResponse(res, 200, "Categorías recuperadas exitosamente", result);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const crearCategoria = async (req, res, next) => {
-    try {
-        const negocioId = getTenantId(req);
-        const categoria = await categoriasService.crearCategoria(negocioId, req.body);
-        return successResponse(res, 201, "Categoría creada exitosamente", categoria);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const actualizarCategoria = async (req, res, next) => {
-    try {
-        const negocioId = getTenantId(req);
-        const categoria = await categoriasService.actualizarCategoria(negocioId, req.params.id, req.body);
-        return successResponse(res, 200, "Categoría actualizada exitosamente", categoria);
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const eliminarCategoria = async (req, res, next) => {
-    try {
-        const negocioId = getTenantId(req);
-        const result = await categoriasService.eliminarCategoria(negocioId, req.params.id);
-        return successResponse(res, 200, "Categoría eliminada exitosamente", result);
     } catch (error) {
         next(error);
     }

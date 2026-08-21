@@ -15,9 +15,9 @@ import { CancelPedidoSheet } from "./cancel-pedido-sheet"
 import { useSocket } from "@/shared/hooks/useSocket"
 
 const MAIN_COLUMNS = [
-  { id: "PENDIENTE", title: "Pendientes", icon: Clock, color: "border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-900/50", headerColor: "text-blue-700 dark:text-blue-400" },
-  { id: "EN_PROCESO", title: "En Proceso", icon: Loader2, color: "border-orange-200 bg-orange-50/50 dark:bg-orange-900/10 dark:border-orange-900/50", headerColor: "text-orange-700 dark:text-orange-400" },
-  { id: "LISTO_PARA_RETIRAR", title: "Listos p/ Retirar", icon: CheckCircle2, color: "border-green-200 bg-green-50/50 dark:bg-green-900/10 dark:border-green-900/50", headerColor: "text-green-700 dark:text-green-400" },
+  { id: "PENDIENTE", title: "Pendientes", icon: Clock, color: "border-gray-200/80 bg-gray-50/40 dark:bg-transparent dark:border-neutral-800/80", headerColor: "text-blue-600 dark:text-blue-400" },
+  { id: "EN_PROCESO", title: "En Proceso", icon: Loader2, color: "border-gray-200/80 bg-gray-50/40 dark:bg-transparent dark:border-neutral-800/80", headerColor: "text-orange-600 dark:text-orange-400" },
+  { id: "LISTO_PARA_RETIRAR", title: "Listos p/ Retirar", icon: CheckCircle2, color: "border-gray-200/80 bg-gray-50/40 dark:bg-transparent dark:border-neutral-800/80", headerColor: "text-emerald-600 dark:text-emerald-400" },
 ]
 
 interface PosKanbanProps {
@@ -115,7 +115,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
   }, [socket, fetchBoard])
 
   const handleDragEnd = async (result: DropResult) => {
-    const { source, destination, draggableId } = result
+    const { source, destination } = result
 
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
       return
@@ -180,7 +180,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
             {...provided.dragHandleProps}
             style={provided.draggableProps.style as React.CSSProperties}
             className={clsx(
-              "bg-white dark:bg-neutral-800 p-3 rounded-xl border border-gray-200 dark:border-neutral-700/80 shadow-sm flex flex-col gap-2 transition-all hover:shadow-md select-none",
+              "bg-white dark:bg-neutral-900 p-3.5 rounded-xl border border-gray-200 dark:border-neutral-800/90 shadow-xs flex flex-col gap-2 transition-all hover:border-gray-300 dark:hover:border-neutral-700 select-none",
               snapshot.isDragging && "shadow-lg scale-[1.02] border-brand-blue ring-2 ring-brand-blue/20"
             )}
           >
@@ -202,12 +202,12 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
 
               <div className="flex flex-col items-end gap-1 shrink-0">
                 {isVencido && pedido.estado !== "CANCELADO" && pedido.estado !== "ENTREGADO" && (
-                  <span className="flex items-center text-[9px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-1 py-0.5 rounded leading-none">
+                  <span className="flex items-center text-[9px] font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-1 py-0.5 rounded leading-none">
                     <AlertCircle className="w-2.5 h-2.5 mr-0.5" /> URGENTE
                   </span>
                 )}
                 {pedido.estado === "CANCELADO" ? null : pedido.cobrado ? (
-                  <span className="text-[9px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded leading-none">PAGADO</span>
+                  <span className="text-[9px] font-bold text-green-600 bg-green-50 dark:bg-green-950/40 px-1.5 py-0.5 rounded leading-none">PAGADO</span>
                 ) : (
                   <Button
                     onClick={() => {
@@ -226,7 +226,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                   }}
                   size="sm"
                   variant="outline"
-                  className="h-5 text-[10px] px-2 rounded-lg font-bold shadow-sm z-10 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 bg-white dark:bg-neutral-800"
+                  className="h-5 text-[10px] px-2 rounded-lg font-bold shadow-sm z-10 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800"
                 >
                   VER
                 </Button>
@@ -234,7 +234,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
             </div>
 
             {/* Content: Order Details Inline */}
-            <div className="mt-0.5 pt-1 border-t border-gray-100 dark:border-neutral-800 text-[11px] text-gray-600 dark:text-neutral-400 leading-tight">
+            <div className="mt-0.5 pt-1.5 border-t border-gray-100 dark:border-neutral-800/80 text-[11px] text-gray-600 dark:text-neutral-400 leading-tight">
               {pedido.items && pedido.items.length > 0 ? (
                 <p className="line-clamp-2">
                   {pedido.items.map(item => `${item.cantidad}x ${item.producto?.nombre || 'Item'}`).join(', ')}
@@ -285,7 +285,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
               <div className={clsx("flex items-center gap-2 mb-2 px-1", col.headerColor)}>
                 <col.icon className="w-4 h-4" />
                 <h3 className="font-bold text-sm">{col.title}</h3>
-                <span className="ml-auto bg-white/50 dark:bg-black/20 text-xs px-2 py-0.5 rounded-full font-medium">
+                <span className="ml-auto bg-gray-100 dark:bg-neutral-800 text-xs px-2 py-0.5 rounded-full font-medium text-gray-700 dark:text-neutral-300">
                   {pedidos[col.id]?.length || 0}
                 </span>
               </div>
@@ -298,7 +298,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                     className={clsx(
                       "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors",
                       col.color,
-                      snapshot.isDraggingOver && "bg-gray-100 dark:bg-neutral-800/80 border-dashed"
+                      snapshot.isDraggingOver && "bg-gray-100/50 dark:bg-neutral-800/40 border-dashed"
                     )}
                   >
                     {pedidos[col.id]?.map((pedido, index) => renderCard(pedido, index))}
@@ -316,7 +316,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
               <div className="flex items-center gap-2 mb-2 px-1 text-slate-700 dark:text-slate-300">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 <h3 className="font-bold text-sm">Entregados</h3>
-                <span className="ml-auto bg-white/50 dark:bg-black/20 text-xs px-2 py-0.5 rounded-full font-medium">
+                <span className="ml-auto bg-gray-100 dark:bg-neutral-800 text-xs px-2 py-0.5 rounded-full font-medium text-gray-700 dark:text-neutral-300">
                   {pedidos["ENTREGADO"]?.length || 0}
                 </span>
               </div>
@@ -327,8 +327,8 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={clsx(
-                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-emerald-200 bg-emerald-50/30 dark:bg-emerald-900/10 dark:border-emerald-900/50",
-                      snapshot.isDraggingOver && "bg-emerald-50 dark:bg-emerald-900/30 border-dashed"
+                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-gray-200/80 bg-gray-50/40 dark:bg-transparent dark:border-neutral-800/80",
+                      snapshot.isDraggingOver && "bg-emerald-50/30 dark:bg-emerald-950/20 border-dashed"
                     )}
                   >
                     {pedidos["ENTREGADO"]?.map((pedido, index) => renderCard(pedido, index))}
@@ -343,7 +343,7 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
               <div className="flex items-center gap-2 mb-2 px-1 text-red-700 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 text-red-500" />
                 <h3 className="font-bold text-sm">Cancelados</h3>
-                <span className="ml-auto bg-white/50 dark:bg-black/20 text-xs px-2 py-0.5 rounded-full font-medium">
+                <span className="ml-auto bg-gray-100 dark:bg-neutral-800 text-xs px-2 py-0.5 rounded-full font-medium text-gray-700 dark:text-neutral-300">
                   {pedidos["CANCELADO"]?.length || 0}
                 </span>
               </div>
@@ -354,8 +354,8 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={clsx(
-                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-red-200 bg-red-50/30 dark:bg-red-900/10 dark:border-red-900/50",
-                      snapshot.isDraggingOver && "bg-red-50 dark:bg-red-900/30 border-dashed"
+                      "flex-1 rounded-2xl border p-2 flex flex-col gap-2 overflow-y-auto transition-colors border-gray-200/80 bg-gray-50/40 dark:bg-transparent dark:border-neutral-800/80",
+                      snapshot.isDraggingOver && "bg-red-50/30 dark:bg-red-950/20 border-dashed"
                     )}
                   >
                     {pedidos["CANCELADO"]?.map((pedido, index) => renderCard(pedido, index))}

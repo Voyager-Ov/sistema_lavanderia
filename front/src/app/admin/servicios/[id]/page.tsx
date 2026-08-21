@@ -6,23 +6,25 @@ import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import { apiClient } from "@/shared/lib/api-client"
 import {
-  Loader2, ArrowLeft, Edit2, Tag, Clock, DollarSign,
+  Loader2, ArrowLeft, Edit2, Clock, DollarSign,
   TrendingUp, ShoppingBag, BarChart3, Package, CheckCircle, XCircle, Calendar
 } from "lucide-react"
 import { Button } from "@/shared/ui/forms/button"
 import { cn } from "@/shared/lib/utils"
 import { toast } from "sonner"
 
+import { getImageUrl } from "@/shared/lib/utils"
+
 gsap.registerPlugin(useGSAP)
 
 const CATEGORY_COLORS: Record<number, string> = {}
 const PALETTE = [
-  "bg-violet-100 text-violet-700 border-violet-200",
-  "bg-sky-100 text-sky-700 border-sky-200",
-  "bg-amber-100 text-amber-700 border-amber-200",
-  "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "bg-pink-100 text-pink-700 border-pink-200",
-  "bg-orange-100 text-orange-700 border-orange-200",
+  "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/80",
+  "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/80",
+  "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/80",
+  "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80",
+  "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800/80",
+  "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/80",
 ]
 
 function getCategoryColor(id: number): string {
@@ -33,7 +35,7 @@ function getCategoryColor(id: number): string {
 }
 
 // Sparkline bar chart component
-function MiniBarChart({ data, color = "#6366f1" }: { data: number[], color?: string }) {
+function MiniBarChart({ data, color = "#10b981" }: { data: number[], color?: string }) {
   const max = Math.max(...data, 1)
   return (
     <div className="flex items-end gap-[3px] h-10">
@@ -100,7 +102,7 @@ export default function ServicioDetallePage() {
   const [historial, setHistorial] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Mock trend data (últimas 8 semanas) - se reemplaza con datos reales cuando el backend lo soporte
+  // Mock trend data (últimas 8 semanas)
   const [pedidosTrend] = useState([3, 5, 4, 7, 6, 9, 8, 11])
 
   useGSAP(() => {
@@ -151,7 +153,7 @@ export default function ServicioDetallePage() {
       <div className="flex-1 flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-10 w-10 animate-spin text-brand-blue" />
-          <p className="text-sm font-medium text-gray-400">Cargando servicio...</p>
+          <p className="text-sm font-medium text-gray-400 dark:text-neutral-400">Cargando servicio...</p>
         </div>
       </div>
     )
@@ -160,17 +162,14 @@ export default function ServicioDetallePage() {
   if (!servicio) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center h-full gap-4">
-        <Package className="w-16 h-16 text-gray-200" />
-        <p className="text-gray-500 font-medium">Servicio no encontrado</p>
+        <Package className="w-16 h-16 text-gray-200 dark:text-neutral-700" />
+        <p className="text-gray-500 dark:text-neutral-400 font-medium">Servicio no encontrado</p>
         <Button variant="outline" onClick={() => router.push('/admin/servicios')}>Volver a Servicios</Button>
       </div>
     )
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
-  const imageUrl = servicio.imagenUrl
-    ? (servicio.imagenUrl.startsWith('http') ? servicio.imagenUrl : `${baseUrl}${servicio.imagenUrl}`)
-    : null
+  const imageUrl = getImageUrl(servicio.imagenUrl)
 
   const diasActivo = servicio.createdAt
     ? Math.floor((Date.now() - new Date(servicio.createdAt).getTime()) / (1000 * 60 * 60 * 24))
@@ -184,22 +183,22 @@ export default function ServicioDetallePage() {
         <div className="flex items-start gap-4">
           <button
             onClick={() => router.push('/admin/servicios')}
-            className="mt-1 w-10 h-10 rounded-2xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all text-gray-500 shrink-0"
+            className="mt-1 w-10 h-10 rounded-2xl border border-gray-200 dark:border-neutral-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700 transition-all text-gray-500 dark:text-neutral-400 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-black tracking-tight text-gray-900">{servicio.nombre}</h1>
+              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-neutral-50">{servicio.nombre}</h1>
               <span className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border",
                 servicio.disponible
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-gray-50 text-gray-500 border-gray-200"
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
+                  : "bg-gray-50 text-gray-500 border-gray-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
               )}>
                 {servicio.disponible
-                  ? <><CheckCircle className="w-3 h-3" />Activo</>
-                  : <><XCircle className="w-3 h-3" />Inactivo</>
+                  ? <><CheckCircle className="w-3 h-3 text-emerald-500" />Activo</>
+                  : <><XCircle className="w-3 h-3 text-gray-400" />Inactivo</>
                 }
               </span>
               {servicio.categoria && (
@@ -211,7 +210,7 @@ export default function ServicioDetallePage() {
                 </span>
               )}
             </div>
-            <p className="text-gray-400 text-sm mt-1 font-medium">
+            <p className="text-gray-400 dark:text-neutral-400 text-sm mt-1 font-medium">
               {servicio.descripcion || "Sin descripción configurada"}
             </p>
           </div>
@@ -234,73 +233,73 @@ export default function ServicioDetallePage() {
 
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+            <div className="kpi-card bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 p-5 flex flex-col gap-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Precio y Costo</span>
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <DollarSign className="w-4 h-4 text-indigo-500" />
+                <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide">Precio y Costo</span>
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                 </div>
               </div>
               <div>
-                <p className="text-3xl font-black text-gray-900 tracking-tight">
+                <p className="text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight">
                   ${precio.toLocaleString("es-AR")}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs font-bold text-gray-400">
+                  <span className="text-xs font-bold text-gray-400 dark:text-neutral-400">
                     Costo: ${costo.toLocaleString("es-AR")}
                   </span>
                   <span className={cn(
                     "text-[10px] font-black px-1.5 py-0.5 rounded",
-                    margen >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                    margen >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                   )}>
                     {margenPct}% margen
                   </span>
                 </div>
               </div>
               {historial.length > 1 && (
-                <p className="text-xs text-gray-400 font-medium">
+                <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">
                   Anterior: ${Number(historial[historial.length - 2]?.precio || 0).toLocaleString("es-AR")}
                 </p>
               )}
             </div>
 
-            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+            <div className="kpi-card bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 p-5 flex flex-col gap-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Tiempo</span>
-                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide">Tiempo</span>
+                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-gray-900 tracking-tight">
+              <p className="text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight">
                 {servicio.tiempoEstimadoMinutos || "—"}
               </p>
               {servicio.tiempoEstimadoMinutos && (
-                <p className="text-xs text-gray-400 font-medium">minutos por unidad</p>
+                <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">minutos por unidad</p>
               )}
             </div>
 
-            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+            <div className="kpi-card bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 p-5 flex flex-col gap-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Actividad</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide">Actividad</span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                 </div>
               </div>
               <div className="flex-1">
                 <MiniBarChart data={pedidosTrend} color="#10b981" />
               </div>
-              <p className="text-xs text-gray-400 font-medium">Pedidos — últimas 8 semanas</p>
+              <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">Pedidos — últimas 8 semanas</p>
             </div>
 
-            <div className="kpi-card bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3">
+            <div className="kpi-card bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 p-5 flex flex-col gap-3 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Antigüedad</span>
-                <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-violet-500" />
+                <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide">Antigüedad</span>
+                <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-violet-500 dark:text-violet-400" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-gray-900 tracking-tight">{diasActivo}</p>
-              <p className="text-xs text-gray-400 font-medium">
+              <p className="text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight">{diasActivo}</p>
+              <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">
                 días activo desde el {new Date(servicio.createdAt).toLocaleDateString("es-AR")}
               </p>
             </div>
@@ -314,7 +313,7 @@ export default function ServicioDetallePage() {
         {/* Left: image + historial */}
         <div className="space-y-4">
           {/* Imagen */}
-          <div className="detail-section bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="detail-section bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 overflow-hidden shadow-xs">
             {imageUrl ? (
               <div className="h-52 w-full">
                 <img
@@ -327,9 +326,9 @@ export default function ServicioDetallePage() {
                 />
               </div>
             ) : (
-              <div className="h-52 w-full bg-gray-50 flex flex-col items-center justify-center gap-3">
-                <Package className="w-14 h-14 text-gray-200" />
-                <p className="text-xs font-bold text-gray-300 uppercase tracking-wide">Sin imagen</p>
+              <div className="h-52 w-full bg-gray-50 dark:bg-neutral-800/50 flex flex-col items-center justify-center gap-3">
+                <Package className="w-14 h-14 text-gray-200 dark:text-neutral-700" />
+                <p className="text-xs font-bold text-gray-300 dark:text-neutral-500 uppercase tracking-wide">Sin imagen</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -340,8 +339,8 @@ export default function ServicioDetallePage() {
                 </Button>
               </div>
             )}
-            <div className="px-5 py-3 border-t border-gray-50 flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Imagen POS</span>
+            <div className="px-5 py-3 border-t border-gray-50 dark:border-neutral-800/80 flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide">Imagen POS</span>
               <button
                 onClick={() => router.push(`/admin/servicios/${id}/editar`)}
                 className="text-xs font-bold text-brand-blue hover:underline"
@@ -352,36 +351,36 @@ export default function ServicioDetallePage() {
           </div>
 
           {/* Historial de precios */}
-          <div className="detail-section bg-white rounded-2xl border border-gray-100">
-            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+          <div className="detail-section bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 shadow-xs">
+            <div className="px-5 py-4 border-b border-gray-50 dark:border-neutral-800/80 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-gray-400" />
-                <span className="font-bold text-sm text-gray-700">Historial de Precios</span>
+                <BarChart3 className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
+                <span className="font-bold text-sm text-gray-700 dark:text-neutral-200">Historial de Precios</span>
               </div>
               {historial.length > 1 && (
                 <PriceSparkline history={historial} />
               )}
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-neutral-800/80">
               {historial.length === 0 ? (
                 <div className="px-5 py-8 text-center">
-                  <TrendingUp className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                  <p className="text-xs font-medium text-gray-400">Sin cambios de precio registrados</p>
+                  <TrendingUp className="w-8 h-8 text-gray-200 dark:text-neutral-700 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-gray-400 dark:text-neutral-400">Sin cambios de precio registrados</p>
                 </div>
               ) : (
                 historial.slice().reverse().slice(0, 6).map((h: any, i: number) => (
                   <div key={h.id || i} className="px-5 py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-gray-400">
+                      <p className="text-xs font-bold text-gray-400 dark:text-neutral-400">
                         {new Date(h.fechaCambio || h.createdAt).toLocaleDateString("es-AR")}
                       </p>
                       {h.motivo && (
-                        <p className="text-[10px] text-gray-300 font-medium mt-0.5">{h.motivo}</p>
+                        <p className="text-[10px] text-gray-300 dark:text-neutral-500 font-medium mt-0.5">{h.motivo}</p>
                       )}
                     </div>
                     <span className={cn(
                       "text-sm font-black",
-                      i === 0 ? "text-gray-900" : "text-gray-400"
+                      i === 0 ? "text-gray-900 dark:text-neutral-100" : "text-gray-400 dark:text-neutral-500"
                     )}>
                       ${Number(h.precio).toLocaleString("es-AR")}
                     </span>
@@ -396,18 +395,18 @@ export default function ServicioDetallePage() {
         <div className="lg:col-span-2 space-y-4">
 
           {/* Info detallada */}
-          <div className="detail-section bg-white rounded-2xl border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-50 flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-gray-400" />
-              <span className="font-bold text-sm text-gray-700">Información del Servicio</span>
+          <div className="detail-section bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 shadow-xs">
+            <div className="px-6 py-4 border-b border-gray-50 dark:border-neutral-800/80 flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-gray-400 dark:text-neutral-400" />
+              <span className="font-bold text-sm text-gray-700 dark:text-neutral-200">Información del Servicio</span>
             </div>
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Nombre</p>
-                <p className="font-bold text-gray-900">{servicio.nombre}</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Nombre</p>
+                <p className="font-bold text-gray-900 dark:text-neutral-100">{servicio.nombre}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Categoría</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Categoría</p>
                 {servicio.categoria ? (
                   <span className={cn(
                     "inline-flex px-2.5 py-1 rounded-xl text-xs font-bold border",
@@ -416,64 +415,64 @@ export default function ServicioDetallePage() {
                     {servicio.categoria.nombre}
                   </span>
                 ) : (
-                  <p className="font-medium text-gray-400 text-sm">Sin categoría</p>
+                  <p className="font-medium text-gray-400 dark:text-neutral-400 text-sm">Sin categoría</p>
                 )}
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Precio de Venta</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Precio de Venta</p>
                 <p className="text-2xl font-black text-brand-blue">
                   ${Number(servicio.precioActual).toLocaleString("es-AR")}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Costo Estimado</p>
-                <p className="text-2xl font-black text-gray-700">
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Costo Estimado</p>
+                <p className="text-2xl font-black text-gray-700 dark:text-neutral-200">
                   ${Number(servicio.costoEstimado || 0).toLocaleString("es-AR")}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Margen Unitario</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Margen Unitario</p>
                 <div className="flex items-center gap-2">
                   <p className={cn(
                     "text-xl font-black",
-                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "text-emerald-600" : "text-red-600"
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                   )}>
                     ${(Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)).toLocaleString("es-AR")}
                   </p>
                   <span className={cn(
                     "text-xs font-bold px-2 py-0.5 rounded-md",
-                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                   )}>
                     {Number(servicio.precioActual) > 0 ? Math.round(((Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) / Number(servicio.precioActual)) * 100) : 0}%
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Tiempo Estimado</p>
-                <p className="font-bold text-gray-900 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-gray-300" />
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Tiempo Estimado</p>
+                <p className="font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-gray-300 dark:text-neutral-500" />
                   {servicio.tiempoEstimadoMinutos
                     ? `${servicio.tiempoEstimadoMinutos} minutos`
                     : "No configurado"}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Estado</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Estado</p>
                 <span className={cn(
                   "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border",
                   servicio.disponible
-                    ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-gray-50 text-gray-500 border-gray-200"
+                    ? "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
+                    : "bg-gray-50 text-gray-500 border-gray-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
                 )}>
                   {servicio.disponible
-                    ? <><CheckCircle className="w-3 h-3" />Activo</>
-                    : <><XCircle className="w-3 h-3" />Inactivo</>
+                    ? <><CheckCircle className="w-3 h-3 text-emerald-500" />Activo</>
+                    : <><XCircle className="w-3 h-3 text-gray-400" />Inactivo</>
                   }
                 </span>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Creado</p>
-                <p className="font-semibold text-gray-700 text-sm">
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Creado</p>
+                <p className="font-semibold text-gray-700 dark:text-neutral-200 text-sm">
                   {new Date(servicio.createdAt).toLocaleDateString("es-AR", {
                     day: "numeric", month: "long", year: "numeric"
                   })}
@@ -481,22 +480,22 @@ export default function ServicioDetallePage() {
               </div>
             </div>
             {servicio.descripcion && (
-              <div className="px-6 pb-6 pt-0 border-t border-gray-50 mt-0">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 mt-4">Descripción</p>
-                <p className="text-gray-600 font-medium text-sm leading-relaxed">{servicio.descripcion}</p>
+              <div className="px-6 pb-6 pt-0 border-t border-gray-50 dark:border-neutral-800/80 mt-0">
+                <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-2 mt-4">Descripción</p>
+                <p className="text-gray-600 dark:text-neutral-300 font-medium text-sm leading-relaxed">{servicio.descripcion}</p>
               </div>
             )}
           </div>
 
           {/* Próximas métricas */}
-          <div className="detail-section bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 p-6">
+          <div className="detail-section bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-neutral-900/90 dark:to-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-neutral-800/80 p-6 shadow-xs">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-indigo-500" />
+              <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
               </div>
               <div>
-                <p className="font-bold text-gray-900 text-sm">Analíticas del Servicio</p>
-                <p className="text-xs text-gray-500">Métricas de uso y rendimiento</p>
+                <p className="font-bold text-gray-900 dark:text-neutral-100 text-sm">Analíticas del Servicio</p>
+                <p className="text-xs text-gray-500 dark:text-neutral-400">Métricas de uso y rendimiento</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -505,9 +504,9 @@ export default function ServicioDetallePage() {
                 { label: "Ingresos est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * Number(servicio.precioActual)).toLocaleString("es-AR")}`, suffix: "" },
                 { label: "Margen est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0))).toLocaleString("es-AR")}`, suffix: "" },
               ].map((metric, i) => (
-                <div key={i} className="bg-white rounded-xl p-4 border border-indigo-100">
-                  <p className="text-lg font-black text-gray-900">{metric.value}{metric.suffix}</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-1">{metric.label}</p>
+                <div key={i} className="bg-white dark:bg-neutral-800/80 rounded-xl p-4 border border-indigo-100 dark:border-neutral-700/80">
+                  <p className="text-lg font-black text-gray-900 dark:text-neutral-50">{metric.value}{metric.suffix}</p>
+                  <p className="text-[10px] font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mt-1">{metric.label}</p>
                 </div>
               ))}
             </div>

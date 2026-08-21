@@ -17,6 +17,8 @@ import {
   Package, Tag, Clock, DollarSign, FileText, CheckCircle
 } from "lucide-react"
 
+import { getImageUrl } from "@/shared/lib/utils"
+
 interface ServicioFormProps {
   id?: string
 }
@@ -63,10 +65,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
       setPreviewUrl(url)
       return () => URL.revokeObjectURL(url)
     } else {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000'
-      setPreviewUrl(formData.imagenUrl
-        ? (formData.imagenUrl.startsWith('http') ? formData.imagenUrl : `${baseUrl}${formData.imagenUrl}`)
-        : "")
+      setPreviewUrl(getImageUrl(formData.imagenUrl) || "")
     }
   }, [imageFile, formData.imagenUrl])
 

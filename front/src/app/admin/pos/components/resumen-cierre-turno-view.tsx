@@ -18,9 +18,10 @@ import {
   DollarSign
 } from "lucide-react"
 import { toast } from "sonner"
-import { cerrarCaja, CajaActual } from "@/domains/caja/caja.api"
+import { cerrarCaja, obtenerCajaPorId, CajaActual } from "@/domains/caja/caja.api"
 import { Button } from "@/shared/ui/forms/button"
 import { KpiCard } from "@/shared/ui/data-display/kpi-card"
+import { useSocket } from "@/shared/hooks/useSocket"
 
 interface ResumenCierreTurnoViewProps {
   caja: CajaActual
@@ -29,10 +30,52 @@ interface ResumenCierreTurnoViewProps {
 }
 
 export function ResumenCierreTurnoView({
-  caja,
+  caja: initialCaja,
   onVolverPos,
   onCajaCerrada
 }: ResumenCierreTurnoViewProps) {
+  const [caja, setCaja] = useState<CajaActual>(initialCaja)
+  const [isLoadingLive, setIsLoadingLive] = useState(true)
+  const { socket } = useSocket()
+
+  const fetchLiveCaja = async () => {
+    try {
+      const targetId = initialCaja.idCaja || initialCaja.id
+      if (targetId) {
+        const data = await obtenerCajaPorId(targetId)
+        if (data) setCaja(data)
+      }
+    } catch (e) {
+      console.error("Error al refrescar caja en vivo:", e)
+    } finally {
+      setIsLoadingLive(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchLiveCaja()
+  }, [initialCaja.id])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleSocketUpdate = () => {
+      fetchLiveCaja()
+    }
+
+    socket.on("caja_actualizada", handleSocketUpdate)
+    socket.on("pago_registrado", handleSocketUpdate)
+    socket.on("pago_anulado", handleSocketUpdate)
+    socket.on("gasto:registrado", handleSocketUpdate)
+
+    return () => {
+      socket.off("caja_actualizada", handleSocketUpdate)
+      socket.off("pago_registrado", handleSocketUpdate)
+      socket.off("pago_anulado", handleSocketUpdate)
+      socket.off("gasto:registrado", handleSocketUpdate)
+    }
+  }, [socket])
+
   const montoInicial = parseFloat(caja.montoInicial?.toString() || "0")
   const totalIngresos = caja.totalIngresosEnVivo || 0
   const totalEgresos = caja.totalEgresosEnVivo || 0
@@ -49,6 +92,11 @@ export function ResumenCierreTurnoView({
 
   const [efectivoReal, setEfectivoReal] = useState<string>(efectivoEsperado.toString())
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Sincronizar efectivoReal por defecto cuando cambie el efectivoEsperado en vivo
+  useEffect(() => {
+    setEfectivoReal(efectivoEsperado.toString())
+  }, [efectivoEsperado])
 
   const viewRef = useRef<HTMLDivElement>(null)
 

@@ -25,6 +25,8 @@ import { toast } from "sonner"
 import { AreaChartAnimated } from "@/shared/ui/charts/area-chart-animated"
 import { BarChartAnimated } from "@/shared/ui/charts/bar-chart-animated"
 import { PieChartAnimated } from "@/shared/ui/charts/pie-chart-animated"
+import { RadialSegmentedGauge } from "@/shared/ui/dashboard/radial-segmented-gauge"
+import { GraphicDonutChart } from "@/shared/ui/dashboard/graphic-donut-chart"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/shared/ui/data-display/chart"
 import { Bar, BarChart, XAxis } from "recharts"
 import React, { useState } from "react"
@@ -539,6 +541,30 @@ export default function UIPlayground() {
                 </ChartContainer>
               </CardContent>
             </Card>
+
+            {/* Reloj Segmentado Sunburst Unificado */}
+            <RadialSegmentedGauge
+              title="Progreso del Día"
+              subtitle="Pedidos entregados vs recibidos hoy"
+              currentValue={10}
+              targetValue={17}
+              badgeText="Hoy"
+              color="green"
+            />
+
+            {/* Gráfico de Dona Unificado */}
+            <GraphicDonutChart
+              title="Distribución de Servicios"
+              subtitle="Porcentaje por volumen"
+              data={[
+                { name: "Lavado Completo", value: 450 },
+                { name: "Planchado Especial", value: 280 },
+                { name: "Secado Industrial", value: 190 },
+                { name: "Tintorería Express", value: 120 },
+              ]}
+              dataKey="value"
+              nameKey="name"
+            />
 
           </div>
         </section>
