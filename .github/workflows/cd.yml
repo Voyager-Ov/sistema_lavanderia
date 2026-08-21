@@ -2,7 +2,7 @@ name: Continuous Deployment (CD)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, reimpelemntacion-del-back ]
 
 jobs:
   db-migration:
@@ -73,7 +73,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BACK }}
 
   deploy-frontend:
-    name: Deploy Frontend to Vercel (front)
+    name: Deploy Single Frontend to Vercel (front -> front-1)
     needs: db-migration
     runs-on: ubuntu-latest
     steps:

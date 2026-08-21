@@ -2,9 +2,9 @@ name: Continuous Integration (CI)
 
 on:
   push:
-    branches: [ main, master, dev, "feature/**" ]
+    branches: [ main, master, dev, reimpelemntacion-del-back, "feature/**" ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, reimpelemntacion-del-back ]
 
 jobs:
   backend-ci:
@@ -68,4 +68,4 @@ jobs:
           cd front
           npm run build
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:4000/api
+          NEXT_PUBLIC_API_URL: http://localhost:5001/api
