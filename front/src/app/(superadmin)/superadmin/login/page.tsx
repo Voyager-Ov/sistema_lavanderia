@@ -14,7 +14,7 @@ export default function SuperAdminLogin() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const router = useRouter();
 
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api").replace(/\/api\/?$/, "");
+  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +38,8 @@ export default function SuperAdminLogin() {
       }
 
       const token = data.token || (data.data && data.data.token);
-      if (!token) {
-        throw new Error("No se pudo obtener un token válido del servidor.");
+      if (!token || typeof token !== "string" || token === "undefined" || token === "null") {
+        throw new Error("No se pudo obtener un token de autenticación válido del servidor.");
       }
 
       localStorage.setItem("superadmin_token", token);

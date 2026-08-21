@@ -19,15 +19,21 @@ export const apiClient = {
     // Obtener token de auth-storage o fallback superadmin_token
     let token = '';
     if (typeof window !== 'undefined') {
-      const authData = localStorage.getItem('auth-storage');
-      if (authData) {
-        try {
-          const parsed = JSON.parse(authData);
-          if (parsed.state && parsed.state.token) {
-            token = parsed.state.token;
+      const isSuperAdminPath = window.location.pathname.startsWith('/superadmin');
+      if (isSuperAdminPath) {
+        token = localStorage.getItem('superadmin_token') || '';
+      }
+      if (!token) {
+        const authData = localStorage.getItem('auth-storage');
+        if (authData) {
+          try {
+            const parsed = JSON.parse(authData);
+            if (parsed.state && parsed.state.token) {
+              token = parsed.state.token;
+            }
+          } catch (e) {
+            // ignore error
           }
-        } catch (e) {
-          // ignore error
         }
       }
       if (!token) {

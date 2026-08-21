@@ -13,7 +13,7 @@ export const verificarToken = (req, res, next) => {
             token = req.cookies.token;
         }
 
-        if (!token) {
+        if (!token || token === "null" || token === "undefined") {
             throw new AppError("No se proporcionó un token de autenticación", 401, "UNAUTHORIZED");
         }
 

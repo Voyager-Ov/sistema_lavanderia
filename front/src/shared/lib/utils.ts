@@ -33,7 +33,7 @@ export function getImageUrl(path: string | null | undefined): string | null {
   const trimmed = path.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) return trimmed;
 
-  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
   const baseUrl = rawApiUrl.replace(/\/api\/?$/, "");
   const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 

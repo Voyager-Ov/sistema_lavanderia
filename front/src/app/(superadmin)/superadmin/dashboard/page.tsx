@@ -83,7 +83,7 @@ function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api").replace(/\/api\/?$/, "");
+  const getApiUrl = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "");
 
   // Sync tab with query param
   useEffect(() => {
@@ -96,7 +96,8 @@ function DashboardContent() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem("superadmin_token");
-      if (!token) {
+      if (!token || token === "null" || token === "undefined") {
+        localStorage.removeItem("superadmin_token");
         router.push("/superadmin/login");
         return;
       }
