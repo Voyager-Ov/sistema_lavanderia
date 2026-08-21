@@ -6,12 +6,14 @@ import { RefreshCw, Activity, Key } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/forms/button";
 import { OverviewStatsGrid } from "./_components/overview-stats-grid";
+import { NotificationsFeedCard } from "./_components/notifications-feed-card";
 import { apiClient } from "@/shared/lib/api-client";
 
 function DashboardContent() {
   const [data, setData] = useState<any>(null);
   const [health, setHealth] = useState<any>(null);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
@@ -24,15 +26,17 @@ function DashboardContent() {
         return;
       }
 
-      const [dashRes, healthRes, solicitudesRes]: any[] = await Promise.all([
+      const [dashRes, healthRes, solicitudesRes, notifRes]: any[] = await Promise.all([
         apiClient.get("/superadmin/dashboard").catch(() => null),
         apiClient.get("/superadmin/health-check").catch(() => null),
-        apiClient.get("/superadmin/solicitudes").catch(() => null)
+        apiClient.get("/superadmin/solicitudes").catch(() => null),
+        apiClient.get("/superadmin/notificaciones").catch(() => null)
       ]);
 
       if (dashRes) setData(dashRes);
       if (healthRes) setHealth(healthRes);
       if (solicitudesRes) setSolicitudes(solicitudesRes.data || []);
+      if (notifRes) setNotifications(notifRes.data || []);
     } catch (error: any) {
       console.error("Error fetching dashboard data", error);
       if (error?.status === 401) {
@@ -80,10 +84,10 @@ function DashboardContent() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div>
           <h1 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-            <Activity className="text-blue-500" size={24} /> Monitoreo Central & Salud del Sistema
+            <Activity className="text-blue-500" size={24} /> Monitoreo Central & Vista General
           </h1>
           <p className="text-muted-foreground text-xs mt-1">
-            Estado de esquemas PostgreSQL Neon, uptime y solicitudes entrantes
+            Métricas de infraestructura, solicitudes de negocios y centro de notificaciones central
           </p>
         </div>
 
@@ -99,6 +103,9 @@ function DashboardContent() {
 
       {/* Grid de Estadísticas */}
       <OverviewStatsGrid health={health} pendientesCount={pendientesCount} />
+
+      {/* Feed de Notificaciones y Alertas Centrales */}
+      <NotificationsFeedCard notifications={notifications} />
     </div>
   );
 }

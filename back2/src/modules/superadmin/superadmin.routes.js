@@ -16,7 +16,8 @@ import {
     createMensaje,
     getMensajes,
     desactivarMensaje,
-    getLogsSeguridad
+    getLogsSeguridad,
+    getNotificaciones
 } from "./controllers/superadmin.controller.js";
 import { login } from "../auth/controllers/auth.controller.js";
 import { superAdminAuth } from "../../middlewares/superadmin.middleware.js";
@@ -62,7 +63,8 @@ router.post("/mensajes", createMensaje);
 router.get("/mensajes", getMensajes);
 router.patch("/mensajes/:id/desactivar", desactivarMensaje);
 
-// Auditoría de Seguridad
+// Auditoría de Seguridad y Notificaciones Centrales
 router.get("/seguridad/logs", getLogsSeguridad);
+router.get("/notificaciones", getNotificaciones);
 
 export default router;

@@ -171,3 +171,12 @@ export const getLogsSeguridad = async (req, res, next) => {
         next(error);
     }
 };
+
+export const getNotificaciones = async (req, res, next) => {
+    try {
+        const notificaciones = await superAdminService.getNotificacionesCentrales();
+        return successResponse(res, 200, "Notificaciones centrales recuperadas exitosamente", notificaciones);
+    } catch (error) {
+        next(error);
+    }
+};

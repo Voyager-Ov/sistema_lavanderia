@@ -396,6 +396,71 @@ class SuperAdminService {
         });
         return logs;
     }
+
+    async getNotificacionesCentrales() {
+        const notificaciones = [];
+        const { SolicitudNegocio, AlertaSeguridad, Negocio } = connectionManager.centralModels;
+
+        // 1. Solicitudes de negocio pendientes
+        if (SolicitudNegocio) {
+            const solicitudes = await SolicitudNegocio.findAll({
+                where: { estado: "PENDIENTE" },
+                order: [["createdAt", "DESC"]]
+            });
+            for (const sol of solicitudes) {
+                notificaciones.push({
+                    id: `solicitud_${sol.id}`,
+                    tipo: "SOLICITUD",
+                    nivel: "WARNING",
+                    titulo: "Nueva Solicitud de Registro Pendiente",
+                    mensaje: `El solicitante ${sol.nombreSolicitante} desea registrar el negocio "${sol.nombreNegocio}" (${sol.emailSolicitante}).`,
+                    fecha: sol.createdAt,
+                    metadata: { solicitudId: sol.id }
+                });
+            }
+        }
+
+        // 2. Alertas de seguridad del sistema
+        if (AlertaSeguridad) {
+            const alertas = await AlertaSeguridad.findAll({
+                order: [["createdAt", "DESC"]],
+                limit: 20
+            });
+            for (const alerta of alertas) {
+                notificaciones.push({
+                    id: `alerta_${alerta.id}`,
+                    tipo: "SEGURIDAD",
+                    nivel: alerta.nivel || "URGENT",
+                    titulo: alerta.evento || "Evento de Seguridad Detectado",
+                    mensaje: alerta.descripcion || alerta.detalles || "Operación administrativa registrada.",
+                    fecha: alerta.createdAt,
+                    metadata: { ip: alerta.ip, usuario: alerta.usuarioEmail }
+                });
+            }
+        }
+
+        // 3. Negocios con almacenamiento al límite (>80%)
+        if (Negocio) {
+            const negocios = await Negocio.findAll({ where: { activo: true } });
+            for (const neg of negocios) {
+                const metricas = await this.getNegocioAlmacenamiento(neg.id);
+                if (metricas.porcentajeAlmacenamiento >= 80) {
+                    notificaciones.push({
+                        id: `storage_${neg.id}`,
+                        tipo: "ALMACENAMIENTO",
+                        nivel: metricas.porcentajeAlmacenamiento >= 95 ? "URGENT" : "WARNING",
+                        titulo: `Capacidad de Almacenamiento Crítica (${metricas.porcentajeAlmacenamiento}%)`,
+                        mensaje: `El negocio "${neg.nombre}" ha consumido ${metricas.storageConsumidoMB} MB de su límite asignado (${metricas.maxStorageGB} GB).`,
+                        fecha: new Date(),
+                        metadata: { negocioId: neg.id, porcentaje: metricas.porcentajeAlmacenamiento }
+                    });
+                }
+            }
+        }
+
+        notificaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        return notificaciones;
+    }
 }
 
 export const superAdminService = new SuperAdminService();
