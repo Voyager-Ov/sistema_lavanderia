@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-monitoreo-cuotas",
+  "title": "Especificación Técnica - Consola SuperAdmin Monitoreo y Cuotas",
+  "version": "1.0.0",
+  "status": "DRAFT_PROPOSED",
+  "architecture": {
+    "frontend_layer": {
+      "path": "front/src/app/(superadmin)/superadmin/dashboard/page.tsx",
+      "components": [
+        "SidebarProvider",
+        "AppSidebar",
+        "AppHeader",
+        "MobileBottomNav",
+        "ResponsiveSheet",
+        "ResponsiveSheetContent"
+      ],
+      "state_management": "Local React State + Next.js SearchParams (?tab=overview|negocios|solicitudes)"
+    },
+    "backend_layer": {
+      "routes_path": "back2/src/modules/superadmin/superadmin.routes.js",
+      "controllers_path": "back2/src/modules/superadmin/controllers/superadmin.controller.js",
+      "services_path": "back2/src/modules/superadmin/services/superadmin.service.js",
+      "middlewares": [
+        "superAdminRateLimiter (100 req/15 min)",
+        "verificarToken",
+        "superAdminAuth (RBAC SUPER_ADMIN)"
+      ]
+    },
+    "database_layer": {
+      "orm": "Sequelize PostgreSQL",
+      "model": "Negocio (Schema: public)",
+      "fields": [
+        "maxImagenes (INTEGER, default: 50)",
+        "maxStorageGB (FLOAT, default: 1.0)",
+        "maxUsuarios (INTEGER, default: 10)",
+        "maxPedidosMes (INTEGER, default: 1000)"
+      ]
+    }
+  },
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/superadmin/dashboard",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "response_success": {
+        "status": "success",
+        "negocios": "Array<Negocio>",
+        "metricas": "Object"
+      }
+    },
+    {
+      "endpoint": "PUT /api/superadmin/negocios/:id/limites",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "payload": {
+        "maxImagenes": "number",
+        "maxStorageGB": "number",
+        "maxUsuarios": "number",
+        "maxPedidosMes": "number"
+      },
+      "response_success": {
+        "status": "success",
+        "data": "Negocio"
+      }
+    },
+    {
+      "endpoint": "PUT /api/superadmin/negocios/:id/status",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "payload": { "activo": "boolean" },
+      "response_success": {
+        "status": "success",
+        "data": "Negocio"
+      }
+    }
+  ],
+  "failure_modes": [
+    {
+      "scenario": "Petición a endpoint SuperAdmin sin token o con rol no autorizado",
+      "status_code": 403,
+      "error_code": "FORBIDDEN",
+      "action": "Bloquear petición y disparar correo de alerta de seguridad en segundo plano a octavio.velo2022@gmail.com"
+    },
+    {
+      "scenario": "Superación de Rate Limiter (más de 100 peticiones en 15 min)",
+      "status_code": 429,
+      "error_code": "TOO_MANY_REQUESTS",
+      "action": "Devolver mensaje de seguridad e IP limitada temporalmente"
+    }
+  ],
+  "testing_strategy": {
+    "integration_test_script": "back2/scripts/test_superadmin_management.js",
+    "verification": "Ejecución contra Neon PostgreSQL viva validando aprobación de schema, ajuste de límites y consulta de cuotas."
+  }
+}

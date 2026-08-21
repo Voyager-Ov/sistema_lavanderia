@@ -138,6 +138,8 @@ export function ServicioForm({ id }: ServicioFormProps) {
       }
       if (imageFile) {
         payload.append("imagen", imageFile)
+      } else {
+        payload.append("imagenUrl", formData.imagenUrl || "")
       }
 
       if (isEditing) {

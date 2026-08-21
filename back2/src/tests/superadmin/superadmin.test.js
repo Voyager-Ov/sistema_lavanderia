@@ -12,22 +12,29 @@ describe("Módulo de Administración Global (SuperAdmin)", () => {
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
 
-        const SuperAdmin = connectionManager.centralModels.SuperAdmin;
+        const { Usuario, Rol, Negocio } = connectionManager.centralModels;
+        const [superAdminRol] = await Rol.findOrCreate({
+            where: { nombre: "SUPER_ADMIN" },
+            defaults: { nombre: "SUPER_ADMIN", descripcion: "Rol de Administrador Global" }
+        });
         const passwordHash = await bcrypt.hash(adminPassword, 10);
-        await SuperAdmin.create({
+        const user = await Usuario.create({
             email: adminEmail,
-            passwordHash,
-            nombre: "Test SuperAdmin",
+            password: passwordHash,
+            emailConfirmado: true,
             activo: true
         });
+        await user.addRole(superAdminRol);
 
-        const Negocio = connectionManager.centralModels.Negocio;
-        await Negocio.create({
-            id: 999,
-            nombre: "Lavandería Test SuperAdmin",
-            subdominio: "test-superadmin",
-            activo: true,
-            estadoSuscripcion: "ACTIVA"
+        await Negocio.findOrCreate({
+            where: { id: 999 },
+            defaults: {
+                id: 999,
+                nombre: "Lavandería Test SuperAdmin",
+                subdominio: "test-superadmin",
+                activo: true,
+                estadoSuscripcion: "ACTIVA"
+            }
         });
     });
 
@@ -35,8 +42,8 @@ describe("Módulo de Administración Global (SuperAdmin)", () => {
         const res = await superAdminService.login(adminEmail, adminPassword);
         expect(res).toBeDefined();
         expect(res.token).toBeDefined();
-        expect(res.user.email).toBe(adminEmail);
-        expect(res.user.rol).toBe("SUPERADMIN_SYS");
+        expect(res.usuario.email).toBe(adminEmail);
+        expect(res.usuario.rol).toBe("SUPER_ADMIN");
     });
 
     it("2. Debe rechazar el login con contraseña incorrecta", async () => {

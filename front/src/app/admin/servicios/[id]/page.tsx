@@ -315,15 +315,23 @@ export default function ServicioDetallePage() {
           {/* Imagen */}
           <div className="detail-section bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 overflow-hidden shadow-xs">
             {imageUrl ? (
-              <div className="h-52 w-full">
+              <div className="h-52 w-full relative">
                 <img
                   src={imageUrl}
                   alt={servicio.nombre}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.currentTarget.style.display = 'none'
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    if (target.nextElementSibling) {
+                      (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                    }
                   }}
                 />
+                <div className="hidden h-52 w-full bg-gray-50 dark:bg-neutral-800/50 flex-col items-center justify-center gap-3">
+                  <Package className="w-14 h-14 text-gray-200 dark:text-neutral-700" />
+                  <p className="text-xs font-bold text-gray-300 dark:text-neutral-500 uppercase tracking-wide">Imagen no disponible</p>
+                </div>
               </div>
             ) : (
               <div className="h-52 w-full bg-gray-50 dark:bg-neutral-800/50 flex flex-col items-center justify-center gap-3">

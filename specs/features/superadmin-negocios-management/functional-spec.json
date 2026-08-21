@@ -1,0 +1,115 @@
+{
+  "feature_id": "superadmin-negocios-management",
+  "title": "Gestión Integral de Negocios, Cuotas de Almacenamiento e Imágenes, y Flujo de Aprobación de Registro por Super Admin",
+  "version": "1.0.0",
+  "product_scope": {
+    "in_scope": [
+      "Flujo de Solicitud de Registro de Negocio: En lugar de aprovisionar automáticamente el schema en el registro público, se genera una SolicitudNegocio en estado PENDIENTE.",
+      "Vista intermedia para el usuario solicitante mientras la solicitud esté en estado PENDIENTE o RECHAZADA, mostrando los datos registrados.",
+      "Notificación por email al Super Admin (octavio.velo2022@gmail.com) cuando un usuario ingresa una nueva solicitud de registro.",
+      "Módulo de gestión de Solicitudes en el Portal Super Admin: Listar, revisar datos, Aprobar (aprovisiona el schema y usuario admin) o Rechazar (notifica motivo al usuario).",
+      "Control de Almacenamiento y Cuotas por Negocio: Configurar cantidad máxima de imágenes permitidas (maxImagenes) y almacenamiento en GB/MB por tenant.",
+      "Monitoreo de Almacenamiento Usado: Calcular y visualizar GB/MB ocupados y cantidad de fotos por negocio.",
+      "Gestión y Limpieza de Imágenes por Tenant: Listar imágenes subidas por un negocio específico y permitir eliminarlas individualmente o en lote desde el Super Admin.",
+      "Control de Estado Operativo y Suscripción: Activar/Desactivar un negocio y gestionar su estado de suscripción (PRUEBA, ACTIVA, SUSPENDIDA, CANCELADA)."
+    ],
+    "out_of_scope": [
+      "Procesamiento de pagos de tarjetas de crédito o pasarelas para cobro automatizado de suscripciones.",
+      "Migración de schemas de bases de datos externas de terceros."
+    ]
+  },
+  "user_journeys": [
+    {
+      "role": "Usuario Registrante (Dueño de negocio en potencia)",
+      "goal": "Solicitar la apertura de un nuevo negocio en la plataforma",
+      "steps": [
+        "Completa el formulario de registro con sus datos personales y del negocio (nombre, email, teléfono, cuit/razón social, subdominio deseado).",
+        "El sistema genera una solicitud en estado PENDIENTE y notifica al Super Admin.",
+        "Si el usuario intenta iniciar sesión mientras está pendiente, visualiza la Vista Intermedia de Espera de Aprobación con el resumen de sus datos.",
+        "Al ser aprobada la solicitud, recibe un email de confirmación y puede ingresar normalmente a su panel de administración."
+      ]
+    },
+    {
+      "role": "Super Admin",
+      "goal": "Aprobar/Rechazar solicitudes de nuevos negocios y gestionar límites y recursos de los negocios activos",
+      "steps": [
+        "Ingresa al Portal Super Admin y navega a la pestaña de Solicitudes de Registro.",
+        "Revisa la lista de solicitudes pendientes, inspecciona los datos del solicitante y presiona 'Aprobar' o 'Rechazar'.",
+        "Al aprobar, el sistema aprovisiona automáticamente el negocio, el schema de base de datos y la cuenta de usuario admin.",
+        "Navega a la pestaña de Gestión de Negocios para ajustar el límite de imágenes (maxImagenes) y cuota de almacenamiento en GB.",
+        "Inspecciona el espacio utilizado por un negocio, abre el explorador de imágenes del tenant y elimina imágenes si es necesario.",
+        "Cambia el estado operativo (Activo/Inactivo) o el estado de suscripción del negocio cuando sea necesario."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "title": "Creación de Solicitud de Registro de Negocio",
+      "given": "Un usuario no autenticado que completa el formulario de registro de negocio",
+      "when": "Envía el formulario con datos válidos",
+      "then": "El sistema guarda una SolicitudNegocio con estado 'PENDIENTE', envía un correo de notificación al Super Admin y no aprovisiona el schema de base de datos de inmediato."
+    },
+    {
+      "id": "AC-02",
+      "title": "Vista Intermedia de Solicitud Pendiente",
+      "given": "Un usuario cuyo registro de negocio se encuentra en estado 'PENDIENTE'",
+      "when": "Intenta ingresar a la aplicación",
+      "then": "El sistema muestra la pantalla intermedia informando que su solicitud está en revisión por el Super Admin junto con el desglose de los datos enviados."
+    },
+    {
+      "id": "AC-03",
+      "title": "Aprobación de Solicitud por Super Admin",
+      "given": "El Super Admin revisa una solicitud en estado 'PENDIENTE' en el portal Super Admin",
+      "when": "Hace clic en 'Aprobar Solicitud'",
+      "then": "El sistema crea la entrada de Negocio en la BD central, aprovisiona el schema del tenant, crea el usuario Administrador y notifica por email al usuario solicitante."
+    },
+    {
+      "id": "AC-04",
+      "title": "Rechazo de Solicitud por Super Admin",
+      "given": "El Super Admin revisa una solicitud en estado 'PENDIENTE'",
+      "when": "Hace clic en 'Rechazar Solicitud' e ingresa un motivo",
+      "then": "La solicitud pasa a estado 'RECHAZADO' y se envía un correo explicativo al solicitante."
+    },
+    {
+      "id": "AC-05",
+      "title": "Gestión de Cuota de Almacenamiento e Imágenes",
+      "given": "El Super Admin edita la configuración de un negocio en la consola",
+      "when": "Modifica el límite de imágenes permitidas o los GB máximos asignados",
+      "then": "El negocio actualiza sus parámetros y las operaciones del tenant validan la subida de imágenes respetando los nuevos límites."
+    },
+    {
+      "id": "AC-06",
+      "title": "Visualización y Eliminación de Imágenes del Tenant",
+      "given": "El Super Admin accede al desglose de recursos de un negocio",
+      "when": "Visualiza la galería de imágenes del tenant y selecciona 'Eliminar'",
+      "then": "La imagen seleccionada se borra físicamente del almacenamiento/disco y de la base de datos del tenant, actualizando el consumo de almacenamiento en tiempo real."
+    },
+    {
+      "id": "AC-07",
+      "title": "Control de Estado Operativo",
+      "given": "El Super Admin conmuta el switch de 'Activo'/'Inactivo' de un negocio",
+      "when": "Se desactiva un negocio",
+      "then": "Los usuarios de ese negocio reciben un bloqueo de acceso 'Negocio Suspendido' al intentar ingresar."
+    }
+  ],
+  "ux_behavior": {
+    "superadmin_portal": {
+      "tabs": ["Tableros y Salud", "Gestión de Negocios", "Solicitudes Pendientes"],
+      "negocio_row_actions": ["Editar Límites (GB / Fotos)", "Galería de Imágenes", "Activar/Desactivar", "Cambiar Suscripción"],
+      "solicitud_row_actions": ["Aprobar", "Rechazar"],
+      "modal_galeria": "Permite previsualizar miniaturas, ver el peso en MB de cada imagen y eliminar individualmente o masivamente.",
+      "responsive_sheet": "Formulario lateral para configurar cuotas de almacenamiento y cantidad máxima de imágenes."
+    },
+    "solicitante_pending_view": {
+      "design": "Pantalla informativa elegante con badge 'Pendiente de Aprobación', resumen de datos ingresados y botón de cierre de sesión."
+    }
+  },
+  "business_rules": [
+    "BR-01: Ningún schema de tenant puede crearse automáticamente sin la aprobación explícita del Super Admin.",
+    "BR-02: Las notificaciones de nuevas solicitudes deben ser enviadas al correo del Super Admin configurado (ej: octavio.velo2022@gmail.com).",
+    "BR-03: Cada negocio tiene un límite explícito de almacenamiento en GB (por defecto 1 GB) y cantidad de imágenes (por defecto 50 imágenes).",
+    "BR-04: Si un tenant supera el peso o número de imágenes permitidas, la subida de nuevos archivos se bloquea arrojando un AppError HTTP 400 (STORAGE_LIMIT_EXCEEDED).",
+    "BR-05: El Super Admin puede eliminar imágenes de cualquier tenant para liberar espacio sin afectar la integridad referencial del negocio."
+  ]
+}

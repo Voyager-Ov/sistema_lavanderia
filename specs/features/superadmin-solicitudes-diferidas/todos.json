@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-solicitudes-diferidas",
+  "title": "Todos y Tareas de Ejecución - Solicitudes Diferidas y Aprovisionamiento",
+  "version": "1.1.0",
+  "status": "APPROVED",
+  "tasks": [
+    {
+      "id": "TASK-SOL-01",
+      "title": "Verificación del Servicio de Registro Diferido y Modelo SolicitudNegocio",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["back2/src/modules/auth/services/register.service.js"],
+      "exit_criteria": "SolicitudNegocio almacena estado PENDIENTE y passwordHash sin aprovisionar esquema prematuramente."
+    },
+    {
+      "id": "TASK-SOL-02",
+      "title": "Aprovisionamiento Atómico e Integración con Nodemailer",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-SOL-01"],
+      "outputs": ["back2/src/modules/superadmin/services/superadmin.service.js"],
+      "exit_criteria": "aprobarSolicitud crea el esquema tenant en PostgreSQL y notifica por email."
+    },
+    {
+      "id": "TASK-SOL-03",
+      "title": "Integración del ResponsiveSheet para Motivo de Rechazo en Front-End",
+      "owner_role": "Frontend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-SOL-02"],
+      "outputs": ["front/src/app/(superadmin)/superadmin/dashboard/page.tsx"],
+      "exit_criteria": "El formulario modal ResponsiveSheet captura motivoRechazoInput y llama al endpoint de rechazo."
+    },
+    {
+      "id": "TASK-SOL-04",
+      "title": "Redirección Intermedia /solicitud-pendiente para usuarios PENDIENTE o RECHAZADO",
+      "owner_role": "Frontend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-SOL-03"],
+      "outputs": ["front/src/app/(auth)/solicitud-pendiente/page.tsx"],
+      "exit_criteria": "Los usuarios en estado PENDIENTE o RECHAZADO son recibidos en la vista intermedia con la información de su trámite."
+    }
+  ]
+}

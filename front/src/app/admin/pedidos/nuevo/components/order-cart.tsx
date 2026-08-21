@@ -5,8 +5,9 @@ import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import { Cliente } from "@/domains/clientes/api"
 import { Producto } from "@/domains/productos/api"
-import { ShoppingBag, Trash2, Plus, Minus, Loader2, ArrowRight, Calendar, Clock, Zap } from "lucide-react"
+import { ShoppingBag, Trash2, Plus, Minus, Loader2, ArrowRight, Calendar, Clock, Zap, Package } from "lucide-react"
 import { DateTimePicker } from "@/shared/ui/forms/date-time-picker"
+import { getImageUrl } from "@/shared/lib/utils"
 
 export interface CartItem {
   producto: Producto
@@ -200,53 +201,70 @@ export function OrderCart({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {cart.map(item => (
-              <div key={item.producto.id} className="cart-item bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col gap-3 group transition-colors">
-                <div className="flex justify-between items-start gap-2">
-                  <h4 className="font-semibold text-foreground leading-tight transition-colors">{item.producto.nombre}</h4>
-                  <button 
-                    onClick={() => removeItem(item.producto.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between mt-auto">
-                  <div className="flex items-center bg-muted rounded-lg border border-border p-1 transition-colors">
+            {cart.map(item => {
+              const img = getImageUrl(item.producto.imagenUrl)
+              return (
+                <div key={item.producto.id} className="cart-item bg-card p-3 rounded-xl border border-border shadow-sm flex flex-col gap-2.5 group transition-colors">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={item.producto.nombre}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none' }}
+                          />
+                        ) : (
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-foreground text-sm leading-snug truncate transition-colors">{item.producto.nombre}</h4>
+                    </div>
                     <button 
-                      onClick={() => item.cantidad > 1 ? updateQuantity(item.producto.id, -1) : removeItem(item.producto.id)}
-                      className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
+                      onClick={() => removeItem(item.producto.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100 p-1"
                     >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10000"
-                      value={item.cantidad}
-                      onChange={(e) => {
-                        let val = parseInt(e.target.value);
-                        if (isNaN(val) || val < 1) val = 1;
-                        if (val > 10000) val = 10000;
-                        updateQuantity(item.producto.id, val - item.cantidad);
-                      }}
-                      className="w-12 text-center font-semibold text-sm text-foreground bg-transparent border-none focus:ring-0 p-0 appearance-none m-0 [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <button 
-                      onClick={() => updateQuantity(item.producto.id, 1)}
-                      className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  
-                  <span className="font-bold text-foreground transition-colors">
-                    ${item.subtotal.toLocaleString('es-AR')}
-                  </span>
+                
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex items-center bg-muted rounded-lg border border-border p-1 transition-colors">
+                      <button 
+                        onClick={() => item.cantidad > 1 ? updateQuantity(item.producto.id, -1) : removeItem(item.producto.id)}
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10000"
+                        value={item.cantidad}
+                        onChange={(e) => {
+                          let val = parseInt(e.target.value);
+                          if (isNaN(val) || val < 1) val = 1;
+                          if (val > 10000) val = 10000;
+                          updateQuantity(item.producto.id, val - item.cantidad);
+                        }}
+                        className="w-12 text-center font-semibold text-sm text-foreground bg-transparent border-none focus:ring-0 p-0 appearance-none m-0 [-moz-appearance:_textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button 
+                        onClick={() => updateQuantity(item.producto.id, 1)}
+                        className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-background hover:shadow-sm rounded-md transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    
+                    <span className="font-bold text-foreground transition-colors">
+                      ${item.subtotal.toLocaleString('es-AR')}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

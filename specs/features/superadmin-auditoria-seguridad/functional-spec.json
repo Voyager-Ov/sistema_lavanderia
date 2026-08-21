@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-auditoria-seguridad",
+  "title": "Consola SuperAdmin - Vista Auditoría de Seguridad, Alertas RBAC y Logs de Actividad",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "description": "Especificación funcional para el centro de auditoría de seguridad y monitoreo de eventos de la consola SuperAdmin. Registra intentos de acceso no autorizados, violaciones de política RBAC, ejecuciones del Rate Limiter y modificaciones administrativas sensibles.",
+  "scope": {
+    "in_scope": [
+      "Visor centralizado de logs de auditoría de seguridad (/superadmin/dashboard?tab=seguridad)",
+      "Filtros de registros por nivel de severidad (LOW, MEDIUM, HIGH, CRITICAL), IP o correo de usuario",
+      "Alertas automáticas de bloqueo por Rate Limiter (100 pet/15 min por IP)",
+      "Registro de accesos denegados por rol (403 FORBIDDEN / 401 UNAUTHORIZED)",
+      "Despliegue de métricas de seguridad y visor en tiempo real"
+    ],
+    "out_of_scope": [
+      "Integración con SIEM externo como Splunk o Datadog (toda la auditoría se aloja en Neon PostgreSQL)"
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-SEC-01",
+      "title": "SuperAdmin inspecciona intentos de acceso no autorizados",
+      "actor": "SuperAdmin",
+      "steps": [
+        "Navega a la pestaña 'Auditoría & Seguridad' (/superadmin/dashboard?tab=seguridad)",
+        "Observa el cuadro resumen con total de peticiones analizadas y bloqueos por IP",
+        "Inspecciona la tabla de registros ordenados de forma cronológica descendente",
+        "Filtra por severidad 'HIGH' o 'CRITICAL' para aislar intentos sospechosos de fuerza bruta",
+        "Visualiza la IP, User Agent, Endpoint intentado y hora exacta del evento"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-SEC-01",
+      "title": "Registro Inmutable de Auditoría en Base Central",
+      "given": "Cualquier evento de seguridad o acceso administrativo ejecutado en la API",
+      "when": "Se dispara una excepción de seguridad (401/403/429) o una modificación de cuotas",
+      "then": "Se crea un registro en AlertaSeguridad en Neon PostgreSQL asignando la IP del cliente, endpoint, timestamp y nivel de severidad."
+    },
+    {
+      "id": "AC-SEC-02",
+      "title": "Visualización y Filtrado de Logs en Front-End",
+      "given": "El SuperAdmin consultando la vista de auditoría",
+      "when": "Carga la pestaña 'Auditoría & Seguridad'",
+      "then": "Se muestran los últimos 100 eventos ordenados cronológicamente con badges de severidad codificados por color."
+    }
+  ]
+}

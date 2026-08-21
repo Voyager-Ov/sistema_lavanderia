@@ -2,6 +2,7 @@ import { Sequelize, DataTypes } from "sequelize";
 
 import NegocioModel from "./Negocio.js";
 import UsuarioModel from "./Usuario.js";
+import SolicitudNegocioModel from "./SolicitudNegocio.js";
 import ClienteModel from "./Cliente.js";
 import PedidoModel from "./Pedido.js";
 import MetodoPagoModel from "./MetodoPago.js";
@@ -23,6 +24,8 @@ import CobroModel from "./Cobro.js";
 import FacturaModel from "./Factura.js";
 import MotivoCancelacionModel from "./MotivoCancelacion.js";
 import HistorialPrecioServicioModel from "./HistorialPrecioServicio.js";
+import MensajeSistemaModel from "./MensajeSistema.js";
+import AlertaSeguridadModel from "./AlertaSeguridad.js";
 
 class ConnectionManager {
     constructor() {
@@ -55,10 +58,18 @@ class ConnectionManager {
         }
 
         // Solo cargar modelos centrales en la conexión central
+        const getModel = (modelFunc) => {
+            const m = modelFunc(this.centralDb, DataTypes);
+            return isTest ? m : m.schema('public');
+        };
+
         this.centralModels = {
-            Usuario: UsuarioModel(this.centralDb, DataTypes).schema('public'),
-            Negocio: NegocioModel(this.centralDb, DataTypes).schema('public'),
-            Rol: RolModel(this.centralDb, DataTypes).schema('public')
+            Usuario: getModel(UsuarioModel),
+            Negocio: getModel(NegocioModel),
+            Rol: getModel(RolModel),
+            SolicitudNegocio: getModel(SolicitudNegocioModel),
+            MensajeSistema: getModel(MensajeSistemaModel),
+            AlertaSeguridad: getModel(AlertaSeguridadModel)
         };
         
         // Asociar modelos centrales
@@ -71,6 +82,8 @@ class ConnectionManager {
         await this.centralDb.query(`
             ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS activo boolean DEFAULT true;
             ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "estadoSuscripcion" varchar(50) DEFAULT 'ACTIVA';
+            ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "maxImagenes" integer DEFAULT 50;
+            ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "maxStorageGB" double precision DEFAULT 1.0;
         `).catch(() => {});
         await this.centralDb.sync();
         console.log("🟢 Base de Datos Central conectada y sincronizada.");

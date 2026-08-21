@@ -102,8 +102,39 @@ class LoginService {
             include: [{ model: Rol, as: "Roles", through: { attributes: [] } }]
         });
 
-        if (!usuario || !usuario.activo) {
+        if (!usuario) {
+            // Verificar si el usuario tiene una SolicitudNegocio en estado PENDIENTE o RECHAZADO
+            const { SolicitudNegocio } = connectionManager.centralModels;
+            if (SolicitudNegocio) {
+                const solicitud = await SolicitudNegocio.findOne({
+                    where: { emailSolicitante: userEmail }
+                });
+                if (solicitud) {
+                    const isMatch = await bcrypt.compare(password, solicitud.passwordHash).catch(() => false);
+                    if (isMatch) {
+                        if (solicitud.estado === "PENDIENTE") {
+                            throw new AppError(
+                                "Tu solicitud de apertura de negocio aún está en revisión por el Super Admin.",
+                                403,
+                                "REGISTRATION_PENDING",
+                                { solicitud: { id: solicitud.id, nombreNegocio: solicitud.nombreNegocio, estado: solicitud.estado, createdAt: solicitud.createdAt } }
+                            );
+                        } else if (solicitud.estado === "RECHAZADO") {
+                            throw new AppError(
+                                `Tu solicitud de apertura de negocio fue rechazada. Motivo: ${solicitud.motivoRechazo || 'Sin especificar'}`,
+                                403,
+                                "REGISTRATION_REJECTED",
+                                { solicitud: { id: solicitud.id, nombreNegocio: solicitud.nombreNegocio, estado: solicitud.estado, motivoRechazo: solicitud.motivoRechazo } }
+                            );
+                        }
+                    }
+                }
+            }
             throw new AppError("Credenciales inválidas. Por favor, verifica tu correo y contraseña.", 401, "INVALID_CREDENTIALS");
+        }
+
+        if (!usuario.activo) {
+            throw new AppError("Tu cuenta de usuario se encuentra desactivada.", 403, "USER_DISABLED");
         }
 
         const userPassword = usuario.password || usuario.passwordHash;

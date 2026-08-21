@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-mensajeria-broadcast",
+  "title": "Todos y Tareas de Ejecución - Mensajería Broadcast y Anuncios",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "tasks": [
+    {
+      "id": "TASK-MSG-01",
+      "title": "Creación del Modelo MensajeSistema.js en Base Central",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["back2/src/models/MensajeSistema.js", "back2/src/models/connectionManager.js"],
+      "exit_criteria": "El modelo MensajeSistema está registrado en centralModels y mapeado en Neon PostgreSQL."
+    },
+    {
+      "id": "TASK-MSG-02",
+      "title": "Endpoints y Servicios Broadcast en Backend",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-MSG-01"],
+      "outputs": ["back2/src/modules/superadmin/services/superadmin.service.js", "back2/src/modules/superadmin/controllers/superadmin.controller.js", "back2/src/modules/superadmin/superadmin.routes.js", "back2/src/modules/auth/auth.routes.js"],
+      "exit_criteria": "POST /api/superadmin/mensajes, GET /api/superadmin/mensajes y GET /api/anuncios/activos están funcionales."
+    },
+    {
+      "id": "TASK-MSG-03",
+      "title": "Ejecución de Script de Verificación contra Neon PostgreSQL",
+      "owner_role": "QA / Backend Lead",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-MSG-02"],
+      "outputs": ["back2/scripts/test_broadcast_and_audit.js"],
+      "exit_criteria": "El script de prueba test_broadcast_and_audit.js se ejecuta 100% exitoso."
+    }
+  ]
+}

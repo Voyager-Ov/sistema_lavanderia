@@ -118,3 +118,45 @@ export const eliminarServicio = async (req, res, next) => {
         next(error);
     }
 };
+
+// ─── CONTROLADORES DE CATEGORÍAS DE SERVICIOS ───
+
+export const listarCategorias = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await categoriasService.listarCategorias(negocioId);
+        return successResponse(res, 200, "Categorías recuperadas exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const crearCategoria = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const categoria = await categoriasService.crearCategoria(negocioId, req.body);
+        return successResponse(res, 201, "Categoría creada exitosamente", categoria);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const actualizarCategoria = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const categoria = await categoriasService.actualizarCategoria(negocioId, req.params.id, req.body);
+        return successResponse(res, 200, "Categoría actualizada exitosamente", categoria);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const eliminarCategoria = async (req, res, next) => {
+    try {
+        const negocioId = getTenantId(req);
+        const result = await categoriasService.eliminarCategoria(negocioId, req.params.id);
+        return successResponse(res, 200, "Categoría eliminada exitosamente", result);
+    } catch (error) {
+        next(error);
+    }
+};

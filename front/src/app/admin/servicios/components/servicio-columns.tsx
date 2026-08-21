@@ -7,7 +7,8 @@ import { Badge } from "@/shared/ui/data-display/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/overlays/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/overlays/dropdown-menu"
 import { Edit, History, Power, PowerOff, Clock, MoreHorizontal, Eye } from "lucide-react"
-import { cn } from "@/shared/lib/utils"
+import { cn, getImageUrl } from "@/shared/lib/utils"
+import { Package } from "lucide-react"
 
 // Paleta de colores para categorías (rotativa)
 const CATEGORY_COLORS = [
@@ -59,6 +60,31 @@ export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<a
       ),
       enableSorting: false,
       enableHiding: false,
+    },
+    {
+      accessorKey: "imagenUrl",
+      header: "Foto",
+      cell: ({ row }) => {
+        const s = row.original
+        const img = getImageUrl(s.imagenUrl)
+        return (
+          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 overflow-hidden flex items-center justify-center shrink-0">
+            {img ? (
+              <img
+                src={img}
+                alt={s.nombre}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = "none"
+                }}
+              />
+            ) : (
+              <Package className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+            )}
+          </div>
+        )
+      },
+      enableSorting: false,
     },
     {
       accessorKey: "nombre",

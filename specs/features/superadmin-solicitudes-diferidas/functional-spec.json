@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-solicitudes-diferidas",
+  "title": "Consola SuperAdmin - Vista Solicitudes de Registro Diferido y Aprovisionamiento Multitenant",
+  "version": "1.1.0",
+  "status": "APPROVED",
+  "description": "Especificación funcional exhaustiva para la gestión de solicitudes diferidas de apertura de negocios. Permite al SuperAdmin auditar solicitudes públicas, verificar datos fiscales (CUIT/Razón Social), aprovisionar esquemas atómicos en Neon PostgreSQL y rechazar solicitudes notificando vía correo electrónico.",
+  "scope": {
+    "in_scope": [
+      "Auditoría y filtrado de solicitudes por estado (PENDIENTE, APROBADO, RECHAZADO)",
+      "Búsqueda por correo de solicitante, subdominio o CUIT",
+      "Aprobación atómica con creación de registro central Negocio, esquema aislado PostgreSQL (tenant_X) y cuenta Usuario ADMIN",
+      "Envío de email automático de aprobación y bienvenida con enlace de acceso al portal del negocio",
+      "Despliegue de modal ResponsiveSheet para rechazar solicitudes con motivo explicativo obligatorio",
+      "Envío de email automático de rechazo detallando la razón especificada por el SuperAdmin",
+      "Redirección limpia de usuarios en estado PENDIENTE o RECHAZADO hacia la vista intermedia /solicitud-pendiente"
+    ],
+    "out_of_scope": [
+      "Validación AFIP de certificados digitales durante la etapa de solicitud (se configura posteriormente en Ajustes del negocio)"
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-SOL-01",
+      "title": "Registro público diferido desde la Landing de Registro",
+      "actor": "Usuario Solicitante",
+      "steps": [
+        "Ingresa a /register y completa el formulario con datos personales, contraseña, nombre de negocio, CUIT y subdominio",
+        "El servidor valida que el correo no esté en uso y guarda un registro SolicitudNegocio en estado PENDIENTE",
+        "El servidor notifica por email al SuperAdmin (octavio.velo2022@gmail.com) sobre la nueva solicitud recibida",
+        "El solicitante ve el mensaje: 'Solicitud enviada exitosamente. Tu cuenta será activada una vez aprobada por el SuperAdmin.'"
+      ]
+    },
+    {
+      "journey_id": "UJ-SOL-02",
+      "title": "SuperAdmin revisa y aprueba la solicitud diferida",
+      "actor": "SuperAdmin",
+      "steps": [
+        "Accede a /superadmin/dashboard?tab=solicitudes",
+        "Observa la lista de tarjetas con distintivo PENDIENTE y contador de solicitudes pendientes en la cabecera",
+        "Verifica los datos del negocio (CUIT, Razón Social, teléfono y subdominio)",
+        "Hace clic en el botón 'Aprobar & Crear Schema'",
+        "El backend ejecuta la transacción SQL creando el Negocio, el esquema aislado PostgreSQL y el Usuario/Empleado inicial",
+        "Se envía automáticamente el email de bienvenida al solicitante y la tarjeta pasa al estado APROBADO"
+      ]
+    },
+    {
+      "journey_id": "UJ-SOL-03",
+      "title": "SuperAdmin rechaza una solicitud incompleta con motivo explícito",
+      "actor": "SuperAdmin",
+      "steps": [
+        "En la lista de solicitudes, localiza una solicitud con datos inválidos",
+        "Hace clic en el botón 'Rechazar'",
+        "Se despliega el overlay ResponsiveSheet 'Rechazar Solicitud de Apertura'",
+        "Ingresa el motivo (ej: 'El CUIT ingresado no coincide con los registros comerciales') y confirma",
+        "El servidor actualiza el estado a RECHAZADO, persiste motivoRechazo y notifica por email al usuario"
+      ]
+    },
+    {
+      "journey_id": "UJ-SOL-04",
+      "title": "Intento de inicio de sesión de usuario en revisión o rechazado",
+      "actor": "Usuario Solicitante",
+      "steps": [
+        "Intenta iniciar sesión en /login antes de que la solicitud sea aprobada",
+        "El servidor detecta que la cuenta está en estado PENDIENTE o RECHAZADO",
+        "Muestra una alerta explicativa y redirige automáticamente a /solicitud-pendiente?email=...&status=..."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-SOL-01",
+      "title": "Creación Atómica de Schema y Aprovisionamiento",
+      "given": "Una solicitud de negocio en estado PENDIENTE",
+      "when": "El SuperAdmin presiona 'Aprobar & Crear Schema'",
+      "then": "El backend ejecuta sustanciarAprobacionNegocio(), crea la base del negocio, genera el esquema aislado tenant_X, vincula el legajo N°1 del Empleado y dispara el correo de bienvenida retornando status 200 OK."
+    },
+    {
+      "id": "AC-SOL-02",
+      "title": "Modal ResponsiveSheet y Envío de Email de Rechazo",
+      "given": "El overlay ResponsiveSheet de rechazo abierto en desktop o mobile",
+      "when": "El SuperAdmin ingresa un motivo válido de al menos 5 caracteres y confirma",
+      "then": "El estado de la solicitud se actualiza a RECHAZADO, el motivo se registra en BD y se envía el email explicativo al correo del solicitante."
+    },
+    {
+      "id": "AC-SOL-03",
+      "title": "Redirección Intermedia /solicitud-pendiente",
+      "given": "Un usuario solicitante sin aprobación",
+      "when": "Intenta autenticarse con sus credenciales en /login",
+      "then": "El sistema le impide el acceso al panel y lo redirige a /solicitud-pendiente desplegando el estado exacto de su trámite."
+    }
+  ],
+  "ux_expectations": {
+    "layout": "Pestaña 'Solicitudes' dentro de AppLayout con AppSidebar, AppHeader y MobileBottomNav",
+    "overlays": "ResponsiveSheet para el formulario de motivo de rechazo",
+    "feedback": "Badges de color en vivo: PENDIENTE (Amarillo), APROBADO (Verde), RECHAZADO (Rojo)"
+  }
+}

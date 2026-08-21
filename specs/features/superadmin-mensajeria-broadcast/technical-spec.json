@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-mensajeria-broadcast",
+  "title": "Especificación Técnica - Mensajería Broadcast y Anuncios",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "architecture": {
+    "frontend_layer": {
+      "components": ["BroadcastMessagesTab", "ResponsiveSheet", "SystemBannerHeader"],
+      "route": "/superadmin/dashboard?tab=mensajes"
+    },
+    "backend_layer": {
+      "service": "superAdminService.crearMensajeBroadcast / listarMensajesBroadcast / desactivarMensaje",
+      "routes": "POST /api/superadmin/mensajes, GET /api/superadmin/mensajes, PATCH /api/superadmin/mensajes/:id/desactivar, GET /api/anuncios/activos"
+    },
+    "database_layer": {
+      "model": "MensajeSistema (Schema: public)",
+      "fields": ["titulo", "contenido", "tipo", "negocioId", "fechaInicio", "fechaFin", "activo", "creadoPor"]
+    }
+  },
+  "api_contracts": [
+    {
+      "endpoint": "POST /api/superadmin/mensajes",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "payload": {
+        "titulo": "string",
+        "contenido": "string",
+        "tipo": "INFO|WARNING|URGENT|MAINTENANCE",
+        "negocioId": "number|null"
+      },
+      "response_success": { "status": "success", "data": "MensajeSistema" }
+    },
+    {
+      "endpoint": "GET /api/anuncios/activos",
+      "response_success": { "status": "success", "data": "Array<MensajeSistema>" }
+    }
+  ]
+}

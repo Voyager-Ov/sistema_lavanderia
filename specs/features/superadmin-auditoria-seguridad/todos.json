@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-auditoria-seguridad",
+  "title": "Todos y Tareas de Ejecución - Auditoría de Seguridad",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "tasks": [
+    {
+      "id": "TASK-SEC-01",
+      "title": "Creación del Modelo AlertaSeguridad.js y Registro en centralModels",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["back2/src/models/AlertaSeguridad.js", "back2/src/models/connectionManager.js"],
+      "exit_criteria": "El modelo AlertaSeguridad está registrado en la base central public de Neon PostgreSQL."
+    },
+    {
+      "id": "TASK-SEC-02",
+      "title": "Endpoint GET /api/superadmin/seguridad/logs y Método superAdminService.listarLogsSeguridad",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-SEC-01"],
+      "outputs": ["back2/src/modules/superadmin/services/superadmin.service.js", "back2/src/modules/superadmin/controllers/superadmin.controller.js", "back2/src/modules/superadmin/superadmin.routes.js"],
+      "exit_criteria": "GET /api/superadmin/seguridad/logs retorna los últimos 100 eventos de seguridad registrados."
+    },
+    {
+      "id": "TASK-SEC-03",
+      "title": "Verificación y Prueba de Integración con Base Neon PostgreSQL",
+      "owner_role": "QA / Backend Lead",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-SEC-02"],
+      "outputs": ["back2/scripts/test_broadcast_and_audit.js"],
+      "exit_criteria": "El script de prueba test_broadcast_and_audit.js verifica la inserción y lectura de logs de auditoría 100% verde."
+    }
+  ]
+}

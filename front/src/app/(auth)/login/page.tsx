@@ -71,17 +71,32 @@ export default function LoginPage() {
         toast.success("¡Bienvenido!", { description: "Has iniciado sesión exitosamente." });
         
         const rol = res.data.usuario.rol?.toLowerCase() || "";
-        if (rol.includes("admin")) {
+        if (rol.includes("superadmin")) {
+          localStorage.setItem("superadmin_token", res.data.token);
+          router.push("/superadmin/dashboard");
+        } else if (rol.includes("admin")) {
           router.push("/admin/dashboard");
         } else {
           router.push("/pos/pedidos");
         }
       }
     } catch (error: any) {
-      const errorMsg = error.message;
+      const errorMsg = error.message || "";
       
+      // Si el backend indica que la solicitud está en revisión o rechazada, redirigir a la vista intermedia
+      if (errorMsg.includes("revisión") || errorMsg.includes("solicitud") || errorMsg.includes("rechazada")) {
+        const isRechazado = errorMsg.includes("rechazada");
+        toast.info(isRechazado ? "Solicitud Rechazada" : "Solicitud en Revisión", {
+          description: "Te hemos redirigido a la vista de estado de tu solicitud."
+        });
+        const emailEnc = encodeURIComponent(data.email);
+        const status = isRechazado ? "RECHAZADO" : "PENDIENTE";
+        router.push(`/solicitud-pendiente?email=${emailEnc}&status=${status}`);
+        return;
+      }
+
       // Si el backend dice que no está verificado, redirigir
-      if (errorMsg?.includes("verificar tu email") || errorMsg?.includes("verificado")) {
+      if (errorMsg.includes("verificar tu email") || errorMsg.includes("verificado")) {
         toast.warning("Cuenta no verificada", { description: "Te hemos redirigido para que verifiques tu correo." });
         router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
         return;

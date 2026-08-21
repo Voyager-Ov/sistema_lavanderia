@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-mensajeria-broadcast",
+  "title": "Consola SuperAdmin - Mensajería Broadcast y Anuncios del Sistema",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "description": "Especificación funcional para el centro de anuncios y mensajes broadcast emitida por el SuperAdmin hacia todos los negocios (o tenants específicos). Permite notificar mantenimientos programados, avisos urgentes o comunicados de actualización.",
+  "scope": {
+    "in_scope": [
+      "Creación de mensajes con severidad (INFO, WARNING, URGENT, MAINTENANCE)",
+      "Selección de alcance: Todos los negocios (Global) o Tenant Específico",
+      "Listado e historial de anuncios activos e inactivos",
+      "Desactivación instantánea de banners en tiempo real",
+      "Despliegue de banners animados en la cabecera de las vistas Admin y POS"
+    ],
+    "out_of_scope": [
+      "Chat bidireccional en vivo tipo WhatsApp (es un sistema de transmisión unidireccional broadcast)"
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-MSG-01",
+      "title": "SuperAdmin emite un aviso de mantenimiento programado global",
+      "actor": "SuperAdmin",
+      "steps": [
+        "Navega a la pestaña 'Mensajería Broadcast' (/superadmin/dashboard?tab=mensajes)",
+        "Abre el panel ResponsiveSheet 'Nuevo Anuncio Broadcast'",
+        "Ingresa Título: 'Mantenimiento de Servidores', Contenido: 'Se realizará una actualización hoy a las 23:00 hs', Tipo: 'MAINTENANCE'",
+        "Selecciona Alcance: 'Todos los negocios (Global)' y presiona Publicar Anuncio",
+        "El mensaje se guarda en la BD central y aparece inmediatamente en el Header de todos los tenants"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-MSG-01",
+      "title": "Publicación y Visibilidad de Anuncios Broadcast",
+      "given": "Un anuncio activo creado por el SuperAdmin",
+      "when": "Cualquier usuario de tenant ingresa al sistema",
+      "then": "El Header consulta GET /api/anuncios/activos y muestra el banner con el color y severidad correspondiente."
+    }
+  ]
+}

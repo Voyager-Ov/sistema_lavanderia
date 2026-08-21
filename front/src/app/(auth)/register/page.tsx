@@ -62,8 +62,10 @@ export default function RegisterPage() {
       });
       
       if (res.data) {
-        toast.success("¡Cuenta creada!", { description: "Revisa tu bandeja de entrada para verificar tu cuenta." });
-        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        toast.success("Solicitud enviada", { description: "Tu solicitud de apertura de negocio fue enviada al Super Admin." });
+        const emailEnc = encodeURIComponent(data.email);
+        const negocioEnc = encodeURIComponent(data.negocioNombre);
+        router.push(`/solicitud-pendiente?email=${emailEnc}&negocio=${negocioEnc}`);
       }
     } catch (error: any) {
       toast.error("Error al registrarse", {

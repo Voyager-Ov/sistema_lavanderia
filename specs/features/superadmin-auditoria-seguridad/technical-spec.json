@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-auditoria-seguridad",
+  "title": "Especificación Técnica - Auditoría de Seguridad y Logs RBAC",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "architecture": {
+    "frontend_layer": {
+      "components": ["SecurityAuditTab", "AuditLogsTable", "SeverityBadge"],
+      "route": "/superadmin/dashboard?tab=seguridad"
+    },
+    "backend_layer": {
+      "service": "superAdminService.listarLogsSeguridad",
+      "controller": "superadmin.controller.getLogsSeguridad",
+      "route": "GET /api/superadmin/seguridad/logs"
+    },
+    "database_layer": {
+      "model": "AlertaSeguridad (Schema: public)",
+      "fields": ["usuarioEmail", "rol", "endpoint", "metodo", "ip", "userAgent", "negocioId", "nivel", "detalles"]
+    }
+  },
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/superadmin/seguridad/logs",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "response_success": {
+        "status": "success",
+        "data": [
+          {
+            "id": 1,
+            "usuarioEmail": "desconocido@ip.com",
+            "rol": "UNKNOWN",
+            "endpoint": "/api/superadmin/negocios",
+            "metodo": "GET",
+            "ip": "::1",
+            "userAgent": "Mozilla/5.0",
+            "negocioId": null,
+            "nivel": "HIGH",
+            "detalles": "Acceso denegado: Token no proporcionado",
+            "createdAt": "2026-08-21T00:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

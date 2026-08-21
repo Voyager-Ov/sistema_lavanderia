@@ -30,11 +30,12 @@ export function safeFormatDate(
 
 export function getImageUrl(path: string | null | undefined): string | null {
   if (!path || typeof path !== "string" || path.trim() === "") return null;
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+  const trimmed = path.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) return trimmed;
 
   const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
   const baseUrl = rawApiUrl.replace(/\/api\/?$/, "");
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const cleanPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 
   return `${baseUrl}${cleanPath}`;
 }

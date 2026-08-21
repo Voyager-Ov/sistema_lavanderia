@@ -16,7 +16,7 @@ export const apiClient = {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    // Obtener token (asumiendo que Zustand o LocalStorage lo guarda bajo 'auth-storage')
+    // Obtener token de auth-storage o fallback superadmin_token
     let token = '';
     if (typeof window !== 'undefined') {
       const authData = localStorage.getItem('auth-storage');
@@ -30,6 +30,9 @@ export const apiClient = {
           // ignore error
         }
       }
+      if (!token) {
+        token = localStorage.getItem('superadmin_token') || '';
+      }
     }
 
     const headers: Record<string, string> = {
@@ -41,7 +44,7 @@ export const apiClient = {
       headers['Content-Type'] = 'application/json';
     }
 
-    if (token) {
+    if (token && !headers['Authorization']) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -60,12 +63,17 @@ export const apiClient = {
       }
 
       if (!response.ok) {
-        if (response.status === 401 && !endpoint.includes('/auth/login')) {
+        if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/superadmin/login')) {
           if (typeof window !== 'undefined') {
             try {
-              // Limpiar credenciales caducadas e invocar redirección a login
-              localStorage.removeItem('auth-storage');
-              window.location.href = '/login?expired=true';
+              const isSuperAdminPath = window.location.pathname.startsWith('/superadmin');
+              if (isSuperAdminPath) {
+                localStorage.removeItem('superadmin_token');
+                window.location.href = '/superadmin/login?expired=true';
+              } else {
+                localStorage.removeItem('auth-storage');
+                window.location.href = '/login?expired=true';
+              }
             } catch (e) {}
           }
         }
@@ -83,8 +91,6 @@ export const apiClient = {
         );
       }
 
-      // La mayoría de los endpoints del backend retornan { status: 'success', data: { ... }, message: '...' }
-      // Devolvemos el cuerpo completo (T) que normalmente intercepta el `data`.
       return data as T;
     } catch (error) {
       if (error instanceof ApiError) {

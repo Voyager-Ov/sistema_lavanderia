@@ -1,0 +1,188 @@
+{
+  "feature_id": "superadmin-negocios-management",
+  "title": "Especificación Técnica: Gestión de Negocios, Cuotas de Almacenamiento e Imágenes, y Flujo de Aprobación de Registro",
+  "version": "1.0.0",
+  "architecture": {
+    "backend_layer": {
+      "framework": "Express.js / Node.js con Sequelize ORM (Arquitectura Multitenant)",
+      "models": [
+        "SolicitudNegocio.js (Nuevo modelo en esquema Central)",
+        "Negocio.js (Modificación: agregar maxImagenes, maxStorageGB)"
+      ],
+      "services": [
+        "superadmin.service.js (Extensión con métodos para solicitudes, almacenamiento, límites e imágenes)",
+        "register.service.js (Refactor: creación de SolicitudNegocio y aprovisionamiento diferido)",
+        "email.util.js (Nuevas plantillas: alertaSuperAdminSolicitud, resultadoSolicitud)"
+      ],
+      "routes": [
+        "superadmin.routes.js (Nuevos endpoints /solicitudes, /negocios/:id/limites, /negocios/:id/imagenes)"
+      ]
+    },
+    "frontend_layer": {
+      "framework": "Next.js 14 App Router, React 18, Tailwind CSS, Lucide React",
+      "views": [
+        "front/src/app/(superadmin)/superadmin/dashboard/page.tsx (Rediseño con pestañas, gestión de cuotas, solicitudes e imágenes)",
+        "front/src/app/(auth)/solicitud-pendiente/page.tsx (Vista Intermedia de Espera para el solicitante)"
+      ],
+      "shared_components": [
+        "ResponsiveSheet (Para edición de límites de almacenamiento y cuotas)",
+        "Modal de Galería de Imágenes Tenant (Para previsualización y borrado)"
+      ]
+    }
+  },
+  "database_contracts": {
+    "SolicitudNegocio": {
+      "tableName": "solicitudes_negocio",
+      "schema": {
+        "id": "INTEGER PRIMARY KEY AUTO_INCREMENT",
+        "nombreNegocio": "STRING (allowNull: false)",
+        "subdominio": "STRING (allowNull: false)",
+        "cuit": "STRING (allowNull: true)",
+        "nombreSolicitante": "STRING (allowNull: false)",
+        "emailSolicitante": "STRING (allowNull: false)",
+        "telefonoSolicitante": "STRING (allowNull: true)",
+        "passwordHash": "STRING (allowNull: false)",
+        "estado": "ENUM('PENDIENTE', 'APROBADO', 'RECHAZADO') DEFAULT 'PENDIENTE'",
+        "motivoRechazo": "TEXT (allowNull: true)",
+        "fechaRevision": "DATE (allowNull: true)",
+        "revisadoPor": "STRING (allowNull: true)"
+      }
+    },
+    "Negocio": {
+      "new_columns": {
+        "maxImagenes": "INTEGER DEFAULT 50",
+        "maxStorageGB": "FLOAT DEFAULT 1.0"
+      }
+    }
+  },
+  "api_contracts": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "description": "Recibe los datos del solicitante y crea una SolicitudNegocio en estado PENDIENTE. Notifica al Super Admin por email.",
+      "request_body": {
+        "email": "user@example.com",
+        "password": "SecretPassword123",
+        "nombre": "Juan Pérez",
+        "negocioNombre": "Lavandería Express",
+        "cuit": "20123456789",
+        "telefono": "1198765432"
+      },
+      "response_201": {
+        "success": true,
+        "message": "Solicitud de registro enviada con éxito. Pendiente de aprobación por Super Admin.",
+        "data": {
+          "solicitudId": 1,
+          "estado": "PENDIENTE",
+          "email": "user@example.com"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/superadmin/solicitudes",
+      "description": "Lista todas las solicitudes de registro de negocios enviadas por los usuarios.",
+      "response_200": {
+        "success": true,
+        "data": [
+          {
+            "id": 1,
+            "nombreNegocio": "Lavandería Express",
+            "emailSolicitante": "user@example.com",
+            "nombreSolicitante": "Juan Pérez",
+            "cuit": "20123456789",
+            "estado": "PENDIENTE",
+            "createdAt": "2026-08-20T22:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/superadmin/solicitudes/:id/aprobar",
+      "description": "Aprueba la solicitud, aprovisiona el Negocio, el schema Tenant en PostgreSQL y crea la cuenta Admin. Envía correo de bienvenida.",
+      "response_200": {
+        "success": true,
+        "message": "Solicitud aprobada y negocio aprovisionado exitosamente."
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/superadmin/solicitudes/:id/rechazar",
+      "description": "Rechaza la solicitud con motivo opcional y notifica al usuario por email.",
+      "request_body": {
+        "motivo": "Los datos proporcionados son inconsistentes."
+      },
+      "response_200": {
+        "success": true,
+        "message": "Solicitud rechazada exitosamente."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/superadmin/negocios/:id/almacenamiento",
+      "description": "Obtiene las métricas de uso de disco/fotos y cuotas configuradas para el negocio.",
+      "response_200": {
+        "success": true,
+        "data": {
+          "negocioId": 13,
+          "totalImagenes": 14,
+          "maxImagenes": 50,
+          "storageConsumidoMB": 42.5,
+          "maxStorageGB": 1.0,
+          "porcentajeAlmacenamiento": 4.15
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/superadmin/negocios/:id/limites",
+      "description": "Actualiza las cuotas maxImagenes y maxStorageGB para un negocio.",
+      "request_body": {
+        "maxImagenes": 100,
+        "maxStorageGB": 2.5
+      },
+      "response_200": {
+        "success": true,
+        "message": "Límites de almacenamiento actualizados exitosamente."
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/superadmin/negocios/:id/imagenes",
+      "description": "Retorna el listado de archivos de imagen pertenecientes a la carpeta y registros del tenant.",
+      "response_200": {
+        "success": true,
+        "data": [
+          {
+            "id": "file_123",
+            "filename": "logo.png",
+            "url": "/uploads/13/logo.png",
+            "sizeBytes": 1048576,
+            "tipo": "LOGO"
+          }
+        ]
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/superadmin/negocios/:id/imagenes",
+      "description": "Elimina imágenes especificadas del tenant.",
+      "request_body": {
+        "filePaths": ["/uploads/13/logo.png"]
+      },
+      "response_200": {
+        "success": true,
+        "message": "Imágenes eliminadas exitosamente."
+      }
+    }
+  ],
+  "testing_strategy": {
+    "unit_tests": [
+      "Verificar que SolicitudNegocio se cree en estado PENDIENTE al invocar registerService.register.",
+      "Verificar que aprobarYSustanciarSolicitud cree el Negocio y el schema Tenant correctamente.",
+      "Verificar que updateLimites negocio restrinja o expanda maxImagenes y maxStorageGB."
+    ],
+    "integration_test_script": "test_superadmin_workflow.js (Ejecutado contra backend para verificar ciclo completo: Solicitud -> Email -> Aprobación -> Aprovisionamiento -> Métricas de Almacenamiento)."
+  }
+}

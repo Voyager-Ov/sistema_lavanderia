@@ -147,6 +147,16 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.STRING,
 				allowNull: true,
 			},
+			maxImagenes: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				defaultValue: 50,
+			},
+			maxStorageGB: {
+				type: DataTypes.FLOAT,
+				allowNull: false,
+				defaultValue: 1.0,
+			},
 		},
 		{
 			tableName: "negocios",

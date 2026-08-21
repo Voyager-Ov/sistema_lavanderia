@@ -1,6 +1,6 @@
-import jwt from "jsonwebtoken";
 import { AppError } from "../utils/appError.js";
 import { connectionManager } from "../models/connectionManager.js";
+import { emailService } from "../utils/email.util.js";
 
 export const superAdminAuth = (req, res, next) => {
     try {
@@ -9,10 +9,21 @@ export const superAdminAuth = (req, res, next) => {
         }
 
         if (req.user.rol !== "SUPER_ADMIN") {
+            // Disparar correo de alerta de seguridad en segundo plano
+            emailService.enviarAlertaSeguridad({
+                usuarioEmail: req.user?.email || "Desconocido",
+                rol: req.user?.rol || "Sin Rol",
+                endpoint: req.originalUrl || req.url,
+                metodo: req.method,
+                ip: req.ip || req.connection?.remoteAddress,
+                userAgent: req.headers["user-agent"],
+                negocioId: req.user?.negocioId || "Global"
+            }).catch(err => console.error("⚠️ Error al enviar alerta de seguridad SuperAdmin:", err.message));
+
             throw new AppError("Acceso denegado. Permisos de SuperAdmin requeridos.", 403, "FORBIDDEN");
         }
 
-        req.superAdmin = req.user; // Para retrocompatibilidad si alguna ruta usa req.superAdmin
+        req.superAdmin = req.user;
         next();
     } catch (error) {
         next(error);

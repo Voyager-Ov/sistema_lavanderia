@@ -19,6 +19,12 @@ export interface PedidoItemDetail {
   producto?: {
     id: number
     nombre: string
+    imagenUrl?: string
+  }
+  servicio?: {
+    id: number
+    nombre: string
+    imagenUrl?: string
   }
 }
 

@@ -4,12 +4,12 @@ import React, { useEffect, useState, useRef } from "react"
 import { getPedidoById, Pedido } from "@/domains/pedidos/api"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Loader2, Printer, CheckCircle2, Circle, Clock, Check, ReceiptText, Banknote, MapPin, User, FileText, Ticket, XCircle } from "lucide-react"
+import { Loader2, Printer, CheckCircle2, Circle, Clock, Check, ReceiptText, Banknote, MapPin, User, FileText, Ticket, XCircle, Package } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/data-display/card"
 import { Badge } from "@/shared/ui/data-display/badge"
-import { cn, formatCurrency, safeFormatDate } from "@/shared/lib/utils"
+import { cn, formatCurrency, safeFormatDate, getImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/forms/button"
 import { Separator } from "@/shared/ui/layout/separator"
 import { TicketPrintTemplate } from "./ticket-print-template"
@@ -370,22 +370,37 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
             </CardHeader>
 
             <CardContent className="px-6 space-y-4 mb-2 min-h-[150px]">
-              {pedido.items?.map((item, i) => (
-                <div key={i} className="group flex justify-between items-center p-4 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
-                  <div className="flex items-center gap-4">
-                    <Badge variant="secondary" className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground font-bold text-sm transition-colors">
-                      {item.cantidad}x
-                    </Badge>
-                    <div>
-                      <p className="font-bold text-foreground transition-colors">{item.producto?.nombre || 'Item'}</p>
-                      <p className="text-xs text-muted-foreground font-medium mt-0.5 transition-colors">{formatCurrency(item.precioUnitario)} c/u</p>
+              {pedido.items?.map((item: any, i) => {
+                const img = getImageUrl(item.producto?.imagenUrl || item.servicio?.imagenUrl)
+                return (
+                  <div key={i} className="group flex justify-between items-center p-3.5 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground font-bold text-xs shrink-0">
+                        {item.cantidad}x
+                      </Badge>
+                      <div className="w-10 h-10 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={item.producto?.nombre || item.servicio?.nombre || 'Item'}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none' }}
+                          />
+                        ) : (
+                          <Package className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground text-sm transition-colors">{item.producto?.nombre || item.servicio?.nombre || 'Item'}</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5 transition-colors">{formatCurrency(item.precioUnitario)} c/u</p>
+                      </div>
+                    </div>
+                    <div className="font-black text-foreground transition-colors">
+                      {formatCurrency(item.subtotal)}
                     </div>
                   </div>
-                  <div className="font-black text-foreground transition-colors">
-                    {formatCurrency(item.subtotal)}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </CardContent>
 
             <div className="mx-6 mb-6">

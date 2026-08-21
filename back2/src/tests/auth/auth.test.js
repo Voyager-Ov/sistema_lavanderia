@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeAll } from "@jest/globals";
 import jwt from "jsonwebtoken";
 import { connectionManager } from "../../models/connectionManager.js";
-import { authService } from "../../modules/auth/services/auth.service.js";
+import { authService, registerService } from "../../modules/auth/services/auth.service.js";
 
 describe("Módulo de Autenticación (Auth)", () => {
     const testEmail = "admin.unit@lavanderia.com";
     const testPassword = "PasswordSegura123";
-    let tokenConfirmacion = "";
+    let solicitudId = null;
 
     beforeAll(async () => {
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
     });
 
-    it("1. Debe registrar un nuevo administrador y aprovisionar su negocio/tenant", async () => {
+    it("1. Debe registrar una nueva solicitud de negocio", async () => {
         const res = await authService.register({
             email: testEmail,
             password: testPassword,
@@ -24,29 +24,27 @@ describe("Módulo de Autenticación (Auth)", () => {
         });
 
         expect(res).toBeDefined();
-        expect(res.tokenConfirmacion).toBeDefined();
-        expect(res.usuario.email).toBe(testEmail);
-        expect(res.usuario.rol).toBe("ADMIN");
+        expect(res.solicitud).toBeDefined();
+        expect(res.solicitud.email).toBe(testEmail);
+        expect(res.solicitud.estado).toBe("PENDIENTE");
 
-        tokenConfirmacion = res.tokenConfirmacion;
+        solicitudId = res.solicitud.id;
     });
 
-    it("2. Debe denegar el login con 403 antes de verificar el email", async () => {
+    it("2. Debe rechazar el login mientras la solicitud esté PENDIENTE", async () => {
         await expect(authService.login({ email: testEmail, password: testPassword }))
             .rejects
-            .toThrow("Debes verificar tu email antes de ingresar.");
+            .toThrow("revisión");
     });
 
-    it("3. Debe verificar el correo electrónico con el código correcto", async () => {
-        const res = await authService.verifyEmail({
-            email: testEmail,
-            code: tokenConfirmacion
-        });
-
-        expect(res.message).toContain("verificado");
+    it("3. El SuperAdmin aprueba y sustancializa la solicitud de negocio", async () => {
+        const res = await registerService.sustanciarAprobacionNegocio(solicitudId);
+        expect(res).toBeDefined();
+        expect(res.usuario.email).toBe(testEmail);
+        expect(res.usuario.nombre).toBe("Carlos Gómez");
     });
 
-    it("4. Debe iniciar sesión exitosamente tras la verificación y retornar el JWT", async () => {
+    it("4. Debe iniciar sesión exitosamente tras la aprobación y retornar el JWT", async () => {
         const res = await authService.login({
             email: testEmail,
             password: testPassword

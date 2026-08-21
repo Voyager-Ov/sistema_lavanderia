@@ -31,6 +31,7 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const email = searchParams.get("email");
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -58,18 +59,19 @@ function ResetPasswordForm() {
     try {
       setIsLoading(true);
       setProcessing(true);
-      await AuthApi.resetPassword({ token, newPassword: data.password });
+      await AuthApi.resetPassword({ token, email, newPassword: data.password });
       setIsSuccess(true);
-      toast.success("Contraseña actualizada", { description: "Ya puedes iniciar sesión con tu nueva contraseña." });
-      setTimeout(() => router.push("/login"), 3000);
+      toast.success("Contraseña actualizada exitosamente", { description: "Ya puedes iniciar sesión con tu nueva contraseña." });
+      
+      const isSuperAdminEmail = email && (email.toLowerCase().includes("superadmin") || email.toLowerCase().includes("octavio.velo"));
+      const targetLogin = isSuperAdminEmail ? "/superadmin/login" : "/login";
+      
+      setTimeout(() => router.push(targetLogin), 2500);
     } catch (error: any) {
-      toast.error("Error", {
-        description: error.message || "El enlace pudo haber expirado.",
+      toast.error("Error al restablecer contraseña", {
+        description: error.message || "El enlace pudo haber expirado o ser inválido.",
       });
       animateFormError();
-      if (error.status === 400) {
-        setTimeout(() => router.push("/login"), 2000);
-      }
     } finally {
       setIsLoading(false);
       setProcessing(false);

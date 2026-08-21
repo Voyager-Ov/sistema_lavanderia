@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-monitoreo-cuotas",
+  "title": "Todos y Tareas de Ejecución - Consola SuperAdmin Monitoreo y Cuotas",
+  "version": "1.0.0",
+  "status": "APPROVED",
+  "tasks": [
+    {
+      "id": "TASK-01",
+      "title": "Extensión del Modelo Negocio.js con campos maxUsuarios y maxPedidosMes",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["back2/src/models/Negocio.js"],
+      "exit_criteria": "Los campos maxUsuarios y maxPedidosMes están definidos con tipos INTEGER e incluidos en el modelo Sequelize."
+    },
+    {
+      "id": "TASK-02",
+      "title": "Actualización de Servicios y Controladores de Cuotas en Backend",
+      "owner_role": "Backend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-01"],
+      "outputs": ["back2/src/modules/superadmin/services/superadmin.service.js", "back2/src/modules/superadmin/controllers/superadmin.controller.js"],
+      "exit_criteria": "updateNegocioLimites actualiza y retorna maxImagenes, maxStorageGB, maxUsuarios y maxPedidosMes."
+    },
+    {
+      "id": "TASK-03",
+      "title": "Integración del ResponsiveSheet y Navegación AppSidebar/MobileBottomNav en Front-End",
+      "owner_role": "Frontend Developer",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-02"],
+      "outputs": ["front/src/app/(superadmin)/superadmin/dashboard/page.tsx"],
+      "exit_criteria": "El dashboard rindea con AppSidebar en desktop, MobileBottomNav en móvil y ResponsiveSheet para cuotas."
+    },
+    {
+      "id": "TASK-04",
+      "title": "Ejecución de Script de Verificación de Integración contra Neon PostgreSQL",
+      "owner_role": "QA / Backend Lead",
+      "status": "DONE",
+      "parallelizable": false,
+      "depends_on": ["TASK-03"],
+      "outputs": ["back2/scripts/test_superadmin_management.js"],
+      "exit_criteria": "El script ejecuta 100% verde sin errores en la base de datos Neon PostgreSQL."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/shared/store/useAuthStore";
 import { LoadingBars } from "@/shared/ui/feedback/loading-bars";
 
@@ -11,15 +11,24 @@ interface GuestGuardProps {
 
 export function GuestGuard({ children }: GuestGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      // Excepciones: /reset-password y /solicitud-pendiente NUNCA deben ser bloqueadas por GuestGuard
+      if (pathname && (pathname.includes("reset-password") || pathname.includes("solicitud-pendiente"))) {
+        setIsChecking(false);
+        return;
+      }
+
       if (isAuthenticated && user) {
-        // Redirigimos según el rol si ya está logueado
-        const userRole = user.rol.toLowerCase().trim();
-        if (userRole === "admin" || userRole === "superadmin") {
+        // Redirigimos según el rol si ya está logueado a una página guest de login/registro
+        const userRole = user.rol ? user.rol.toLowerCase().trim() : "";
+        if (userRole.includes("superadmin")) {
+          router.replace("/superadmin/dashboard");
+        } else if (userRole.includes("admin")) {
           router.replace("/admin/dashboard");
         } else {
           router.replace("/pos/pedidos");
@@ -30,7 +39,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [user, isAuthenticated, router]);
+  }, [user, isAuthenticated, router, pathname]);
 
   if (isChecking) {
     return (

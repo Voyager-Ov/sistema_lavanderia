@@ -1,0 +1,96 @@
+{
+  "feature_id": "superadmin-negocios-management",
+  "title": "Lista de Tareas de Ejecución para Gestión de Negocios en Super Admin",
+  "version": "1.0.0",
+  "todos": [
+    {
+      "id": "task-01",
+      "title": "Modelos de Datos Centrales: SolicitudNegocio y Campos de Almacenamiento en Negocio",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": [
+        "back2/src/models/SolicitudNegocio.js",
+        "back2/src/models/Negocio.js",
+        "back2/src/models/connectionManager.js"
+      ],
+      "exit_criteria": "Modelo SolicitudNegocio creado e incorporado en connectionManager.centralModels; campos maxImagenes y maxStorageGB agregados a Negocio."
+    },
+    {
+      "id": "task-02",
+      "title": "Notificaciones por Email de Solicitudes para Super Admin y Solicitante",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": ["task-01"],
+      "outputs": [
+        "back2/src/utils/email.util.js"
+      ],
+      "exit_criteria": "Métodos enviarNotificacionNuevaSolicitudSuperAdmin y enviarResultadoSolicitudNegocio disponibles en emailService."
+    },
+    {
+      "id": "task-03",
+      "title": "Servicio de Autenticación y Registro con Solicitud Diferida",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["task-01", "task-02"],
+      "outputs": [
+        "back2/src/modules/auth/services/register.service.js",
+        "back2/src/modules/auth/services/login.service.js"
+      ],
+      "exit_criteria": "Registro público guarda SolicitudNegocio en estado PENDIENTE; Login detecta usuarios pendientes e informa estado."
+    },
+    {
+      "id": "task-04",
+      "title": "Controladores y Endpoints de Super Admin para Solicitudes, Límites e Imágenes",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["task-03"],
+      "outputs": [
+        "back2/src/modules/superadmin/services/superadmin.service.js",
+        "back2/src/modules/superadmin/controllers/superadmin.controller.js",
+        "back2/src/modules/superadmin/superadmin.routes.js"
+      ],
+      "exit_criteria": "Endpoints /solicitudes (listar/aprobar/rechazar), /negocios/:id/limites y /negocios/:id/imagenes operativos con respuestas validadas."
+    },
+    {
+      "id": "task-05",
+      "title": "Vista Intermedia para Solicitante de Registro Pendiente",
+      "owner_role": "Frontend Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": ["task-03"],
+      "outputs": [
+        "front/src/app/(auth)/solicitud-pendiente/page.tsx"
+      ],
+      "exit_criteria": "Pantalla informativa con badge de estado, resumen de datos y opción de logout renderizando correctamente."
+    },
+    {
+      "id": "task-06",
+      "title": "Actualización del Panel Super Admin (Tabs, Gestión de Cuotas, Galería y Solicitudes)",
+      "owner_role": "Frontend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["task-04"],
+      "outputs": [
+        "front/src/app/(superadmin)/superadmin/dashboard/page.tsx"
+      ],
+      "exit_criteria": "Dashboard Super Admin cuenta con pestañas de Negocios, Solicitudes e Imágenes, con modales de ajuste de límites y eliminación de archivos."
+    },
+    {
+      "id": "task-07",
+      "title": "Script de Prueba de Integración y Verificación de la Lógica en Vivo",
+      "owner_role": "QA / Fullstack Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["task-05", "task-06"],
+      "outputs": [
+        "test_superadmin_management.js"
+      ],
+      "exit_criteria": "Script ejecuta exitosamente verificando: creación de solicitud, listado en superadmin, aprobación/rechazo, cuotas de almacenamiento y borrado de imágenes."
+    }
+  ]
+}

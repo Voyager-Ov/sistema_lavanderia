@@ -79,16 +79,22 @@ export function ServiceGrid({
         )}
 
         {imageUrl ? (
-          <div className="h-28 w-full overflow-hidden flex items-center justify-center bg-muted/30 border-b border-border transition-colors">
+          <div className="h-28 w-full overflow-hidden flex items-center justify-center bg-muted/30 border-b border-border transition-colors relative">
             <img 
               src={imageUrl} 
               alt={producto.nombre}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement?.classList.add('bg-gray-100');
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
               }}
             />
+            <div className="hidden w-full h-full bg-muted/30 items-center justify-center">
+              <Package className="w-10 h-10 text-muted-foreground/40" />
+            </div>
           </div>
         ) : (
           <div className="h-28 w-full bg-muted/30 border-b border-border flex items-center justify-center transition-all duration-500 group-hover:scale-105">

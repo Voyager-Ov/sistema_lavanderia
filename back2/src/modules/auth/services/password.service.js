@@ -28,20 +28,33 @@ class PasswordService {
     }
 
     /**
-     * Restablecer Contraseña mediante Token de Enlace
+     * Restablecer Contraseña mediante Token de Enlace y Email
      */
-    async resetPassword({ token, newPassword, password }) {
+    async resetPassword({ token, email, newPassword, password }) {
         const { Usuario } = connectionManager.centralModels;
         const resetToken = (token || "").trim();
+        const userEmail = email ? String(email).trim().toLowerCase() : null;
         const nuevaClave = newPassword || password;
 
         if (!resetToken) {
             throw new AppError("El token de restablecimiento es requerido.", 400, "MISSING_TOKEN");
         }
 
-        const usuario = await Usuario.findOne({ where: { tokenConfirmacion: resetToken } });
-        if (!usuario) {
-            throw new AppError("El enlace de restablecimiento es inválido o ha expirado.", 400, "INVALID_TOKEN");
+        if (!nuevaClave || nuevaClave.length < 6) {
+            throw new AppError("La nueva contraseña debe tener al menos 6 caracteres.", 400, "INVALID_PASSWORD_LENGTH");
+        }
+
+        let usuario = null;
+        if (userEmail) {
+            usuario = await Usuario.findByPk(userEmail);
+            if (!usuario || usuario.tokenConfirmacion !== resetToken) {
+                throw new AppError("El enlace de restablecimiento es inválido o no coincide con este usuario.", 400, "INVALID_TOKEN");
+            }
+        } else {
+            usuario = await Usuario.findOne({ where: { tokenConfirmacion: resetToken } });
+            if (!usuario) {
+                throw new AppError("El enlace de restablecimiento es inválido o ha expirado.", 400, "INVALID_TOKEN");
+            }
         }
 
         if (usuario.tokenConfirmacionExpires && new Date() > new Date(usuario.tokenConfirmacionExpires)) {

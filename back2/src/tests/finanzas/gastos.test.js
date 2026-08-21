@@ -15,7 +15,7 @@ describe("Módulo de Gastos y Categorías de Egresos", () => {
         await connectionManager.initCentral();
 
         // Abrir una caja para asociar movimientos de egreso
-        await cajasService.abrirCaja(negocioId, { montoInicial: 10000 });
+        await cajasService.abrirCaja(negocioId, { montoInicial: 10000, empleadoId: 1 });
     });
 
     it("1. Debe autosembrar y listar las categorías de gastos base", async () => {
@@ -44,7 +44,8 @@ describe("Módulo de Gastos y Categorías de Egresos", () => {
             montoTotal: 2500,
             categoriaGastoId: categoriaId,
             descripcion: "Impresión de folletos de lavandería",
-            proveedor: "Imprenta Central"
+            proveedor: "Imprenta Central",
+            empleadoId: 1
         });
 
         expect(gasto).toBeDefined();

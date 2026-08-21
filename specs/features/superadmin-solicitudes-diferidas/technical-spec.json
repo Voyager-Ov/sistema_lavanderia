@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-solicitudes-diferidas",
+  "title": "Especificación Técnica - Vista Solicitudes Diferidas y Aprovisionamiento Multitenant",
+  "version": "1.1.0",
+  "status": "APPROVED",
+  "architecture": {
+    "frontend_layer": {
+      "page_path": "front/src/app/(superadmin)/superadmin/dashboard/page.tsx",
+      "interim_page_path": "front/src/app/(auth)/solicitud-pendiente/page.tsx",
+      "components": [
+        "SolicitudesTable",
+        "SolicitudesStatusBadge",
+        "ResponsiveSheet",
+        "ResponsiveSheetContent"
+      ],
+      "route": "/superadmin/dashboard?tab=solicitudes"
+    },
+    "backend_layer": {
+      "routes_path": "back2/src/modules/superadmin/superadmin.routes.js",
+      "controller_path": "back2/src/modules/superadmin/controllers/superadmin.controller.js",
+      "superadmin_service_path": "back2/src/modules/superadmin/services/superadmin.service.js",
+      "register_service_path": "back2/src/modules/auth/services/register.service.js",
+      "email_utility_path": "back2/src/utils/email.util.js"
+    },
+    "database_layer": {
+      "central_models": ["SolicitudNegocio", "Negocio", "Usuario", "Rol"],
+      "tenant_models": ["Empleado", "Sesion"],
+      "schema_isolation": "PostgreSQL dynamic schemas (public + tenant_X)"
+    }
+  },
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/superadmin/solicitudes",
+      "method": "GET",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "query_params": { "estado": "PENDIENTE|APROBADO|RECHAZADO (Opcional)" },
+      "response_success": {
+        "status": "success",
+        "data": [
+          {
+            "id": 1,
+            "nombreNegocio": "Lavandería Express",
+            "subdominio": "lavanderiaexpress",
+            "cuit": "20389102939",
+            "razonSocial": "Lavandería Express SRL",
+            "nombreSolicitante": "Juan Pérez",
+            "emailSolicitante": "juan.perez@example.com",
+            "telefonoSolicitante": "1198765432",
+            "estado": "PENDIENTE",
+            "motivoRechazo": null,
+            "createdAt": "2026-08-21T00:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "PATCH /api/superadmin/solicitudes/:id/aprobar",
+      "method": "PATCH",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "response_success": {
+        "status": "success",
+        "message": "Solicitud aprobada y negocio aprovisionado exitosamente",
+        "data": {
+          "negocioId": 22,
+          "email": "juan.perez@example.com"
+        }
+      },
+      "failure_modes": [
+        {
+          "status": 404,
+          "code": "SOLICITUD_NOT_FOUND",
+          "message": "La solicitud de negocio no fue encontrada."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_SOLICITUD_STATE",
+          "message": "La solicitud ya se encuentra en estado APROBADO."
+        }
+      ]
+    },
+    {
+      "endpoint": "PATCH /api/superadmin/solicitudes/:id/rechazar",
+      "method": "PATCH",
+      "headers": { "Authorization": "Bearer <superadmin_token>" },
+      "payload": {
+        "motivo": "Motivo explícito del rechazo para informar al solicitante"
+      },
+      "response_success": {
+        "status": "success",
+        "message": "Solicitud rechazada exitosamente",
+        "data": {
+          "id": 1,
+          "estado": "RECHAZADO",
+          "motivoRechazo": "Motivo explícito del rechazo..."
+        }
+      }
+    }
+  ],
+  "failure_modes": [
+    {
+      "scenario": "Error en la creación del esquema PostgreSQL por colisión de subdominio o BD offline",
+      "action": "Se revierte la transacción atómica, no se altera la solicitud y se devuelve error 500 PROVISIONING_FAILED"
+    },
+    {
+      "scenario": "Fallo en el servicio SMTP al enviar el email de bienvenida",
+      "action": "Se registra una advertencia en logs pero se conserva la transacción completada para no interrumpir el aprovisionamiento"
+    }
+  ],
+  "testing_strategy": {
+    "integration_test_script": "back2/scripts/test_superadmin_management.js",
+    "test_steps": [
+      "1. Registrar una nueva solicitud diferida usando registerService.register()",
+      "2. Consultar superAdminService.listarSolicitudes() y verificar estado PENDIENTE",
+      "3. Ejecutar superAdminService.aprobarSolicitud() y validar la existencia del esquema tenant_X y usuario ADMIN",
+      "4. Probar actualización de cuotas y estado del negocio recién creado"
+    ]
+  }
+}

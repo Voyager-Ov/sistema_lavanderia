@@ -44,4 +44,16 @@ router.post("/reset-password", validateResetPassword, resetPassword);
 router.patch("/change-password", verificarToken, validateChangePassword, changePassword);
 router.get("/me", verificarToken, getMe);
 
+// Anuncios del Sistema Broadcast
+router.get("/anuncios/activos", async (req, res, next) => {
+    try {
+        const { superAdminService } = await import("../superadmin/services/superadmin.service.js");
+        const negocioId = req.query.negocioId;
+        const mensajes = await superAdminService.listarAnunciosActivosTenant(negocioId);
+        return res.json({ status: "success", data: mensajes });
+    } catch (error) {
+        next(error);
+    }
+});
+
 export default router;

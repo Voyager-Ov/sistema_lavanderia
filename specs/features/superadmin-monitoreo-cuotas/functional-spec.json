@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-monitoreo-cuotas",
+  "title": "Consola SuperAdmin - Vista Monitoreo, Salud Central y Control de Cuotas Multitenant",
+  "version": "1.0.0",
+  "status": "DRAFT_PROPOSED",
+  "description": "Especificación funcional para la primera vista del portal SuperAdmin, enfocada en la monitorización en tiempo real de la base de datos central Neon PostgreSQL, métricas del servidor backend, control de límites por negocio (GB storage, fotos, usuarios, pedidos) y panel de salud del sistema.",
+  "scope": {
+    "in_scope": [
+      "Monitoreo en tiempo real de negocios activos, suspendidos y esquemas aislados en Neon PostgreSQL",
+      "Indicadores de rendimiento, uptime del servidor, latencia de base de datos y estado del SMTP de correo",
+      "Gestión y edición de cuotas y límites por negocio: maxImagenes, maxStorageGB, maxUsuarios, maxPedidosMes",
+      "Mecanismo de suspensión instantánea (Kill Switch) para bloquear/reactivar servicios de cualquier tenant",
+      "Integración visual responsive con AppSidebar, MobileBottomNav, AppHeader y ResponsiveSheet"
+    ],
+    "out_of_scope": [
+      "Pasarela de pago automatizada para cobro recurrente de suscripciones con tarjeta de crédito (se gestiona vía estadoSuscripcion)",
+      "Creación manual de tablas en el esquema central desde la UI (se gestiona vía migraciones)"
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-01",
+      "title": "SuperAdmin monitorea la salud del sistema y base de datos central",
+      "actor": "SuperAdmin (octavio.velo2022@gmail.com)",
+      "steps": [
+        "Ingresa al panel SuperAdmin en /superadmin/dashboard?tab=overview",
+        "Visualiza las tarjetas de estado: BD Central Neon PG, esquemas aislados, uptime y solicitudes pendientes",
+        "Observa la latencia y diagnóstico del Rate Limiter (100 peticiones / 15 min por IP)",
+        "Hace clic en 'Refrescar' para actualizar métricas en tiempo real"
+      ]
+    },
+    {
+      "journey_id": "UJ-02",
+      "title": "SuperAdmin ajusta las cuotas y límites de almacenamiento de un negocio",
+      "actor": "SuperAdmin",
+      "steps": [
+        "Navega a la pestaña 'Gestión de Negocios' (/superadmin/dashboard?tab=negocios)",
+        "Busca el tenant deseado y hace clic en el botón de engranaje (Edición de Cuotas)",
+        "Se despliega el overlay ResponsiveSheet con los campos maxImagenes, maxStorageGB, maxUsuarios y maxPedidosMes",
+        "Modifica los valores de límite y presiona 'Guardar Cambios'",
+        "El sistema valida los campos, actualiza la base central en PostgreSQL y muestra confirmación visual"
+      ]
+    },
+    {
+      "journey_id": "UJ-03",
+      "title": "SuperAdmin ejecuta un Kill Switch para suspender un negocio por falta de pago o infracción",
+      "actor": "SuperAdmin",
+      "steps": [
+        "Localiza el negocio en el listado de tenants",
+        "Hace clic en el botón de encendido/apagado (Power Icon)",
+        "Confirma la acción de suspensión en el diálogo de seguridad",
+        "El estado se actualiza instantáneamente en PostgreSQL y se bloquea el acceso a dicho tenant con alerta visual"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "title": "Monitoreo en tiempo real de Neon PostgreSQL",
+      "given": "Un usuario autenticado con rol SUPER_ADMIN en la vista Monitoreo y Salud",
+      "when": "Se carga o refresca el dashboard",
+      "then": "El sistema debe mostrar el conteo exacto de esquemas/negocios activos, solicitudes pendientes y estado de conexión a la base de datos central."
+    },
+    {
+      "id": "AC-02",
+      "title": "Edición y persistencia de límites de almacenamiento y cuotas",
+      "given": "El SuperAdmin editando las cuotas de un tenant en el ResponsiveSheet",
+      "when": "Ingresa nuevos valores para maxImagenes, maxStorageGB, maxUsuarios o maxPedidosMes y presiona guardar",
+      "then": "El servidor valida que los números sean positivos, los persiste en la tabla central 'negocios' y retorna status 200 OK con feedback toast."
+    },
+    {
+      "id": "AC-03",
+      "title": "Suspensión e Inmutabilidad de Kill Switch",
+      "given": "Un negocio en estado activo",
+      "when": "El SuperAdmin alterna su estado a suspendido",
+      "then": "Todas las peticiones subsiguientes a la API de ese tenant son rechazadas con error 403 SUBSCRIPTION_SUSPENDED y banner de servicio bloqueado."
+    },
+    {
+      "id": "AC-04",
+      "title": "Diseño Responsive Adaptativo (Desktop Sidebar + Mobile BottomNav)",
+      "given": "La consola siendo accedida desde escritorio (>=768px) o móvil (<768px)",
+      "when": "El usuario navega por las pestañas",
+      "then": "En escritorio se muestra el AppSidebar colapsable y en móvil la barra MobileBottomNav fija en la parte inferior."
+    }
+  ],
+  "ux_expectations": {
+    "layout": "AppLayout integrado con AppSidebar, AppHeader y MobileBottomNav",
+    "overlays": "ResponsiveSheet para edición de límites de almacenamiento y cuotas",
+    "feedback": "Toast de confirmación exitosa con sonner y banners de estado",
+    "theme_support": "Soporte completo para Modo Oscuro y Modo Claro"
+  }
+}
