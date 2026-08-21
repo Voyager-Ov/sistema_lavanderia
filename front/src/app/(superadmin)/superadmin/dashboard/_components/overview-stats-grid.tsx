@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { Database, Server, Clock, Activity } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/shared/ui/data-display/card";
-import { Badge } from "@/shared/ui/data-display/badge";
+import { DashboardKpi } from "@/shared/ui/dashboard/dashboard-kpi";
+import { Building2, Server, Clock, Activity } from "lucide-react";
 
 interface OverviewStatsGridProps {
   health: any;
@@ -11,79 +10,50 @@ interface OverviewStatsGridProps {
 }
 
 export function OverviewStatsGrid({ health, pendientesCount }: OverviewStatsGridProps) {
+  const totalNegocios = health?.centralDatabase?.negociosRegistrados || 0;
+  const uptimeMinutes = health?.uptimeSeconds ? `${Math.floor(health.uptimeSeconds / 60)}m` : "Activo";
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <Card variant="glassBlue">
-        <CardHeader className="flex justify-between items-start mb-2">
-          <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-500">
-            <Database size={22} />
-          </div>
-          <Badge variant="success">ONLINE</Badge>
-        </CardHeader>
-        <CardContent>
-          <h3 className="text-2xl font-black text-foreground">
-            {health?.centralDatabase?.negociosRegistrados || 0}
-          </h3>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">
-            Negocios Registrados en BD Central
-          </p>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <DashboardKpi
+        title="Negocios Registrados"
+        value={totalNegocios}
+        subtitle="En BD Central Multi-tenant"
+        backMessage="Total de empresas de lavanderías registradas en el sistema central multi-tenant."
+        variant="active"
+        icon={<Building2 className="w-5 h-5 text-brand-blue" />}
+        href="/superadmin/negocios"
+      />
 
-      <Card variant="glassBlue">
-        <CardHeader className="flex justify-between items-start mb-2">
-          <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-500">
-            <Server size={22} />
-          </div>
-          <Badge variant="secondary">NEON PG</Badge>
-        </CardHeader>
-        <CardContent>
-          <h3 className="text-2xl font-black text-foreground">
-            {health?.centralDatabase?.schemasIsolation || "Isolated Schemas"}
-          </h3>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">
-            Multitenancy por Esquema
-          </p>
-        </CardContent>
-      </Card>
+      <DashboardKpi
+        title="Esquemas PostgreSQL"
+        value={health?.centralDatabase?.schemasIsolation || "Aislados"}
+        subtitle="Aislamiento Neon PG"
+        backMessage="Cada negocio posee su propio esquema aislado en la base de datos PostgreSQL Neon para máxima seguridad."
+        variant="default"
+        icon={<Server className="w-5 h-5 text-purple-500" />}
+        href="/superadmin/negocios"
+      />
 
-      <Card variant="glassYellow">
-        <CardHeader className="flex justify-between items-start mb-2">
-          <div className="p-2.5 bg-amber-500/10 rounded-xl text-amber-500">
-            <Clock size={22} />
-          </div>
-          {pendientesCount > 0 ? (
-            <Badge variant="warning">PENDIENTE</Badge>
-          ) : (
-            <Badge variant="success">AL DÍA</Badge>
-          )}
-        </CardHeader>
-        <CardContent>
-          <h3 className="text-2xl font-black text-foreground">{pendientesCount}</h3>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">
-            Solicitudes Pendientes de Aprobación
-          </p>
-        </CardContent>
-      </Card>
+      <DashboardKpi
+        title="Solicitudes Pendientes"
+        value={pendientesCount}
+        subtitle={pendientesCount > 0 ? "Requieren aprobación" : "Al día"}
+        backMessage="Solicitudes de apertura de negocios recibidas pendientes de aprobación para sustanciar el esquema."
+        variant="default"
+        icon={<Clock className="w-5 h-5 text-amber-500" />}
+        href="/superadmin/solicitudes"
+      />
 
-      <Card variant="glassGreen">
-        <CardHeader className="flex justify-between items-start mb-2">
-          <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-500">
-            <Activity size={22} />
-          </div>
-          <Badge variant="success">OK</Badge>
-        </CardHeader>
-        <CardContent>
-          <h3 className="text-2xl font-black text-foreground">
-            {health?.uptimeSeconds
-              ? `${Math.floor(health.uptimeSeconds / 60)} min`
-              : "Activo"}
-          </h3>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">
-            Uptime del Servidor Backend
-          </p>
-        </CardContent>
-      </Card>
+      <DashboardKpi
+        title="Uptime del Servidor"
+        value={uptimeMinutes}
+        subtitle={health?.status === "HEALTHY" ? "Servidor 100% Saludable" : "Servicio Activo"}
+        backMessage="Tiempo de actividad ininterrumpido del servidor backend y sockets de notificaciones."
+        variant="default"
+        icon={<Activity className="w-5 h-5 text-emerald-500" />}
+        href="/superadmin/seguridad"
+      />
     </div>
   );
 }

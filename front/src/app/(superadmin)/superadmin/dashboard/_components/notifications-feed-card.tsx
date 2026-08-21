@@ -24,7 +24,7 @@ export function NotificationsFeedCard({ notifications }: NotificationsFeedCardPr
     <Card className="border border-border">
       <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+          <div className="p-2.5 bg-brand-blue/10 rounded-2xl text-brand-blue">
             <Bell size={20} />
           </div>
           <div>
@@ -37,55 +37,43 @@ export function NotificationsFeedCard({ notifications }: NotificationsFeedCardPr
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap gap-1.5 bg-muted p-1 rounded-xl">
-          <button
+        {/* Filtros usando componentes Button */}
+        <div className="flex flex-wrap gap-1.5 p-1">
+          <Button
+            size="sm"
+            variant={filter === "ALL" ? "default" : "ghost"}
             onClick={() => setFilter("ALL")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              filter === "ALL"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
           >
             Todas ({notifications.length})
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant={filter === "SOLICITUD" ? "default" : "ghost"}
             onClick={() => setFilter("SOLICITUD")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              filter === "SOLICITUD"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
           >
             Solicitudes
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant={filter === "SEGURIDAD" ? "default" : "ghost"}
             onClick={() => setFilter("SEGURIDAD")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              filter === "SEGURIDAD"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
           >
             Seguridad
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant={filter === "ALMACENAMIENTO" ? "default" : "ghost"}
             onClick={() => setFilter("ALMACENAMIENTO")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-              filter === "ALMACENAMIENTO"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
           >
             Almacenamiento
-          </button>
+          </Button>
         </div>
       </CardHeader>
 
       <CardContent className="p-0 divide-y divide-border">
         {filteredNotifications.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground text-xs font-medium">
-            <CheckCircle2 size={32} className="mx-auto mb-2 text-emerald-500 opacity-80" />
+            <CheckCircle2 size={32} className="mx-auto mb-2 text-brand-green opacity-80" />
             No hay alertas ni notificaciones pendientes en esta categoría.
           </div>
         ) : (
@@ -97,17 +85,17 @@ export function NotificationsFeedCard({ notifications }: NotificationsFeedCardPr
               <div className="flex items-start gap-3.5">
                 <div className="mt-0.5">
                   {item.tipo === "SOLICITUD" && (
-                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
+                    <div className="p-2 bg-brand-orange/10 text-brand-orange rounded-xl">
                       <Clock size={18} />
                     </div>
                   )}
                   {item.tipo === "SEGURIDAD" && (
-                    <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+                    <div className="p-2 bg-brand-red/10 text-brand-red rounded-xl">
                       <ShieldAlert size={18} />
                     </div>
                   )}
                   {item.tipo === "ALMACENAMIENTO" && (
-                    <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl">
+                    <div className="p-2 bg-brand-purple/10 text-brand-purple rounded-xl">
                       <HardDrive size={18} />
                     </div>
                   )}
@@ -127,25 +115,25 @@ export function NotificationsFeedCard({ notifications }: NotificationsFeedCardPr
                 </div>
               </div>
 
-              {/* Botón de acción directa */}
+              {/* Botones de acción usando Button */}
               <div className="self-end sm:self-center shrink-0">
                 {item.tipo === "SOLICITUD" && (
                   <Link href="/superadmin/solicitudes">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outlineBlue">
                       Gestionar <ArrowRight size={14} className="ml-1" />
                     </Button>
                   </Link>
                 )}
                 {item.tipo === "ALMACENAMIENTO" && (
                   <Link href="/superadmin/negocios">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outlineOrange">
                       Ajustar Cuota <ArrowRight size={14} className="ml-1" />
                     </Button>
                   </Link>
                 )}
                 {item.tipo === "SEGURIDAD" && (
                   <Link href="/superadmin/seguridad">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outlineRed">
                       Ver Logs <ArrowRight size={14} className="ml-1" />
                     </Button>
                   </Link>
