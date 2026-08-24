@@ -14,11 +14,11 @@ import {
 import { NavItem } from "@/shared/ui/layout/app-sidebar";
 
 const superAdminMainMenu: NavItem[] = [
-  { title: "Vista General", icon: Activity, href: "/superadmin/dashboard" },
-  { title: "Gestión de Negocios", icon: Building2, href: "/superadmin/negocios" },
-  { title: "Solicitudes", icon: Clock, href: "/superadmin/solicitudes" },
-  { title: "Mensajería Broadcast", icon: Megaphone, href: "/superadmin/mensajes" },
-  { title: "Auditoría de Seguridad", icon: ShieldCheck, href: "/superadmin/seguridad" },
+  { title: "Vista General", icon: Activity, href: "/superadmin/dashboard?tab=overview" },
+  { title: "Gestión de Negocios", icon: Building2, href: "/superadmin/dashboard?tab=negocios" },
+  { title: "Solicitudes", icon: Clock, href: "/superadmin/dashboard?tab=solicitudes" },
+  { title: "Mensajería Broadcast", icon: Megaphone, href: "/superadmin/dashboard?tab=mensajes" },
+  { title: "Auditoría de Seguridad", icon: ShieldCheck, href: "/superadmin/dashboard?tab=seguridad" },
 ];
 
 const superAdminAccountMenu: NavItem[] = [
