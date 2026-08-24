@@ -17,7 +17,12 @@ import {
     obtenerHistorialPrecios,
     eliminarServicio
 } from "./controllers/servicios.controller.js";
-import { validateServicio } from "./validators/servicios.validator.js";
+import {
+    validateServicio,
+    validateServicioUpdate,
+    validateBulkPrecios,
+    validateBulkDisponibilidad
+} from "./validators/servicios.validator.js";
 import { verificarToken } from "../../middlewares/auth.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,10 +65,10 @@ const router = Router();
 router.get("/stats", verificarToken, obtenerEstadisticas);
 
 // Acciones masivas (Deben ir ANTES de /:id para evitar choques de parámetros)
-router.put("/bulk/precios", verificarToken, actualizarPreciosMasivo);
-router.patch("/bulk/precios", verificarToken, actualizarPreciosMasivo);
-router.put("/bulk/disponibilidad", verificarToken, actualizarDisponibilidadMasiva);
-router.patch("/bulk/disponibilidad", verificarToken, actualizarDisponibilidadMasiva);
+router.put("/bulk/precios", verificarToken, validateBulkPrecios, actualizarPreciosMasivo);
+router.patch("/bulk/precios", verificarToken, validateBulkPrecios, actualizarPreciosMasivo);
+router.put("/bulk/disponibilidad", verificarToken, validateBulkDisponibilidad, actualizarDisponibilidadMasiva);
+router.patch("/bulk/disponibilidad", verificarToken, validateBulkDisponibilidad, actualizarDisponibilidadMasiva);
 
 // Listar servicios
 router.get("/", verificarToken, listarServicios);
@@ -82,7 +87,7 @@ router.get("/:id", verificarToken, obtenerServicioPorId);
 router.post("/", verificarToken, uploadRateLimiter, uploadProducto.single("imagen"), validateServicio, crearServicio);
 
 // Actualizar servicio (Form Data + Imagen + Rate Limiter)
-router.put("/:id", verificarToken, uploadRateLimiter, uploadProducto.single("imagen"), validateServicio, actualizarServicio);
+router.put("/:id", verificarToken, uploadRateLimiter, uploadProducto.single("imagen"), validateServicioUpdate, actualizarServicio);
 
 // Eliminar servicio
 router.delete("/:id", verificarToken, eliminarServicio);

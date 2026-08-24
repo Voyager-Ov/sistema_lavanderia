@@ -52,7 +52,7 @@ class TrackingService {
         if (token) {
             const expectedToken = crypto
                 .createHmac("sha256", "SECRET_TRACKING_KEY")
-                .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
+                .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion}`)
                 .digest("hex")
                 .substring(0, 16);
 
@@ -68,21 +68,37 @@ class TrackingService {
         }
 
         let subtotal = 0;
-        const items = [];
-        if (pedido.detalles && Array.isArray(pedido.detalles)) {
-            for (const d of pedido.detalles) {
-                const srv = d.servicio ? d.servicio.nombre : "Servicio";
-                const cant = d.cantidad || 1;
-                const p = parseFloat(d.precioHistorico) || 0;
-                subtotal += p * cant;
-                items.push({ nombre: srv, cantidad: cant });
-            }
+        const detalles = [];
+        if (!pedido.detalles || !Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+            throw new AppError("El pedido no contiene detalles registrados.", 400, "EMPTY_ORDER");
         }
-        const total = subtotal + (parseFloat(pedido.costoEnvio) || 0);
+
+        for (const d of pedido.detalles) {
+            const srv = d.servicio ? d.servicio.nombre : "Servicio";
+            const cant = Number(d.cantidad);
+            const p = Number(d.precioHistorico);
+            if (isNaN(cant) || cant <= 0 || isNaN(p) || p < 0) {
+                throw new AppError(`Detalle corrupto (ID: ${d.id}).`, 500, "INVALID_DATA");
+            }
+            subtotal += p * cant;
+            detalles.push({ nombre: srv, cantidad: cant });
+        }
+        
+        const total = subtotal; // Sin costo de envío
 
         let cobradoTotal = 0;
-        if (pedido.cobros) {
-            cobradoTotal = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.monto) || 0), 0);
+        if (pedido.cobros && Array.isArray(pedido.cobros)) {
+            for (const c of pedido.cobros) {
+                const monto = Number(c.montoAbonado !== null ? c.montoAbonado : c.monto);
+                if (isNaN(monto) || monto < 0) {
+                     throw new AppError(`Cobro corrupto (ID: ${c.id}).`, 500, "INVALID_DATA");
+                }
+                cobradoTotal += monto;
+            }
+        }
+
+        if (!pedido.fechaHoraPedido) {
+            throw new AppError("Falta fechaHoraPedido (fecha de recepción) en registro del pedido.", 500, "INVALID_DATA");
         }
 
         return {
@@ -90,11 +106,11 @@ class TrackingService {
             pedidoId: pedido.numeroPedido,
             estado: estadoActual,
             cobrado: cobradoTotal >= total && total > 0,
-            clienteNombre: pedido.cliente ? pedido.cliente.nombre : "Cliente",
+            clienteNombre: pedido.cliente ? pedido.cliente.nombre : null,
             total,
-            fechaRecepcion: pedido.fechaHoraCreacion,
-            fechaEntregaEstimada: pedido.fechaHoraEntregaEstimada,
-            items
+            fechaHoraPedido: pedido.fechaHoraPedido,
+            fechaHoraEntregaEstimada: pedido.fechaHoraEntregaEstimada,
+            detalles
         };
     }
 }

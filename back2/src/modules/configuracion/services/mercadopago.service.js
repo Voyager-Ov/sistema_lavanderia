@@ -23,9 +23,7 @@ class MercadoPagoService {
             }
         } catch (err) {
             if (err instanceof AppError) throw err;
-            if (!token.startsWith("APP_USR-") && !token.startsWith("TEST-")) {
-                console.warn("⚠️ [MercadoPago] No se pudo verificar token con la API externa, guardando de todos modos en desarrollo.");
-            }
+            throw new AppError("Error de conexión con Mercado Pago. No se pudo verificar el token.", 503, "GATEWAY_UNREACHABLE");
         }
 
         const { Negocio } = connectionManager.centralModels;

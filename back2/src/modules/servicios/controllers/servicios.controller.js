@@ -71,6 +71,9 @@ export const actualizarServicio = async (req, res, next) => {
 export const cambiarDisponibilidad = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
+        if (req.body.disponible === undefined) {
+            throw new AppError("El campo 'disponible' es requerido.", 400, "MISSING_DISPONIBLE_FIELD");
+        }
         const servicio = await serviciosService.cambiarDisponibilidad(negocioId, req.params.id, req.body.disponible);
         return successResponse(res, 200, "Disponibilidad del servicio actualizada exitosamente", servicio);
     } catch (error) {
@@ -81,7 +84,11 @@ export const cambiarDisponibilidad = async (req, res, next) => {
 export const actualizarPreciosMasivo = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const result = await serviciosService.actualizarPreciosMasivo(negocioId, req.body.servicios || req.body);
+        const { servicios } = req.body;
+        if (!servicios) {
+            throw new AppError("El campo 'servicios' es requerido en el cuerpo de la solicitud.", 400, "MISSING_SERVICES_ARRAY");
+        }
+        const result = await serviciosService.actualizarPreciosMasivo(negocioId, servicios);
         return successResponse(res, 200, "Precios actualizados masivamente", result);
     } catch (error) {
         next(error);
@@ -92,6 +99,9 @@ export const actualizarDisponibilidadMasiva = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
         const { ids, disponible } = req.body;
+        if (!ids || disponible === undefined) {
+            throw new AppError("Los campos 'ids' y 'disponible' son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
+        }
         const result = await serviciosService.actualizarDisponibilidadMasiva(negocioId, ids, disponible);
         return successResponse(res, 200, "Disponibilidad actualizada masivamente", result);
     } catch (error) {

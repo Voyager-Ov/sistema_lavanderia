@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-aprobacion-y-aislamiento-multitenant",
+  "title": "Especificación Técnica: Provisión Aislada de Esquemas, Aprobación SuperAdmin y Blindaje Multi-Tenant",
+  "version": "1.0.0",
+  "architecture_and_module_boundaries": {
+    "backend_modules": {
+      "auth_module": {
+        "files": [
+          "back2/src/modules/auth/services/register.service.js",
+          "back2/src/modules/auth/services/login.service.js",
+          "back2/src/modules/auth/services/profile.service.js",
+          "back2/src/modules/auth/controllers/auth.controller.js"
+        ],
+        "responsibility": "Gestión de registro diferido en SolicitudNegocio, autenticación directa por negocioId sin bucles cruzados, detección de solicitudes pendientes (403 SOLICITUD_PENDIENTE) y perfil de usuario aislado."
+      },
+      "superadmin_module": {
+        "files": [
+          "back2/src/modules/superadmin/services/superadmin.service.js",
+          "back2/src/modules/superadmin/controllers/superadmin.controller.js",
+          "back2/src/modules/superadmin/superadmin.routes.js"
+        ],
+        "responsibility": "Consolidación de métricas globales, diagnóstico de salud con latencia SQL real (SELECT 1), aprobación atómica con provisión de esquema tenant_<id>, rechazo con motivo, ajuste de cuotas Cloudflare R2 y corte/reactivación de servicio."
+      },
+      "database_core": {
+        "files": [
+          "back2/src/models/connectionManager.js",
+          "back2/src/models/Usuario.js",
+          "back2/src/models/Negocio.js",
+          "back2/src/models/SolicitudNegocio.js"
+        ],
+        "responsibility": "Gestión de conexiones PostgreSQL (Neon), creación de esquemas aislados 'tenant_<id>' bajo demanda, y asociaciones estricta public.Usuario -> public.Negocio."
+      },
+      "realtime_core": {
+        "files": [
+          "back2/src/socket.js"
+        ],
+        "responsibility": "Gestión de salas Socket.io ('superadmin_room', 'tenant_<id>') y emisión de eventos administrativos en tiempo real ('emitSuperAdminEvent')."
+      },
+      "email_core": {
+        "files": [
+          "back2/src/utils/email.util.js"
+        ],
+        "responsibility": "Envío de correos transaccionales (alerta a SuperAdmin, bienvenida al solicitante aprobado, motivo de rechazo) con manejo resiliente de errores sin romper transacciones de BD."
+      }
+    },
+    "frontend_modules": {
+      "guards_and_api": {
+        "files": [
+          "front/src/shared/ui/layout/guards/GuestGuard.tsx",
+          "front/src/shared/ui/layout/guards/RoleGuard.tsx",
+          "front/src/shared/api/apiClient.ts"
+        ],
+        "responsibility": "Protección de rutas de portales (/admin, /pos, /dashboard), intercepción de 403 SOLICITUD_PENDIENTE / BUSINESS_SUSPENDED y redirección automática."
+      },
+      "superadmin_views": {
+        "files": [
+          "front/src/app/(superadmin)/superadmin/page.tsx",
+          "front/src/shared/hooks/useSuperAdminSocket.ts"
+        ],
+        "responsibility": "Consola única scrolleable de SuperAdmin con conexión WebSockets en vivo para refresco reactivo de KPIs, tablas y solicitudes."
+      }
+    }
+  },
+  "interfaces_and_contracts": {
+    "api_endpoints": [
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "auth_required": false,
+        "request_body": {
+          "email": "string (required, email)",
+          "password": "string (required, min 6)",
+          "negocioNombre": "string (required)",
+          "subdominio": "string (optional)",
+          "cuit": "string (optional)",
+          "telefono": "string (optional)",
+          "nombre": "string (optional)"
+        },
+        "response_201": {
+          "success": true,
+          "message": "Solicitud de apertura enviada exitosamente.",
+          "data": {
+            "solicitudId": "number",
+            "email": "string",
+            "nombreNegocio": "string",
+            "estado": "PENDIENTE"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "auth_required": false,
+        "request_body": {
+          "email": "string (required)",
+          "password": "string (required)"
+        },
+        "response_200": {
+          "success": true,
+          "message": "Inicio de sesión exitoso",
+          "data": {
+            "token": "string (JWT)",
+            "usuario": {
+              "id": "number",
+              "email": "string",
+              "nombre": "string",
+              "rol": "string",
+              "negocioId": "number",
+              "empleadoId": "number"
+            }
+          }
+        },
+        "response_403_pending": {
+          "success": false,
+          "error": "Tu solicitud de apertura de negocio está siendo evaluada por nuestro equipo de Super Admin.",
+          "code": "SOLICITUD_PENDIENTE",
+          "data": {
+            "email": "string",
+            "negocio": "string",
+            "status": "PENDIENTE"
+          }
+        }
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/superadmin/solicitudes/:id/aprobar",
+        "auth_required": true,
+        "role": "SUPERADMIN",
+        "response_200": {
+          "success": true,
+          "message": "Solicitud aprobada y nuevo negocio aprovisionado exitosamente en Neon PostgreSQL.",
+          "data": {
+            "negocioId": "number",
+            "nombre": "string",
+            "esquema": "tenant_<id>",
+            "adminEmail": "string",
+            "estado": "APROBADO"
+          }
+        }
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/superadmin/solicitudes/:id/rechazar",
+        "auth_required": true,
+        "role": "SUPERADMIN",
+        "request_body": {
+          "motivo": "string (required)"
+        },
+        "response_200": {
+          "success": true,
+          "message": "Solicitud rechazada exitosamente.",
+          "data": {
+            "solicitudId": "number",
+            "estado": "RECHAZADO",
+            "motivoRechazo": "string"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/superadmin/health-check",
+        "auth_required": true,
+        "role": "SUPERADMIN",
+        "response_200": {
+          "success": true,
+          "data": {
+            "status": "OK",
+            "dbLatency": "number (ms)",
+            "neonStatus": "CONNECTED",
+            "timestamp": "ISO Date"
+          }
+        }
+      }
+    ],
+    "websocket_events": [
+      {
+        "event_name": "join:superadmin",
+        "direction": "client_to_server",
+        "payload": "{ token: string }"
+      },
+      {
+        "event_name": "superadmin:solicitud_updated",
+        "direction": "server_to_client",
+        "payload": "{ solicitudId: number, estado: string, nombreNegocio: string, timestamp: string }"
+      },
+      {
+        "event_name": "superadmin:negocio_updated",
+        "direction": "server_to_client",
+        "payload": "{ negocioId: number, activo: boolean, estadoSuscripcion: string, timestamp: string }"
+      },
+      {
+        "event_name": "superadmin:limites_updated",
+        "direction": "server_to_client",
+        "payload": "{ negocioId: number, maxImagenes: number, maxStorageGB: number, timestamp: string }"
+      }
+    ]
+  },
+  "failure_modes_and_edge_handling": {
+    "login_before_approval": {
+      "behavior": "El backend intercepta el email en SolicitudNegocio (estado: PENDIENTE) y devuelve 403 SOLICITUD_PENDIENTE. El frontend redirige a /solicitud-pendiente mostrando el estado exacto."
+    },
+    "login_cross_tenant_attempt": {
+      "behavior": "El backend consulta únicamente `usuario.negocioId`. No existe fallback a otros tenants ni creación implícita de empleados. Si el negocio no existe o está inactivo, responde con 404/403."
+    },
+    "direct_portal_url_tampering": {
+      "behavior": "Si un usuario sin sesión activa o con token inválido ingresa por URL a /admin, /pos o /dashboard, RoleGuard y GuestGuard limpian sesión y redirigen inmediatamente a /login. Paralelamente, cualquier fetch a /api/* responde con 401 Unauthorized."
+    },
+    "smtp_server_failure": {
+      "behavior": "Las funciones en email.util.js encapsulan el envío en try/catch registrando advertencias sin abortar las transacciones de base de datos ni provocar errores 500 al usuario."
+    },
+    "duplicate_approval_attempt": {
+      "behavior": "Si el SuperAdmin intenta aprobar una solicitud que ya está en estado APROBADO o RECHAZADO, el backend responde con 400 BAD_REQUEST (INVALID_SOLICITUD_STATE)."
+    }
+  },
+  "testing_strategy_and_quality_gates": {
+    "automated_integration_test": {
+      "file": "back2/scripts/test_superadmin_clean_architecture.js",
+      "test_cases": [
+        "1. Registro de nuevo negocio -> Verifica creación de SolicitudNegocio PENDIENTE sin esquema PostgreSQL.",
+        "2. Intento de login previo a aprobación -> Verifica rechazo con 403 SOLICITUD_PENDIENTE.",
+        "3. Login de SuperAdmin -> Emisión de token administrativo maestro.",
+        "4. Health-Check -> Medición de latencia SQL (dbLatency) contra Neon PG.",
+        "5. Aprobación por SuperAdmin -> Creación de esquema tenant_<id>, siembra de datos limpios en 0, usuario central y empleado #1.",
+        "6. Login del nuevo usuario aprobado -> Emisión de token vinculado a su nuevo negocio limpio en 0.",
+        "7. Verificación de aislamiento -> Comprobar que el nuevo usuario tiene 0 pedidos, 0 clientes y 0 cajas, sin ver datos de ningún otro tenant.",
+        "8. Suspensión de negocio por SuperAdmin -> Verificación de bloqueo 403 BUSINESS_SUSPENDED.",
+        "9. Reactivación de negocio -> Acceso normalizado."
+      ]
+    },
+    "frontend_typecheck": {
+      "command": "npx tsc --noEmit --skipLibCheck",
+      "gate": "Cero errores TypeScript en el cliente."
+    }
+  },
+  "phased_implementation_plan": {
+    "phase_1_database_and_models": {
+      "goal": "Asegurar modelo Usuario con negocioId y métodos de conexión atómica en connectionManager.",
+      "tasks": [
+        "Verificar columna 'negocioId' en modelo Usuario.",
+        "Asegurar que connectionManager inicialice esquemas 'tenant_<id>' aislados con catálogos base limpios."
+      ]
+    },
+    "phase_2_auth_refactor": {
+      "goal": "Erradicar escaneos cruzados entre tenants y asegurar login directo y protección contra solicitudes pendientes.",
+      "tasks": [
+        "Refactorizar login.service.js: eliminar 'for (const neg of negocios)', búsqueda directa por usuario.negocioId, detección de 403 SOLICITUD_PENDIENTE.",
+        "Refactorizar profile.service.js: consulta directa por negocioId y empleadoId.",
+        "Refactorizar register.service.js: provisión atómica y limpia de esquemas al aprobar."
+      ]
+    },
+    "phase_3_superadmin_clean_rebuild": {
+      "goal": "Reconstrucción limpia del módulo SuperAdmin con WebSockets y métricas consolidadas.",
+      "tasks": [
+        "Reescribir superadmin.service.js con métricas reales de Neon PG y medición de latencia.",
+        "Reescribir superadmin.controller.js con respuestas uniformes successResponse.",
+        "Configurar socket.js para la sala 'superadmin_room' y exportar 'emitSuperAdminEvent'."
+      ]
+    },
+    "phase_4_frontend_and_realtime": {
+      "goal": "Integrar hook useSuperAdminSocket y blindar guards de portales.",
+      "tasks": [
+        "Crear hook useSuperAdminSocket.ts en front.",
+        "Conectar eventos en superadmin/page.tsx.",
+        "Validar redirecciones en apiClient.ts ante 403 SOLICITUD_PENDIENTE."
+      ]
+    }
+  }
+}

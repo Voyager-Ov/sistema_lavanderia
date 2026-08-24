@@ -71,7 +71,11 @@ export const subirLogo = async (req, res, next) => {
 export const validarMercadoPagoToken = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const token = req.body.tokenMercadoPago || req.body.token;
+        const token = req.body.tokenMercadoPago;
+        
+        if (!token) {
+            throw new AppError("El campo 'tokenMercadoPago' es obligatorio.", 400, "MISSING_MERCADOPAGO_TOKEN");
+        }
 
         const result = await mercadopagoService.validarMercadoPagoToken(negocioId, token);
         return successResponse(res, 200, "Credenciales de Mercado Pago validadas exitosamente", result);

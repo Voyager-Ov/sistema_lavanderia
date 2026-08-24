@@ -3,28 +3,46 @@ import { apiClient } from "@/shared/lib/api-client";
 export interface CategoriaInfo {
   id: number;
   nombre: string;
-  icono?: string;
-  color?: string;
+  icono?: string | null;
+  color?: string | null;
 }
 
-export interface Producto {
+export interface Servicio {
   id: number;
   nombre: string;
-  descripcion?: string;
+  descripcion?: string | null;
   precioActual: number | string;
-  costoEstimado?: number | string;
-  imagenUrl?: string;
+  costoEstimado?: number | string | null;
+  imagenUrl?: string | null;
   disponible: boolean;
   activo: boolean;
-  categoriaId: number;
-  categoria?: CategoriaInfo;
-  tiempoEstimadoMinutos?: number;
+  categoriaId: number | null;
+  categoria?: CategoriaInfo | null;
+  tiempoEstimadoMinutos?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface ProductosResponse {
+// Alias de compatibilidad semántica con vistas de mostrador
+export type Producto = Servicio;
+
+export interface HistorialPrecioItem {
+  id: number;
+  precio: number;
+  precioNuevo: number;
+  precioAnterior: number;
+  fechaCambio: string;
+  createdAt: string;
+  fechaDesde?: string;
+  fechaHasta?: string | null;
+  motivo?: string | null;
+}
+
+export interface ServiciosResponse {
   success: boolean;
+  message?: string;
   data: {
-    items: Producto[];
+    items: Servicio[];
     meta?: {
       totalItems: number;
       totalPages: number;
@@ -34,46 +52,79 @@ export interface ProductosResponse {
   };
 }
 
-export interface ProductoStats {
+export type ProductosResponse = ServiciosResponse;
+
+export interface ServicioStats {
   total: number;
   activos: number;
   categorias: number;
   masSolicitado: string | null;
 }
 
-export const getProductos = async (queryParams?: string): Promise<Producto[]> => {
-  const url = queryParams ? `/productos?${queryParams}` : `/productos`;
-  const response = await apiClient.get<ProductosResponse>(url);
-  return response.data?.items || [];
+export type ProductoStats = ServicioStats;
+
+export interface BulkPrecioItem {
+  id: number;
+  precioActual: number;
+}
+
+export interface BulkPreciosPayload {
+  servicios: BulkPrecioItem[];
+}
+
+export interface BulkDisponibilidadPayload {
+  ids: number[];
+  disponible: boolean;
+}
+
+export const getProductos = async (queryParams?: string): Promise<Servicio[]> => {
+  const url = queryParams ? `/servicios?${queryParams}` : `/servicios`;
+  const response = await apiClient.get<ServiciosResponse>(url);
+  return response.data?.items ?? [];
 };
 
-export const getProductosPaginated = async (queryParams?: string): Promise<{ items: Producto[]; meta?: any }> => {
-  const url = queryParams ? `/productos?${queryParams}` : `/productos`;
-  const response = await apiClient.get<ProductosResponse>(url);
-  return response.data || { items: [] };
+export const getProductosPaginated = async (queryParams?: string): Promise<{ items: Servicio[]; meta?: any }> => {
+  const url = queryParams ? `/servicios?${queryParams}` : `/servicios`;
+  const response = await apiClient.get<ServiciosResponse>(url);
+  return response.data ?? { items: [] };
 };
 
-export const getProductosStats = async (): Promise<ProductoStats> => {
-  const response = await apiClient.get<{ success: boolean; data: ProductoStats }>(`/productos/stats`);
+export const getProductosStats = async (): Promise<ServicioStats> => {
+  const response = await apiClient.get<{ success: boolean; data: ServicioStats }>(`/servicios/stats`);
   return response.data;
 };
 
-export const getProductoById = async (id: number | string): Promise<Producto> => {
-  const response = await apiClient.get<{ success: boolean; data: Producto }>(`/productos/${id}`);
+export const getProductoById = async (id: number | string): Promise<Servicio> => {
+  const response = await apiClient.get<{ success: boolean; data: Servicio }>(`/servicios/${id}`);
   return response.data;
 };
 
-export const crearProducto = async (formData: FormData): Promise<Producto> => {
-  const response = await apiClient.postForm<{ success: boolean; data: Producto }>(`/productos`, formData);
+export const getHistorialPrecios = async (id: number | string): Promise<HistorialPrecioItem[]> => {
+  const response = await apiClient.get<{ success: boolean; data: HistorialPrecioItem[] }>(`/servicios/${id}/historial`);
+  return response.data ?? [];
+};
+
+export const actualizarPreciosMasivo = async (servicios: BulkPrecioItem[]): Promise<{ count: number; items: Servicio[] }> => {
+  const response = await apiClient.put<{ success: boolean; data: { count: number; items: Servicio[] } }>(`/servicios/bulk/precios`, { servicios });
   return response.data;
 };
 
-export const actualizarProducto = async (id: number | string, formData: FormData): Promise<Producto> => {
-  const response = await apiClient.putForm<{ success: boolean; data: Producto }>(`/productos/${id}`, formData);
+export const actualizarDisponibilidadMasiva = async (ids: number[], disponible: boolean): Promise<{ count: number }> => {
+  const response = await apiClient.patch<{ success: boolean; data: { count: number } }>(`/servicios/bulk/disponibilidad`, { ids, disponible });
+  return response.data;
+};
+
+export const crearProducto = async (formData: FormData): Promise<Servicio> => {
+  const response = await apiClient.postForm<{ success: boolean; data: Servicio }>(`/servicios`, formData);
+  return response.data;
+};
+
+export const actualizarProducto = async (id: number | string, formData: FormData): Promise<Servicio> => {
+  const response = await apiClient.putForm<{ success: boolean; data: Servicio }>(`/servicios/${id}`, formData);
   return response.data;
 };
 
 export const eliminarProducto = async (id: number | string): Promise<{ message: string }> => {
-  const response = await apiClient.delete<{ success: boolean; message: string }>(`/productos/${id}`);
+  const response = await apiClient.delete<{ success: boolean; message: string }>(`/servicios/${id}`);
   return response;
 };

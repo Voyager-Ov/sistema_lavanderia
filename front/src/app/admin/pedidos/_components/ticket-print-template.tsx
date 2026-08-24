@@ -108,9 +108,9 @@ export const TicketPrintTemplate = React.forwardRef<HTMLDivElement, TicketPrintT
           const maxCols = is58mm ? 32 : 48;
           const maxNameLen = is58mm ? 18 : 32;
 
-          const itemsStr = pedido.items?.map(item => {
+          const itemsStr = pedido.detalles?.map((item: any) => {
             const qty = `${item.cantidad}x `;
-            const name = (item.producto?.nombre || (item as any).servicio?.nombre || 'Item').substring(0, maxNameLen);
+            const name = (item.servicio?.nombre || (item as any).servicio?.nombre || 'Item').substring(0, maxNameLen);
             const left = `${qty}${name}`;
             const right = formatCurrency(item.subtotal);
             const paddingLength = Math.max(1, maxCols - left.length - right.length);

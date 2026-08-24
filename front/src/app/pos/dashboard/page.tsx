@@ -54,7 +54,7 @@ export default function PosDashboardPage() {
       const [statsData, cajaData, pedidosData] = await Promise.all([
         getDashboardStats(),
         obtenerCajaActual().catch(() => null), // Retorna null si es 404/cerrada
-        getPedidos({ estado: 'PENDIENTE', limit: 8, sortBy: 'fechaEntregaEstimada', sortOrder: 'asc' }).catch(() => null)
+        getPedidos({ estado: 'PENDIENTE', limit: 8, sortBy: 'fechaHoraEntregaEstimada', sortOrder: 'asc' }).catch(() => null)
       ])
       setStats(statsData)
       setCaja(cajaData)
@@ -66,8 +66,8 @@ export default function PosDashboardPage() {
           let badgeColor: "red" | "yellow" | "blue" | "green" | "default" = "blue"
           let rightText = ""
 
-          if (p.fechaEntregaEstimada) {
-            const fechaEst = new Date(p.fechaEntregaEstimada)
+          if (p.fechaHoraEntregaEstimada) {
+            const fechaEst = new Date(p.fechaHoraEntregaEstimada)
             rightText = format(fechaEst, "dd MMM HH:mm", { locale: es })
             
             if (isBefore(fechaEst, hoy)) {
@@ -82,7 +82,7 @@ export default function PosDashboardPage() {
           return {
             id: p.id,
             title: p.cliente?.nombre || 'Cliente Final',
-            subtitle: `Ticket #${p.id} - ${p.items?.length || 0} items`,
+            subtitle: `Ticket #${p.id} - ${p.detalles?.length || p.items?.length || 0} items`,
             badgeText,
             badgeColor,
             rightText
@@ -153,11 +153,11 @@ export default function PosDashboardPage() {
       {/* Row 1: Employee KPIs (No Financials) */}
       <div className="fade-up grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <DashboardKpi 
-          title="Pedidos del Día" 
+          title="Pedidos del DÃ­a" 
           value={(stats.pedidosDelDia.hoy || 0).toString()} 
           trendValue={incrementPedidos} 
           subtitle="Incremento vs ayer"
-          backMessage="Total de pedidos que recibimos durante el día de hoy."
+          backMessage="Total de pedidos que recibimos durante el dÃ­a de hoy."
           href="/pos/pedidos"
           variant="active"
         />
@@ -165,21 +165,21 @@ export default function PosDashboardPage() {
           title="Pendientes" 
           value={(stats.pedidosActivos.PENDIENTE || 0).toString()} 
           subtitle="Esperando proceso"
-          backMessage="Ropa sucia o pedidos que aún no han empezado a lavarse."
+          backMessage="Ropa sucia o pedidos que aÃºn no han empezado a lavarse."
           href="/pos/pedidos?filtro=pendientes"
         />
         <DashboardKpi 
           title="En Proceso" 
           value={(stats.pedidosActivos.EN_PROCESO || 0).toString()} 
           subtitle="Lavando / Secando"
-          backMessage="Pedidos que están actualmente ocupando máquinas."
+          backMessage="Pedidos que estÃ¡n actualmente ocupando mÃ¡quinas."
           href="/pos/pedidos?filtro=en_proceso"
         />
         <DashboardKpi 
           title="Listos p/ Entregar" 
           value={(stats.pedidosActivos.LISTO_PARA_RETIRAR || 0).toString()} 
           subtitle="Esperando cliente"
-          backMessage="Pedidos terminados. Si el cliente llega, entrégalos y cóbralos."
+          backMessage="Pedidos terminados. Si el cliente llega, entrÃ©galos y cÃ³bralos."
           href="/pos/pedidos?filtro=listos"
         />
       </div>
@@ -198,7 +198,7 @@ export default function PosDashboardPage() {
             onButtonClick={() => router.push('/pos/caja')}
           />
           <DashboardGauge 
-            title="Progreso de Producción" 
+            title="Progreso de ProducciÃ³n" 
             currentValue={listosYEntregados} 
             targetValue={metaDiaria}
             subtitle="Pedidos terminados vs recibidos hoy"
@@ -225,7 +225,7 @@ export default function PosDashboardPage() {
 
         <div className="xl:col-span-4">
           <DashboardListCard 
-            title="Recién Ingresados" 
+            title="ReciÃ©n Ingresados" 
             actionButtonText="Ir al Terminal"
             onActionClick={() => router.push('/pos/terminal')}
             items={recentOrdersList}

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useMemo } from "react"
 import { useGSAP } from "@gsap/react"
@@ -21,8 +21,8 @@ interface OrderCartProps {
   selectedClient: Cliente | null
   fechaHoraPedido?: Date | undefined
   setFechaHoraPedido?: (v: Date | undefined) => void
-  fechaEntregaEstimada: Date | undefined
-  setFechaEntregaEstimada: (v: Date | undefined) => void
+  fechaHoraEntregaEstimada: Date | undefined
+  setfechaHoraEntregaEstimada: (v: Date | undefined) => void
   onCheckout: () => void
   isSubmitting: boolean
 }
@@ -33,8 +33,8 @@ export function OrderCart({
   selectedClient,
   fechaHoraPedido,
   setFechaHoraPedido,
-  fechaEntregaEstimada,
-  setFechaEntregaEstimada,
+  fechaHoraEntregaEstimada,
+  setfechaHoraEntregaEstimada,
   onCheckout,
   isSubmitting
 }: OrderCartProps) {
@@ -82,7 +82,7 @@ export function OrderCart({
           </div>
           <div>
             <h2 className="font-bold text-foreground transition-colors">Resumen del Pedido</h2>
-            <p className="text-sm text-muted-foreground transition-colors">{itemsCount} {itemsCount === 1 ? 'ítem' : 'ítems'}</p>
+            <p className="text-sm text-muted-foreground transition-colors">{itemsCount} {itemsCount === 1 ? 'Ã­tem' : 'Ã­tems'}</p>
           </div>
         </div>
         {cart.length > 0 && (
@@ -104,7 +104,7 @@ export function OrderCart({
             <label className="text-xs font-semibold text-foreground flex items-center justify-between transition-colors">
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-brand-purple" />
-                Fecha Recepción del Pedido
+                Fecha RecepciÃ³n del Pedido
               </span>
               <span className="text-[10px] text-muted-foreground font-normal">Por defecto: Ahora</span>
             </label>
@@ -128,7 +128,7 @@ export function OrderCart({
               onClick={() => {
                 const d = new Date()
                 d.setHours(d.getHours() + 24)
-                setFechaEntregaEstimada(d)
+                setfechaHoraEntregaEstimada(d)
               }}
               className="flex-1 py-1.5 px-2 bg-blue-50/50 hover:bg-blue-100 text-brand-blue border border-brand-blue/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-300 dark:border-blue-800"
             >
@@ -138,14 +138,14 @@ export function OrderCart({
               onClick={() => {
                 const d = new Date()
                 d.setHours(d.getHours() + 48)
-                setFechaEntregaEstimada(d)
+                setfechaHoraEntregaEstimada(d)
               }}
               className="flex-1 py-1.5 px-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
               <Clock className="w-3.5 h-3.5" /> 48 hs
             </button>
             <button
-              onClick={() => setFechaEntregaEstimada(undefined)}
+              onClick={() => setfechaHoraEntregaEstimada(undefined)}
               className="py-1.5 px-3 bg-muted hover:bg-red-500/10 hover:text-red-500 text-muted-foreground border border-border rounded-xl text-xs font-medium transition-colors"
             >
               Limpiar
@@ -154,8 +154,8 @@ export function OrderCart({
 
           <div className="relative group">
             <DateTimePicker 
-              value={fechaEntregaEstimada} 
-              onChange={setFechaEntregaEstimada} 
+              value={fechaHoraEntregaEstimada} 
+              onChange={setfechaHoraEntregaEstimada} 
               placeholder="Seleccionar fecha y hora..."
             />
           </div>
@@ -196,8 +196,8 @@ export function OrderCart({
         {cart.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400">
             <ShoppingBag className="w-16 h-16 mb-4 text-muted-foreground/30 transition-colors" />
-            <p className="font-medium text-muted-foreground text-lg transition-colors">El carrito está vacío</p>
-            <p className="text-sm mt-1">Selecciona servicios del catálogo</p>
+            <p className="font-medium text-muted-foreground text-lg transition-colors">El carrito estÃ¡ vacÃ­o</p>
+            <p className="text-sm mt-1">Selecciona servicios del catÃ¡logo</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

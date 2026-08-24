@@ -412,9 +412,16 @@ class ClientesService {
 
     // Ajustar Crédito / Saldo a Favor del Cliente (CU-CLI-07)
     async ajustarCreditoCliente(negocioId, clienteId, data) {
+        if (data.monto === undefined || data.monto === null) {
+            throw new AppError("El campo 'monto' es obligatorio.", 400, "MISSING_AMOUNT");
+        }
+        if (!data.concepto) {
+            throw new AppError("El campo 'concepto' es obligatorio.", 400, "MISSING_CONCEPT");
+        }
+
         const { CuentaCorriente, MovimientoCuentaCorriente } = await this._getModels(negocioId);
-        const monto = parseFloat(data.monto || 0);
-        const concepto = data.concepto || data.observaciones || "Ajuste manual de crédito";
+        const monto = parseFloat(data.monto);
+        const concepto = data.concepto.trim();
 
         if (isNaN(monto) || monto <= 0) {
             throw new AppError("El monto del ajuste debe ser un valor numérico positivo.", 400, "INVALID_AMOUNT");

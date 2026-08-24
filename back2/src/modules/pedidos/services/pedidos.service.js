@@ -11,28 +11,31 @@ class PedidosService {
         return tenantDb.models;
     }
 
-    // Formatea un pedido agregando totales calculados, estado actual y alias para el frontend
+    // Formatea un pedido agregando totales calculados, estado actual y alineado con interfaces SSOT
     _formatPedido(pedido) {
         const plain = pedido.get ? pedido.get({ plain: true }) : pedido;
 
         // Calcular total del pedido sumando ítems
         let subtotalItems = 0;
-        const itemsFormatted = [];
+        const detallesFormatted = [];
 
         if (plain.detalles && Array.isArray(plain.detalles)) {
             for (const item of plain.detalles) {
-                const precioUnitario = parseFloat(item.precioHistorico) || 0;
-                const cant = parseInt(item.cantidad) || 1;
+                const precioUnitario = Number(item.precioHistorico);
+                const cant = Number(item.cantidad);
+                if (isNaN(precioUnitario) || precioUnitario < 0 || isNaN(cant) || cant <= 0) {
+                     throw new AppError(`Detalle corrupto (ID: ${item.id}).`, 500, "INVALID_DATA");
+                }
                 const subtotal = precioUnitario * cant;
                 subtotalItems += subtotal;
 
-                itemsFormatted.push({
+                detallesFormatted.push({
                     id: item.id,
-                    productoId: item.servicioId,
+                    servicioId: item.servicioId,
                     cantidad: cant,
                     precioUnitario,
                     subtotal,
-                    producto: item.servicio ? {
+                    servicio: item.servicio ? {
                         id: item.servicio.id,
                         nombre: item.servicio.nombre,
                         imagenUrl: item.servicio.imagenUrl
@@ -41,13 +44,17 @@ class PedidosService {
             }
         }
 
-        const costoEnvio = parseFloat(plain.costoEnvio) || 0;
+        const costoEnvio = 0; // Regla Modelo Mostrador
         const total = subtotalItems + costoEnvio;
 
         // Calcular total cobrado
         let totalCobrado = 0;
         if (plain.cobros && Array.isArray(plain.cobros)) {
-            totalCobrado = plain.cobros.reduce((sum, cobro) => sum + (parseFloat(cobro.montoAbonado || cobro.monto) || 0), 0);
+            for (const cobro of plain.cobros) {
+                 const m = Number(cobro.montoAbonado !== null && cobro.montoAbonado !== undefined ? cobro.montoAbonado : cobro.monto);
+                 if (isNaN(m) || m < 0) throw new AppError(`Cobro corrupto (ID: ${cobro.id}).`, 500, "INVALID_DATA");
+                 totalCobrado += m;
+            }
         }
 
         const isCobradoFlag = !!plain.cobrado;
@@ -61,76 +68,77 @@ class PedidosService {
         }
 
         // Estado actual (último cambio de estado) e historial mapeado para el frontend
-        let estadoActual = plain.estado || "PENDIENTE";
-        const historialFormatted = [];
+        let estadoActual = plain.estado;
+        if (!estadoActual) {
+             throw new AppError(`El pedido #${plain.numeroPedido} tiene un estado nulo o corrupto.`, 500, "INVALID_STATE");
+        }
+        
+        const cambiosEstadoFormatted = [];
 
         if (plain.cambiosEstado && Array.isArray(plain.cambiosEstado) && plain.cambiosEstado.length > 0) {
             const sortedCambios = [...plain.cambiosEstado].sort((a, b) => {
-                const timeA = new Date(a.fechaHoraInicio || a.createdAt || 0).getTime();
-                const timeB = new Date(b.fechaHoraInicio || b.createdAt || 0).getTime();
+                if (!a.fechaHoraInicio || !b.fechaHoraInicio) {
+                     throw new AppError(`Cambio de estado corrupto (falta fechaHoraInicio) en pedido #${plain.numeroPedido}.`, 500, "INVALID_DATA");
+                }
+                const timeA = new Date(a.fechaHoraInicio).getTime();
+                const timeB = new Date(b.fechaHoraInicio).getTime();
                 if (timeA !== timeB) return timeA - timeB;
-                return (a.id || 0) - (b.id || 0);
+                return a.id - b.id;
             });
 
             const ultimoCambio = sortedCambios[sortedCambios.length - 1];
-            if (ultimoCambio && ultimoCambio.estado) {
-                estadoActual = ultimoCambio.estado.nombre || estadoActual;
+            if (ultimoCambio && ultimoCambio.estado && ultimoCambio.estado.nombre) {
+                estadoActual = ultimoCambio.estado.nombre;
             }
 
             for (let i = 0; i < sortedCambios.length; i++) {
                 const ce = sortedCambios[i];
                 const prev = i > 0 ? sortedCambios[i - 1] : null;
-                historialFormatted.push({
+                cambiosEstadoFormatted.push({
                     id: ce.id,
                     estadoAnterior: prev && prev.estado ? prev.estado.nombre : null,
                     estadoNuevo: ce.estado ? ce.estado.nombre : "PENDIENTE",
                     comentario: ce.comentario || `Estado cambiado a ${ce.estado ? ce.estado.nombre : "PENDIENTE"}`,
-                    createdAt: ce.fechaHoraInicio || ce.createdAt || plain.fechaHoraCreacion
+                    fechaHoraInicio: ce.fechaHoraInicio
                 });
             }
         } else {
-            historialFormatted.push({
+            if (!plain.fechaHoraCreacion) throw new AppError("Falta fechaHoraCreacion en pedido.", 500, "INVALID_DATA");
+            cambiosEstadoFormatted.push({
                 id: 1,
                 estadoAnterior: null,
                 estadoNuevo: estadoActual,
                 comentario: "Pedido recepcionado en sistema",
-                createdAt: plain.fechaHoraCreacion || plain.createdAt
+                fechaHoraInicio: plain.fechaHoraCreacion
             });
         }
 
-        const fechaPedidoVal = plain.fechaHoraPedido || plain.fechaHoraCreacion || plain.createdAt;
+        if (!plain.fechaHoraCreacion) throw new AppError("Falta fechaHoraCreacion en pedido.", 500, "INVALID_DATA");
+        if (!plain.fechaHoraPedido) throw new AppError("Falta fechaHoraPedido (fecha de recepción real) en pedido.", 500, "INVALID_DATA");
 
         return {
             id: plain.numeroPedido,
             numeroPedido: plain.numeroPedido,
             negocioId: plain.negocioId,
             codigoSeguimiento: `LAV-${plain.numeroPedido}`,
-            fechaHoraCreacion: plain.fechaHoraCreacion || plain.createdAt,
-            fechaHoraPedido: fechaPedidoVal,
-            fechaPedido: fechaPedidoVal,
-            fechaRecepcion: fechaPedidoVal,
-            fecha: fechaPedidoVal,
-            createdAt: plain.fechaHoraCreacion || plain.createdAt,
-            fechaEntregaEstimada: plain.fechaHoraEntregaEstimada,
+            fechaHoraCreacion: plain.fechaHoraCreacion,
+            fechaHoraPedido: plain.fechaHoraPedido,
+            fechaHoraEntregaEstimada: plain.fechaHoraEntregaEstimada,
             observaciones: plain.observaciones,
-            notas: plain.observaciones,
             origen: plain.origen,
             costoEnvio,
-            subtotalItems,
+            subtotal: subtotalItems,
             total,
             totalCobrado,
             saldoPendiente: cobrado ? 0 : Math.max(0, total - totalCobrado),
             cobrado,
             estadoPago,
             estado: estadoActual,
-            estadoActual,
             ticketImpreso: plain.ticketImpreso,
             clienteId: plain.clienteId,
             cliente: plain.cliente,
-            items: itemsFormatted,
-            detalles: plain.detalles,
-            cambiosEstado: plain.cambiosEstado,
-            historial: historialFormatted,
+            detalles: detallesFormatted,
+            cambiosEstado: cambiosEstadoFormatted,
             cobros: plain.cobros,
             factura: plain.factura
         };
@@ -140,16 +148,25 @@ class PedidosService {
     async listarPedidos(negocioId, query) {
         const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = await this._getModels(negocioId);
 
-        const page = parseInt(query.page) || 1;
-        const limit = parseInt(query.limit) || 10;
-        const offset = (page - 1) * limit;
+        let page = 1;
+        if (query.page) {
+            page = Number(query.page);
+            if (isNaN(page) || page < 1) throw new AppError("Página inválida.", 400, "INVALID_PAGINATION");
+        }
 
+        let limit = 10;
+        if (query.limit) {
+            limit = Number(query.limit);
+            if (isNaN(limit) || limit < 1) throw new AppError("Límite inválido.", 400, "INVALID_PAGINATION");
+        }
+
+        const offset = (page - 1) * limit;
         const where = {};
 
         // Filtro por número de pedido o nombre/teléfono de cliente
         if (query.search && query.search.trim() !== "") {
             const searchVal = query.search.trim();
-            const searchNum = parseInt(searchVal);
+            const searchNum = Number(searchVal);
 
             if (!isNaN(searchNum)) {
                 where.numeroPedido = searchNum;
@@ -163,11 +180,9 @@ class PedidosService {
             }
         }
 
-        // Filtro por rango de fechas de creación / pedido
-        if (query.fechaDesde || query.fechaInicio || query.fechaHasta || query.fechaFin) {
-            const desde = query.fechaDesde || query.fechaInicio;
-            const hasta = query.fechaHasta || query.fechaFin;
-            const dateClause = parseDateRange(desde, hasta);
+        // Filtro por rango de fechas (usar fechaInicio y fechaFin como canónicos)
+        if (query.fechaInicio || query.fechaFin) {
+            const dateClause = parseDateRange(query.fechaInicio, query.fechaFin);
             if (dateClause) {
                 where[Op.or] = [
                     { fechaHoraCreacion: dateClause },
@@ -179,14 +194,11 @@ class PedidosService {
 
         // Ordenamiento
         let sortBy = "numeroPedido";
-        if (query.sortBy === "id" || query.sortBy === "numeroPedido") sortBy = "numeroPedido";
-        else if (query.sortBy === "fechaEntregaEstimada" || query.sortBy === "fechaHoraEntregaEstimada") sortBy = "fechaHoraEntregaEstimada";
-        else if (query.sortBy === "createdAt" || query.sortBy === "fechaHoraCreacion") sortBy = "createdAt";
-        else if (query.sortBy === "total") sortBy = "total";
-        else if (query.sortBy === "estado") sortBy = "estado";
-        else if (query.sortBy === "codigoSeguimiento") sortBy = "codigoSeguimiento";
+        if (query.sortBy === "numeroPedido" || query.sortBy === "fechaHoraEntregaEstimada" || query.sortBy === "createdAt" || query.sortBy === "total" || query.sortBy === "estado" || query.sortBy === "codigoSeguimiento") {
+            sortBy = query.sortBy;
+        }
 
-        const sortOrder = (query.sortOrder || "DESC").toUpperCase();
+        const sortOrder = query.sortOrder ? query.sortOrder.toUpperCase() : "DESC";
 
         const { count, rows } = await Pedido.findAndCountAll({
             where,
@@ -212,16 +224,16 @@ class PedidosService {
 
         const formattedItems = rows.map(p => this._formatPedido(p));
 
-        // Filtrar por estado actual
+        // Filtrar por estado
         let filteredItems = formattedItems;
         if (query.estado && query.estado !== "ALL") {
-            filteredItems = formattedItems.filter(p => p.estadoActual === query.estado || p.estado === query.estado);
+            filteredItems = formattedItems.filter(p => p.estado === query.estado);
         }
 
-        const totalPages = Math.ceil(count / limit) || 1;
+        const totalPages = Math.max(1, Math.ceil(count / limit));
 
         return {
-            items: filteredItems,
+            items: filteredItems, // Maintained items here for pagination container wrapper in Next.js
             meta: {
                 totalItems: count,
                 total: count,
@@ -302,9 +314,9 @@ class PedidosService {
     async crearPedido(negocioId, data) {
         const { Pedido, DetallePedido, Servicio, Cliente, Estado, CambioEstadoPedido } = await this._getModels(negocioId);
 
-        const itemsList = data.items || data.detalles || [];
+        const itemsList = data.detalles;
         if (!Array.isArray(itemsList) || itemsList.length === 0) {
-            throw new AppError("El pedido debe contener al menos un ítem o servicio.", 400, "MISSING_ORDER_ITEMS");
+            throw new AppError("El pedido debe contener al menos un detalle (servicio).", 400, "MISSING_ORDER_ITEMS");
         }
 
         let clienteId = data.clienteId;
@@ -318,19 +330,22 @@ class PedidosService {
             clienteId = nuevoCliente.id;
         }
 
-        const fechaPedidoRaw = data.fechaHoraPedido || data.fechaPedido || data.fechaRecepcion;
-        const fechaHoraPedido = fechaPedidoRaw ? new Date(fechaPedidoRaw) : new Date();
+        const fechaHoraPedido = data.fechaHoraPedido ? new Date(data.fechaHoraPedido) : new Date();
+
+        if (!data.origen) {
+            throw new AppError("El origen del pedido (origen) es obligatorio.", 400, "MISSING_ORIGIN");
+        }
 
         // Crear registro principal del pedido
         const nuevoPedido = await Pedido.create({
             clienteId: clienteId || null,
-            origen: data.origen || "MOSTRADOR",
-            observaciones: data.observaciones || data.notas || null,
+            origen: data.origen,
+            observaciones: data.observaciones || null,
             direccionEntrega: data.direccionEntrega || null,
-            costoEnvio: parseFloat(data.costoEnvio || 0),
+            costoEnvio: 0,
             fechaHoraCreacion: new Date(),
             fechaHoraPedido: fechaHoraPedido,
-            fechaHoraEntregaEstimada: data.fechaEntregaEstimada || data.fechaHoraEntregaEstimada ? new Date(data.fechaEntregaEstimada || data.fechaHoraEntregaEstimada) : null,
+            fechaHoraEntregaEstimada: data.fechaHoraEntregaEstimada ? new Date(data.fechaHoraEntregaEstimada) : null,
             ticketImpreso: false,
             negocioId
         });
@@ -338,23 +353,31 @@ class PedidosService {
         // Insertar ítems y calcular subtotal total
         let subtotalTotal = 0;
         for (const item of itemsList) {
-            const servicioId = item.servicioId || item.productoId;
-            let precioUnitario = item.precio || item.precioUnitario;
+            const servicioId = item.servicioId;
+            if (!servicioId) throw new AppError("Detalle de pedido sin ID de servicio.", 400, "INVALID_DATA");
 
-            if (!precioUnitario && servicioId) {
+            let precioUnitario = Number(item.precioUnitario);
+
+            if (isNaN(precioUnitario)) {
                 const srv = await Servicio.findByPk(servicioId);
-                if (srv) precioUnitario = srv.precioActual;
+                if (srv) {
+                    precioUnitario = Number(srv.precioActual);
+                } else {
+                    throw new AppError(`Servicio ID ${servicioId} no encontrado.`, 404, "SERVICE_NOT_FOUND");
+                }
             }
 
-            const cant = parseInt(item.cantidad || 1);
-            const pr = parseFloat(precioUnitario || 0);
-            subtotalTotal += (pr * cant);
+            const cant = Number(item.cantidad);
+            if (isNaN(cant) || cant <= 0 || isNaN(precioUnitario) || precioUnitario < 0) {
+                 throw new AppError("Detalle de pedido con cantidad o precio corrupto.", 400, "INVALID_DATA");
+            }
+            subtotalTotal += (precioUnitario * cant);
 
             await DetallePedido.create({
                 pedidoNumeroPedido: nuevoPedido.numeroPedido,
-                servicioId: servicioId || null,
+                servicioId: servicioId,
                 cantidad: cant,
-                precioHistorico: pr
+                precioHistorico: precioUnitario
             });
         }
 
@@ -374,45 +397,6 @@ class PedidosService {
 
         const res = await this.obtenerPedidoPorNumero(negocioId, nuevoPedido.numeroPedido);
         pedidosSocket.emitirPedidoCreado(negocioId, res);
-        return res;
-    }
-
-    // Cambiar estado de un pedido (Trazabilidad)
-    async cambiarEstado(negocioId, numeroPedido, nuevoEstadoNombre) {
-        const { Pedido, Estado, CambioEstadoPedido } = await this._getModels(negocioId);
-
-        const pedido = await Pedido.findByPk(numeroPedido);
-        if (!pedido) {
-            throw new AppError("Pedido no encontrado para cambiar estado.", 404, "ORDER_NOT_FOUND");
-        }
-
-        let estado = await Estado.findOne({ where: { nombre: nuevoEstadoNombre } });
-        if (!estado) {
-            estado = await Estado.create({ nombre: nuevoEstadoNombre, descripcion: `Estado ${nuevoEstadoNombre}`, ambito: "Pedido" });
-        }
-
-        // Actualizar la columna estado en la tabla pedidos
-        await pedido.update({ estado: nuevoEstadoNombre });
-
-        // Cerrar el cambio de estado previo
-        const ultimoCambio = await CambioEstadoPedido.findOne({
-            where: { pedidoNumeroPedido: numeroPedido, fechaHoraFin: null },
-            order: [["id", "DESC"]]
-        });
-
-        if (ultimoCambio) {
-            await ultimoCambio.update({ fechaHoraFin: new Date() });
-        }
-
-        // Registrar nuevo estado
-        await CambioEstadoPedido.create({
-            pedidoNumeroPedido: numeroPedido,
-            estadoId: estado.id,
-            fechaHoraInicio: new Date()
-        });
-
-        const res = await this.obtenerPedidoPorNumero(negocioId, numeroPedido);
-        pedidosSocket.emitirEstadoCambiado(negocioId, res, nuevoEstadoNombre);
         return res;
     }
 

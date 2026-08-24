@@ -26,7 +26,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
       if (isAuthenticated && user) {
         // Redirigimos según el rol si ya está logueado a una página guest de login/registro
         const userRole = user.rol ? user.rol.toLowerCase().trim() : "";
-        if (userRole.includes("superadmin")) {
+        if (userRole.includes("super_admin") || userRole.includes("superadmin")) {
           router.replace("/superadmin/dashboard");
         } else if (userRole.includes("admin")) {
           router.replace("/admin/dashboard");

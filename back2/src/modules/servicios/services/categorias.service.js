@@ -35,15 +35,15 @@ class CategoriasService {
         }
         const { CategoriaServicio } = await this._getModels(negocioId);
 
-        if (!data.nombre) {
-            throw new AppError("El nombre de la categoría es requerido.", 400, "MISSING_CATEGORY_NAME");
+        if (!data.nombre || data.nombre.trim() === "") {
+            throw new AppError("El nombre de la categoría es obligatorio.", 400, "MISSING_CATEGORY_NAME");
         }
 
         return await CategoriaServicio.create({
-            nombre: data.nombre,
-            descripcion: data.descripcion || null,
-            icono: data.icono || "Tag",
-            color: data.color || "#2563eb",
+            nombre: data.nombre.trim(),
+            descripcion: data.descripcion ? data.descripcion.trim() : null,
+            icono: data.icono ? data.icono.trim() : "Tag",
+            color: data.color ? data.color.trim() : "#2563eb",
             activo: true,
             negocioId
         });
@@ -53,19 +53,34 @@ class CategoriasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
+        if (!id) {
+            throw new AppError("ID de categoría es requerido.", 400, "MISSING_CATEGORY_ID");
+        }
         const { CategoriaServicio } = await this._getModels(negocioId);
 
-        const categoria = await CategoriaServicio.findByPk(id);
+        const categoria = await CategoriaServicio.findOne({ where: { id, activo: true } });
         if (!categoria) {
             throw new AppError("Categoría no encontrada.", 404, "CATEGORY_NOT_FOUND");
         }
 
-        await categoria.update({
-            nombre: data.nombre !== undefined ? data.nombre : categoria.nombre,
-            descripcion: data.descripcion !== undefined ? data.descripcion : categoria.descripcion,
-            icono: data.icono !== undefined ? data.icono : categoria.icono,
-            color: data.color !== undefined ? data.color : categoria.color
-        });
+        const updateFields = {};
+        if (data.nombre !== undefined) {
+            if (data.nombre.trim() === "") {
+                throw new AppError("El nombre de la categoría no puede estar vacío.", 400, "INVALID_CATEGORY_NAME");
+            }
+            updateFields.nombre = data.nombre.trim();
+        }
+        if (data.descripcion !== undefined) {
+            updateFields.descripcion = data.descripcion ? data.descripcion.trim() : null;
+        }
+        if (data.icono !== undefined) {
+            updateFields.icono = data.icono ? data.icono.trim() : "Tag";
+        }
+        if (data.color !== undefined) {
+            updateFields.color = data.color ? data.color.trim() : "#2563eb";
+        }
+
+        await categoria.update(updateFields);
 
         return categoria;
     }
@@ -74,9 +89,12 @@ class CategoriasService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
+        if (!id) {
+            throw new AppError("ID de categoría es requerido.", 400, "MISSING_CATEGORY_ID");
+        }
         const { CategoriaServicio } = await this._getModels(negocioId);
 
-        const categoria = await CategoriaServicio.findByPk(id);
+        const categoria = await CategoriaServicio.findOne({ where: { id, activo: true } });
         if (!categoria) {
             throw new AppError("Categoría no encontrada.", 404, "CATEGORY_NOT_FOUND");
         }

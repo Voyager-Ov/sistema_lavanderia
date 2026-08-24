@@ -34,17 +34,6 @@ class LoginService {
                         where: { email: emailLower }
                     });
 
-                    // Si no existe perfil de Empleado para este email en el tenant y el usuario es ADMIN/SUPER_ADMIN, crearlo automáticamente
-                    if (!emp && usuario.Roles && usuario.Roles.some(r => r.nombre === "ADMIN" || r.nombre === "SUPER_ADMIN")) {
-                        emp = await tenantDb.models.Empleado.create({
-                            nombre: usuario.nombre || "Administrador",
-                            apellido: usuario.apellido || "",
-                            email: emailLower,
-                            rol: "admin",
-                            activo: true
-                        });
-                    }
-
                     if (emp) {
                         empleadoEncontrado = emp;
                         negocioEncontrado = neg;
@@ -94,8 +83,15 @@ class LoginService {
      * obtiene los registros de Empleado y Negocio desde la DB y firma el JWT token.
      */
     async login({ email, password }) {
+        if (!email) {
+            throw new AppError("El campo 'email' es obligatorio.", 400, "MISSING_EMAIL");
+        }
+        if (!password) {
+            throw new AppError("El campo 'password' es obligatorio.", 400, "MISSING_PASSWORD");
+        }
+
         const { Usuario, Rol } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
+        const userEmail = email.trim().toLowerCase();
 
         const usuario = await Usuario.findOne({
             where: { email: userEmail },
@@ -189,7 +185,7 @@ class LoginService {
                 usuarioEmail: usuario.email
             });
         } catch (e) {
-            // Ignore session logging error
+            console.error("⚠️ [Session Audit Error]:", e.message);
         }
 
         const secret = getJwtSecret();
@@ -221,13 +217,12 @@ class LoginService {
      * Autenticación con Google OAuth
      * Valida el idToken de Google y obtiene o vincula la cuenta del usuario.
      */
-    async loginWithGoogle({ token, idToken }) {
-        const { Usuario, Rol } = connectionManager.centralModels;
-        const googleToken = token || idToken;
-
-        if (!googleToken) {
-            throw new AppError("Token de Google no proporcionado.", 400, "MISSING_GOOGLE_TOKEN");
+    async loginWithGoogle({ idToken }) {
+        if (!idToken) {
+            throw new AppError("El campo 'idToken' es obligatorio para la autenticación con Google.", 400, "MISSING_GOOGLE_ID_TOKEN");
         }
+        const { Usuario, Rol } = connectionManager.centralModels;
+        const googleToken = idToken;
 
         let payload = null;
         try {
@@ -237,15 +232,7 @@ class LoginService {
             });
             payload = ticket.getPayload();
         } catch (e) {
-            if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
-                const decoded = jwt.decode(googleToken);
-                if (decoded && decoded.email) {
-                    payload = decoded;
-                }
-            }
-            if (!payload) {
-                throw new AppError("Token de Google inválido o caducado.", 401, "INVALID_GOOGLE_TOKEN");
-            }
+            throw new AppError("Token de Google inválido o caducado.", 401, "INVALID_GOOGLE_TOKEN");
         }
 
         const googleId = payload.sub || payload.id;

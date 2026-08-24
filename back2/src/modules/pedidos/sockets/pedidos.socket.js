@@ -5,11 +5,11 @@ class PedidosSocket {
     emitirPedidoCreado(negocioId, pedido) {
         if (!negocioId || !pedido) return;
         getIO().to(`tenant_${negocioId}`).emit("pedido:creado", {
-            pedidoId: pedido.numeroPedido || pedido.id,
+            pedidoId: pedido.numeroPedido,
             codigoSeguimiento: pedido.codigoSeguimiento,
-            cliente: pedido.cliente?.nombre || pedido.nombreClienteFactura || "Cliente",
-            estado: pedido.estado || "PENDIENTE",
-            total: pedido.total || 0,
+            cliente: pedido.cliente?.nombre || null,
+            estado: pedido.estado,
+            total: pedido.total,
             timestamp: new Date().toISOString()
         });
     }
@@ -17,11 +17,11 @@ class PedidosSocket {
     // Emite evento cuando cambia el estado de un pedido (Tablero Kanban de Planta)
     emitirEstadoCambiado(negocioId, pedido, nuevoEstado) {
         if (!negocioId || !pedido) return;
-        const estadoVal = nuevoEstado || pedido.estado;
+        const estadoVal = nuevoEstado;
         
         // Emisión a la sala del negocio (POS / Admin / Planta)
         getIO().to(`tenant_${negocioId}`).emit("pedido:estado_cambiado", {
-            pedidoId: pedido.numeroPedido || pedido.id,
+            pedidoId: pedido.numeroPedido,
             codigoSeguimiento: pedido.codigoSeguimiento,
             nuevoEstado: estadoVal,
             timestamp: new Date().toISOString()

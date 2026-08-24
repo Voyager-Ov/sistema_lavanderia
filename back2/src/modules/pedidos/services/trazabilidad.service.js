@@ -44,16 +44,25 @@ class TrazabilidadService {
             throw new AppError("Pedido no encontrado para cambiar estado.", 404, "ORDER_NOT_FOUND");
         }
 
-        let estadoActualNombre = pedido.estado || "PENDIENTE";
+        let estadoActualNombre = pedido.estado;
+        if (!estadoActualNombre) {
+            throw new AppError("El pedido tiene un estado nulo o corrupto.", 500, "INVALID_STATE");
+        }
+
         if (pedido.cambiosEstado && Array.isArray(pedido.cambiosEstado) && pedido.cambiosEstado.length > 0) {
             const sorted = [...pedido.cambiosEstado].sort((a, b) => {
-                const timeA = new Date(a.fechaHoraInicio || a.createdAt || 0).getTime();
-                const timeB = new Date(b.fechaHoraInicio || b.createdAt || 0).getTime();
+                if (!a.fechaHoraInicio || !b.fechaHoraInicio) {
+                     throw new AppError("Registro de cambio de estado corrupto (falta fechaHoraInicio).", 500, "INVALID_DATA");
+                }
+                const timeA = new Date(a.fechaHoraInicio).getTime();
+                const timeB = new Date(b.fechaHoraInicio).getTime();
                 if (timeA !== timeB) return timeA - timeB;
-                return (a.id || 0) - (b.id || 0);
+                return a.id - b.id;
             });
             const u = sorted[sorted.length - 1];
-            if (u && u.estado) estadoActualNombre = u.estado.nombre;
+            if (u && u.estado && u.estado.nombre) {
+                estadoActualNombre = u.estado.nombre;
+            }
         }
 
         this._validarTransicionEstado(estadoActualNombre, nuevoEstadoNombre);

@@ -1,0 +1,472 @@
+{
+  "feature": "Auth Module Full Testing Suite (Backend + Frontend E2E)",
+  "version": "2.0.0",
+  "domain": "Authentication, Session Management, Multi-Tenant User Lifecycle",
+  "scope": {
+    "in": [
+      "Full test coverage for all Auth Backend Endpoints and Services (CU-AUTH-01 through CU-AUTH-09)",
+      "Strict Fail-Fast validation testing (asserting explicit error codes and avoiding fallbacks)",
+      "Multi-tenant session isolation testing (Tenant ID resolution, token claims, session logging)",
+      "Security boundary testing (Google token strict signature validation without test bypasses)",
+      "Privacy preservation testing (Anti-enumeration responses on forgot-password)",
+      "End-to-End UI Playwright test suite for every frontend auth view and user flow",
+      "Email capture and verification handling strategies for automated testing"
+    ],
+    "out": [
+      "Load and stress testing of auth endpoints",
+      "Third-party Google OAuth UI popup interaction (mocked via token payload)",
+      "Physical SMTP delivery to real external inboxes (intercepted via mock/in-memory store)"
+    ]
+  },
+  "use_cases": [
+    {
+      "id": "CU-AUTH-01",
+      "name": "Registro de Solicitud de Negocio (Public Register)",
+      "endpoint": "POST /api/auth/register y POST /api/auth/register-admin",
+      "objective": "Permitir a un solicitante registrar un nuevo negocio sin aprovisionamiento automático, creando una SolicitudNegocio en estado PENDIENTE y notificando al SuperAdmin.",
+      "criticality": "ALTA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Registro válido con todos los campos canónicos",
+          "given": "Payload con email nuevo, password (>=8 chars), usuarioNombre y negocioNombre válidos",
+          "when": "Se envía la petición POST a /api/auth/register",
+          "then": "Responde 201 CREATED con mensaje de confirmación y objeto solicitud con estado PENDIENTE. Se envía email al SuperAdmin."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Falta de correo electrónico",
+          "given": "Payload sin campo 'email' o vacío",
+          "when": "Se envía la petición",
+          "then": "Falla rápido respondiendo 400 BAD_REQUEST con código MISSING_EMAIL o VALIDATION_ERROR."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Falta de contraseña o longitud menor a 8 caracteres",
+          "given": "Payload con password menor a 8 caracteres o ausente",
+          "when": "Se envía la petición",
+          "then": "Falla respondiendo 400 BAD_REQUEST con código MISSING_PASSWORD o VALIDATION_ERROR."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Falta de nombre de usuario o nombre de negocio (Sin fallbacks)",
+          "given": "Payload sin 'usuarioNombre' o sin 'negocioNombre'",
+          "when": "Se envía la petición",
+          "then": "Falla respondiendo 400 BAD_REQUEST con código MISSING_USER_NAME o MISSING_BUSINESS_NAME (sin asumir 'Solicitante' ni 'Mi Lavandería')."
+        },
+        {
+          "type": "NEGATIVE_CONFLICT",
+          "description": "Email ya registrado activamente en el sistema",
+          "given": "Payload con email perteneciente a un Usuario ya existente",
+          "when": "Se envía la petición",
+          "then": "Responde 409 CONFLICT con código EMAIL_ALREADY_IN_USE."
+        },
+        {
+          "type": "NEGATIVE_CONFLICT",
+          "description": "Email con solicitud de apertura ya pendiente",
+          "given": "Payload con email que ya tiene un registro en SolicitudNegocio con estado PENDIENTE",
+          "when": "Se envía la petición",
+          "then": "Responde 409 CONFLICT con código REQUEST_ALREADY_PENDING."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-02",
+      "name": "Inicio de Sesión Local (Local Login)",
+      "endpoint": "POST /api/auth/login",
+      "objective": "Autenticar usuarios locales, validar que su email esté verificado y que el negocio/empleado estén activos, emitiendo un JWT firmado y registrando la auditoría de sesión en el tenant.",
+      "criticality": "CRÍTICA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Login exitoso de Administrador o Empleado con email verificado",
+          "given": "Usuario activo con email verificado, password correcto y empleado vinculado en tenant activo",
+          "when": "Se envía POST /api/auth/login con email y password",
+          "then": "Responde 200 OK con token JWT (con negocioId, empleadoId, rol) y objeto usuario. Se crea registro en Sesion del tenant."
+        },
+        {
+          "type": "HAPPY_PATH_SUPERADMIN",
+          "description": "Login exitoso de SuperAdmin",
+          "given": "Usuario con rol SUPER_ADMIN y credenciales válidas",
+          "when": "Se envía POST /api/auth/login",
+          "then": "Responde 200 OK con JWT con rol SUPER_ADMIN sin requerir tenant ni empleadoId vinculado."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Campos requeridos faltantes",
+          "given": "Petición sin 'email' o sin 'password'",
+          "when": "Se procesa el login",
+          "then": "Falla rápido respondiendo 400 BAD_REQUEST con MISSING_EMAIL o MISSING_PASSWORD."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Credenciales inválidas (usuario no existe o contraseña errónea)",
+          "given": "Email inexistente o contraseña que no coincide con el hash",
+          "when": "Se envía la petición",
+          "then": "Responde 401 UNAUTHORIZED con código INVALID_CREDENTIALS."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Intento de login con solicitud de negocio PENDIENTE",
+          "given": "Email con SolicitudNegocio en estado PENDIENTE y password coincidente",
+          "when": "Se envía la petición de login",
+          "then": "Responde 403 FORBIDDEN con código REGISTRATION_PENDING y datos de la solicitud para guiar al usuario."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Intento de login con solicitud de negocio RECHAZADA",
+          "given": "Email con SolicitudNegocio en estado RECHAZADO",
+          "when": "Se envía la petición de login",
+          "then": "Responde 403 FORBIDDEN con código REGISTRATION_REJECTED y motivo de rechazo."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Usuario desactivado",
+          "given": "Usuario con activo = false en base central",
+          "when": "Se autentica con credenciales correctas",
+          "then": "Responde 403 FORBIDDEN con código USER_DISABLED."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Cuenta registrada exclusivamente con Google OAuth",
+          "given": "Usuario sin password asignado (googleId presente)",
+          "when": "Intenta loguearse mediante formulario local con contraseña",
+          "then": "Responde 400 BAD_REQUEST con código USE_GOOGLE_OAUTH."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Email no verificado",
+          "given": "Usuario con emailConfirmado = false y emailVerificado = false",
+          "when": "Ingresa contraseña correcta",
+          "then": "Responde 403 FORBIDDEN con código EMAIL_NOT_VERIFIED."
+        },
+        {
+          "type": "NEGATIVE_TENANT_INTEGRITY",
+          "description": "Usuario sin empleado vinculado o negocio suspendido",
+          "given": "Usuario sin relación en Empleado o con Negocio.activo = false",
+          "when": "Se procesa el login",
+          "then": "Responde 404 EMPLOYEE_NOT_LINKED o 403 BUSINESS_SUSPENDED sin fallbacks silenciosos."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-03",
+      "name": "Inicio de Sesión con Google OAuth",
+      "endpoint": "POST /api/auth/google",
+      "objective": "Verificar estrictamente el idToken criptográfico emitido por Google, vincular googleId y retornar token JWT.",
+      "criticality": "CRÍTICA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Autenticación Google válida con usuario existente",
+          "given": "idToken válido emitido por Google para un email registrado y activo",
+          "when": "Se envía POST /api/auth/google con { idToken }",
+          "then": "Verifica firma con Google, vincula googleId, confirma email y responde 200 OK con JWT."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Token de Google ausente",
+          "given": "Body sin parámetro 'idToken'",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con MISSING_GOOGLE_ID_TOKEN."
+        },
+        {
+          "type": "NEGATIVE_SECURITY_NO_BYPASS",
+          "description": "Token de Google falso, caducado o inválido (Cero Bypass en test/dev)",
+          "given": "idToken manipulado, unsigned o expirado",
+          "when": "Se envía la petición incluso con NODE_ENV=test",
+          "then": "Falla la verificación criptográfica y responde 401 UNAUTHORIZED con INVALID_GOOGLE_TOKEN."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Email de Google no registrado previamente",
+          "given": "idToken válido pero con un correo que no existe en la base de datos de usuarios",
+          "when": "Se envía la petición",
+          "then": "Responde 404 NOT_FOUND con código USER_NOT_FOUND."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-04",
+      "name": "Verificación de Correo Electrónico",
+      "endpoint": "POST /api/auth/verify-email y POST /api/auth/confirm-email",
+      "objective": "Validar el código numérico de 6 dígitos enviado por email, actualizar emailConfirmado a true y limpiar el token temporal.",
+      "criticality": "ALTA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Código de verificación correcto y vigente",
+          "given": "Usuario con tokenConfirmacion generado y vigente",
+          "when": "Se envía POST /api/auth/verify-email con email y code correcto",
+          "then": "Actualiza emailConfirmado = true, limpia token y responde 200 OK con mensaje de éxito."
+        },
+        {
+          "type": "IDEMPOTENT_SUCCESS",
+          "description": "Usuario ya verificado previamente",
+          "given": "Usuario con emailConfirmado = true",
+          "when": "Se vuelve a enviar petición de verificación",
+          "then": "Responde 200 OK informando que ya fue verificado sin arrojar error."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Email o código faltante",
+          "given": "Petición sin email o sin código",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con MISSING_EMAIL o MISSING_CODE."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Código incorrecto",
+          "given": "Código ingresado diferente al guardado en base de datos",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con INVALID_CODE."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Código expirado",
+          "given": "Fecha actual superior a tokenConfirmacionExpires",
+          "when": "Se envía la verificación",
+          "then": "Responde 400 BAD_REQUEST con EXPIRED_CODE."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-05",
+      "name": "Reenvío de Código de Verificación",
+      "endpoint": "POST /api/auth/resend-verification",
+      "objective": "Regenerar de forma atómica un código de 6 dígitos con vigencia de 24 horas y despachar el correo.",
+      "criticality": "MEDIA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Reenvío exitoso para cuenta no verificada",
+          "given": "Usuario registrado con emailConfirmado = false",
+          "when": "Se envía POST /api/auth/resend-verification con { email }",
+          "then": "Genera nuevo token de 6 dígitos, actualiza expiración a +24h, despacha email y responde 200 OK."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Cuenta que ya se encuentra verificada",
+          "given": "Usuario con emailConfirmado = true",
+          "when": "Solicita reenvío",
+          "then": "Responde 400 BAD_REQUEST con ALREADY_VERIFIED."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Email inexistente o vacío",
+          "given": "Email vacío o no registrado en DB",
+          "when": "Se solicita reenvío",
+          "then": "Responde 400 MISSING_EMAIL o 404 USER_NOT_FOUND."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-06",
+      "name": "Solicitud de Restablecimiento de Contraseña (Forgot Password)",
+      "endpoint": "POST /api/auth/forgot-password",
+      "objective": "Generar un token criptográfico de 32 bytes (hex) con 1 hora de vigencia y enviar enlace seguro sin comprometer la privacidad.",
+      "criticality": "ALTA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Solicitud con cuenta existente y activa",
+          "given": "Email registrado y activo en el sistema",
+          "when": "Se envía POST /api/auth/forgot-password con { email }",
+          "then": "Guarda token criptográfico con expiración 1h, despacha correo con enlace y retorna mensaje genérico 200 OK."
+        },
+        {
+          "type": "ANTI_ENUMERATION_PRIVACY",
+          "description": "Solicitud con email inexistente o inactivo",
+          "given": "Email que no existe en el sistema o usuario desactivado",
+          "when": "Se envía POST /api/auth/forgot-password",
+          "then": "No envía correo pero responde exactamente el mismo mensaje 200 OK para impedir ataques de enumeración de cuentas."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Formato de email inválido",
+          "given": "String no correspondiente a un correo electrónico",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con VALIDATION_ERROR."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-07",
+      "name": "Restablecimiento de Contraseña (Reset Password)",
+      "endpoint": "POST /api/auth/reset-password",
+      "objective": "Verificar el token de recuperación, actualizar la contraseña con hash bcrypt seguro y confirmar el correo.",
+      "criticality": "CRÍTICA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Restablecimiento exitoso con token vigente",
+          "given": "Token válido no expirado y nueva contraseña de al menos 8 caracteres",
+          "when": "Se envía POST /api/auth/reset-password con { token, email, newPassword }",
+          "then": "Hashea nueva contraseña, limpia token de confirmación y responde 200 OK con mensaje de éxito."
+        },
+        {
+          "type": "NEGATIVE_FAIL_FAST",
+          "description": "Token faltante o contraseña corta (<8 chars)",
+          "given": "Falta token o newPassword tiene menos de 8 caracteres",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con MISSING_TOKEN o INVALID_PASSWORD_LENGTH / VALIDATION_ERROR."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Token inválido o no coincidente con el usuario",
+          "given": "Token alterado o que no corresponde al email proporcionado",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con INVALID_TOKEN."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Token expirado (>1 hora)",
+          "given": "Petición realizada tras cumplirse el tiempo de expiración del token",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con EXPIRED_TOKEN."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-08",
+      "name": "Cambio de Contraseña desde Sesión Activa",
+      "endpoint": "PATCH /api/auth/change-password",
+      "objective": "Permitir a un usuario autenticado modificar su clave validando la contraseña anterior.",
+      "criticality": "MEDIA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Cambio de contraseña exitoso",
+          "given": "Usuario autenticado con JWT que provee oldPassword correcta y newPassword válida",
+          "when": "Se envía PATCH /api/auth/change-password",
+          "then": "Actualiza el hash de la contraseña y responde 200 OK."
+        },
+        {
+          "type": "NEGATIVE_SECURITY",
+          "description": "Contraseña anterior incorrecta",
+          "given": "oldPassword no coincide con el hash actual",
+          "when": "Se envía la petición",
+          "then": "Responde 400 BAD_REQUEST con INVALID_OLD_PASSWORD."
+        },
+        {
+          "type": "NEGATIVE_BUSINESS_GATE",
+          "description": "Cuenta creada exclusivamente con Google OAuth",
+          "given": "Usuario sin password asignado",
+          "when": "Intenta cambiar contraseña",
+          "then": "Responde 400 BAD_REQUEST con GOOGLE_ONLY_ACCOUNT."
+        },
+        {
+          "type": "NEGATIVE_AUTH",
+          "description": "Petición sin cabecera de autenticación válida",
+          "given": "Sin header Authorization o token JWT expirado/inválido",
+          "when": "Se envía la petición",
+          "then": "Responde 401 UNAUTHORIZED."
+        }
+      ]
+    },
+    {
+      "id": "CU-AUTH-09",
+      "name": "Consulta de Perfil de Usuario Activo (Get Me)",
+      "endpoint": "GET /api/auth/me",
+      "objective": "Retornar la identidad del usuario activo vinculando estrictamente su registro de Empleado y Negocio.",
+      "criticality": "ALTA",
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH",
+          "description": "Recuperación exitosa de perfil autenticado",
+          "given": "Token JWT válido en cabecera Authorization",
+          "when": "Se envía GET /api/auth/me",
+          "then": "Responde 200 OK con objeto usuario (id, email, nombre, rol, negocioId, googleLinked)."
+        },
+        {
+          "type": "NEGATIVE_AUTH",
+          "description": "Token no provisto o manipulado",
+          "given": "Sin token o token inválido",
+          "when": "Se consulta el endpoint",
+          "then": "Responde 401 UNAUTHORIZED."
+        }
+      ]
+    }
+  ],
+  "frontend_views_e2e": [
+    {
+      "view": "Login View (/login)",
+      "component": "LoginPage",
+      "test_objectives": [
+        "Verificar validaciones cliente de Zod (email inválido, password vacío).",
+        "Verificar animación de shake (animateFormError) y toast de error ante credenciales inválidas (401).",
+        "Verificar redirección automática a /solicitud-pendiente ante status REGISTRATION_PENDING o REGISTRATION_REJECTED.",
+        "Verificar redirección automática a /verify-email ante status EMAIL_NOT_VERIFIED.",
+        "Verificar redirección según rol: SuperAdmin -> /superadmin/dashboard, Admin -> /admin/dashboard, Empleado -> /pos/pedidos.",
+        "Verificar notificación toast cuando la URL contiene ?expired=true."
+      ]
+    },
+    {
+      "view": "Register View (/register)",
+      "component": "RegisterPage",
+      "test_objectives": [
+        "Verificar validaciones en tiempo real (nombre >= 2, email válido, password >= 8, negocioNombre >= 2).",
+        "Verificar envío de payload canónico (usuarioNombre, negocioNombre, email, password, rol='ADMIN').",
+        "Verificar redirección exitosa a /solicitud-pendiente?email=...&negocio=...",
+        "Verificar visualización de errores devueltos por el backend (409 Conflict, 400 Bad Request)."
+      ]
+    },
+    {
+      "view": "Verify Email View (/verify-email)",
+      "component": "VerifyEmailPage",
+      "test_objectives": [
+        "Verificar lectura automática de query params ?email=...&token=...",
+        "Verificar envío de código de 6 dígitos y redirección a /login tras éxito.",
+        "Verificar acción de 'Reenviar código' y su retroalimentación visual.",
+        "Verificar alerta de error cuando el código es inválido o está expirado."
+      ]
+    },
+    {
+      "view": "Forgot Password View (/forgot-password)",
+      "component": "ForgotPasswordPage",
+      "test_objectives": [
+        "Verificar validación de formato de email.",
+        "Verificar transición a vista de confirmación ('¡Revisa tu correo!') tras envío exitoso.",
+        "Verificar botón 'Intentar con otro correo' para resetear el formulario."
+      ]
+    },
+    {
+      "view": "Reset Password View (/reset-password)",
+      "component": "ResetPasswordPage",
+      "test_objectives": [
+        "Verificar redirección inmediata a /login si no se provee el query param ?token=...",
+        "Verificar validación de coincidencia de contraseñas (confirmPassword) en el cliente.",
+        "Verificar validación de longitud mínima (>= 8 caracteres).",
+        "Verificar mensaje de éxito y redirección automática al login correspondiente tras actualizar."
+      ]
+    },
+    {
+      "view": "Solicitud Pendiente View (/solicitud-pendiente)",
+      "component": "SolicitudPendientePage",
+      "test_objectives": [
+        "Verificar visualización del estado PENDIENTE con badge y mensaje informativo.",
+        "Verificar visualización del estado RECHAZADO con motivo explícito de rechazo.",
+        "Verificar botón de retorno al login."
+      ]
+    }
+  ],
+  "testing_strategy": {
+    "backend": {
+      "framework": "Jest + Supertest",
+      "database": "SQLite en memoria / Postgres de prueba con esquemas tenant aislados",
+      "email_strategy": "Mocking del servicio emailService (interceptar llamadas y almacenar tokens/códigos en memoria para aserciones)",
+      "google_strategy": "Mocking controlado del cliente OAuth2Client de google-auth-library para simular idTokens válidos e inválidos"
+    },
+    "frontend": {
+      "framework": "Playwright E2E",
+      "approach": "Pruebas de interacción completas en navegador Chromium contra Next.js App Router",
+      "api_mocking": "page.route() de Playwright para simular respuestas del Backend (200, 201, 400, 401, 403, 409) y verificar estados visuales de UI, loaders, toasts y redirecciones"
+    }
+  },
+  "quality_rules": [
+    "Cada test debe tener un objetivo claro y explícito derivado de un Caso de Uso (CU).",
+    "Los tests negativos deben verificar códigos de error tipados exactos (ej. MISSING_USER_NAME, no solo status 400).",
+    "Queda prohibido mockear lógica para forzar 'pases verdes' si ocultan un fallo estructural.",
+    "Todo fallo en el backend debe provocar retroalimentación visual clara en el frontend (toast o mensaje de campo)."
+  ]
+}

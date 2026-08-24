@@ -54,7 +54,7 @@ export interface ArcaConfig {
   afipActivo: boolean;
   afipModoFacturacion: 'AUTOMATICO' | 'MANUAL' | 'DESACTIVADO';
   afipPuntoVenta: number | null;
-  afipCertificado?: string | null;
+  certificadoAfipPath?: string | null;
 }
 
 interface ConfigState {
@@ -171,7 +171,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
       afipActivo: data.afipActivo ?? state.arcaConfig.afipActivo,
       afipModoFacturacion: data.afipModoFacturacion ?? state.arcaConfig.afipModoFacturacion,
       afipPuntoVenta: data.afipPuntoVenta ?? state.arcaConfig.afipPuntoVenta,
-      afipCertificado: data.afipCertificado ?? state.arcaConfig.afipCertificado,
+      certificadoAfipPath: data.certificadoAfipPath ?? state.arcaConfig.certificadoAfipPath,
     },
     notificationsConfig: {
       ...state.notificationsConfig,

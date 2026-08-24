@@ -167,8 +167,8 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
   }
 
   const renderCard = (pedido: Pedido, index: number) => {
-    const isVencido = pedido.fechaEntregaEstimada
-      ? new Date(pedido.fechaEntregaEstimada) < new Date()
+    const isVencido = pedido.fechaHoraEntregaEstimada
+      ? new Date(pedido.fechaHoraEntregaEstimada) < new Date()
       : false
 
     return (
@@ -193,9 +193,9 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
                   {pedido.cliente ? pedido.cliente.nombre : "Consumidor Final"}
                 </span>
 
-                {pedido.fechaEntregaEstimada && (
+                {pedido.fechaHoraEntregaEstimada && (
                   <p className="text-[10px] text-gray-500 font-medium leading-none mt-0.5">
-                    Ent: {format(new Date(pedido.fechaEntregaEstimada), "dd MMM HH:mm", { locale: es })}
+                    Ent: {format(new Date(pedido.fechaHoraEntregaEstimada), "dd MMM HH:mm", { locale: es })}
                   </p>
                 )}
               </div>
@@ -235,9 +235,9 @@ export function PosKanban({ isActive = true }: PosKanbanProps) {
 
             {/* Content: Order Details Inline */}
             <div className="mt-0.5 pt-1.5 border-t border-gray-100 dark:border-neutral-800/80 text-[11px] text-gray-600 dark:text-neutral-400 leading-tight">
-              {pedido.items && pedido.items.length > 0 ? (
+              {pedido.detalles && pedido.detalles.length > 0 ? (
                 <p className="line-clamp-2">
-                  {pedido.items.map(item => `${item.cantidad}x ${item.producto?.nombre || 'Item'}`).join(', ')}
+                  {pedido.detalles.map(item => `${item.cantidad}x ${item.servicio?.nombre || 'Item'}`).join(', ')}
                 </p>
               ) : (
                 <p className="italic">Sin detalles</p>

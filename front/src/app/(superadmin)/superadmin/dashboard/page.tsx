@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
@@ -58,11 +58,11 @@ function DashboardContent() {
 
   const handleResetPasswordRequest = async () => {
     const targetEmail = "octavio.velo2022@gmail.com";
-    if (!confirm(`¿Enviar enlace seguro con token para cambiar contraseña a ${targetEmail}?`)) return;
+    if (!confirm(`Â¿Enviar enlace seguro con token para cambiar contraseÃ±a a ${targetEmail}?`)) return;
 
     try {
       await apiClient.post("/auth/forgot-password", { email: targetEmail });
-      toast.success(`🔑 Enlace seguro enviado a ${targetEmail}`);
+      toast.success(`ðŸ”‘ Enlace seguro enviado a ${targetEmail}`);
     } catch (e: any) {
       toast.error("Error al solicitar restablecimiento", { description: e.message });
     }
@@ -73,7 +73,7 @@ function DashboardContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground font-sans">
-        <RefreshCw className="animate-spin mr-2" size={24} /> Cargando métricas generales...
+        <RefreshCw className="animate-spin mr-2" size={24} /> Cargando mÃ©tricas generales...
       </div>
     );
   }
@@ -87,7 +87,7 @@ function DashboardContent() {
             <Activity className="text-blue-500" size={24} /> Monitoreo Central & Vista General
           </h1>
           <p className="text-muted-foreground text-xs mt-1">
-            Métricas de infraestructura, solicitudes de negocios y centro de notificaciones central
+            MÃ©tricas de infraestructura, solicitudes de negocios y centro de notificaciones central
           </p>
         </div>
 
@@ -96,12 +96,12 @@ function DashboardContent() {
             <RefreshCw size={14} className="mr-1.5" /> Refrescar
           </Button>
           <Button size="sm" variant="warning" onClick={handleResetPasswordRequest}>
-            <Key size={14} className="mr-1.5" /> Cambiar Contraseña
+            <Key size={14} className="mr-1.5" /> Cambiar ContraseÃ±a
           </Button>
         </div>
       </div>
 
-      {/* Grid de Estadísticas */}
+      {/* Grid de EstadÃ­sticas */}
       <OverviewStatsGrid health={health} pendientesCount={pendientesCount} />
 
       {/* Feed de Notificaciones y Alertas Centrales */}

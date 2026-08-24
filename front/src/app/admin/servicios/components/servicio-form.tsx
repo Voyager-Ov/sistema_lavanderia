@@ -76,7 +76,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
         setCategorias(catRes.data?.items || catRes.data || [])
 
         if (isEditing) {
-          const sRes: any = await apiClient.get(`/productos/${id}`)
+          const sRes: any = await apiClient.get(`/servicios/${id}`)
           const s = sRes.data
           setFormData({
             nombre: s.nombre || "",
@@ -143,11 +143,11 @@ export function ServicioForm({ id }: ServicioFormProps) {
       }
 
       if (isEditing) {
-        await apiClient.putForm(`/productos/${id}`, payload)
+        await apiClient.putForm(`/servicios/${id}`, payload)
         toast.success("Servicio actualizado correctamente")
         router.push(`/admin/servicios/${id}`)
       } else {
-        await apiClient.postForm("/productos", payload)
+        await apiClient.postForm("/servicios", payload)
         toast.success("Servicio creado exitosamente")
         router.push("/admin/servicios")
       }

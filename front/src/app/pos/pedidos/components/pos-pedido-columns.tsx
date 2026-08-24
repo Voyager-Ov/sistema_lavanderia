@@ -90,16 +90,16 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
     header: "Detalle",
     enableSorting: false,
     cell: ({ row }) => {
-      const items = row.original.items || []
+      const items = row.original.detalles || row.original.items || []
       return (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
-          {items.map((item, index) => (
+          {items.map((item: any, index: number) => (
             <span 
               key={index} 
               className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 transition-colors"
             >
               <span className="font-bold mr-1">{item.cantidad}x</span>
-              {item.producto?.nombre}
+              {item.servicio?.nombre || item.producto?.nombre || "Servicio"}
             </span>
           ))}
           {items.length === 0 && <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">-</span>}
@@ -122,7 +122,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
     cell: ({ row }) => {
       const pedido = row.original
       const cobrado = pedido.cobrado
-      const metodo = pedido.pago?.metodoPago?.nombre || "N/A"
+      const metodo = pedido.cobros?.[0]?.metodoPago?.nombre || "N/A"
       
       return (
         <div className="flex flex-col gap-1">
@@ -143,7 +143,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
     },
   },
   {
-    accessorKey: "fechaEntregaEstimada",
+    accessorKey: "fechaHoraEntregaEstimada",
     header: ({ column }) => {
       return (
         <Button
@@ -157,11 +157,11 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
       )
     },
     cell: ({ row }) => {
-      if (!row.original.fechaEntregaEstimada) {
+      if (!row.original.fechaHoraEntregaEstimada) {
         return <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">No def.</span>
       }
 
-      const fechaEst = new Date(row.original.fechaEntregaEstimada)
+      const fechaEst = new Date(row.original.fechaHoraEntregaEstimada)
       const hoy = new Date()
       let isUrgent = false
       let isOverdue = false
@@ -174,7 +174,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
       return (
         <div className="flex flex-col gap-1">
           <span className="text-gray-900 dark:text-neutral-50 font-medium whitespace-nowrap transition-colors">
-            {safeFormatDate(row.original.fechaEntregaEstimada, "dd MMM HH:mm", "No def.")}
+            {safeFormatDate(row.original.fechaHoraEntregaEstimada, "dd MMM HH:mm", "No def.")}
           </span>
           {isOverdue && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
@@ -243,7 +243,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
       const handleWhatsApp = () => {
         if (!telefono) return
         const estadoText = ESTADOS.find(e => e.value === pedido.estado)?.label?.toLowerCase() || "registrado"
-        const detalle = pedido.items?.map(i => i.producto?.nombre).join(', ') || "Servicios de lavandería"
+        const detalle = pedido.detalles?.map(i => i.servicio?.nombre || i.producto?.nombre).filter(Boolean).join(', ') || "Servicios de lavandería"
         
         let template = useConfigStore.getState().notificationsConfig.whatsappMensajeManual 
           || "Hola {{nombre}}, te escribimos para informarte que tu pedido {{codigo}} se encuentra *{{estado}}*. Detalle: {{detalle}}";
@@ -343,7 +343,7 @@ export const getPosPedidoColumns = (actions: PosPedidoColumnsActions): ColumnDef
               </Tooltip>
             </div>
 
-            {/* Vista en pantallas pequeñas/medianas: menú de 3 puntos */}
+            {/* Vista en pantallas pequeÃ±as/medianas: menÃº de 3 puntos */}
             <div className="xl:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

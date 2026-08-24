@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll } from "@jest/globals";
+import { describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
 import jwt from "jsonwebtoken";
 import { connectionManager } from "../../models/connectionManager.js";
 import { authService, registerService } from "../../modules/auth/services/auth.service.js";
+import { setupGoogleOAuthMock } from "../helpers/auth.helper.js";
 
 describe("Módulo de Autenticación (Auth)", () => {
     const testEmail = "admin.unit@lavanderia.com";
@@ -11,6 +12,10 @@ describe("Módulo de Autenticación (Auth)", () => {
     beforeAll(async () => {
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
+    });
+
+    beforeEach(() => {
+        setupGoogleOAuthMock();
     });
 
     it("1. Debe registrar una nueva solicitud de negocio", async () => {
@@ -94,12 +99,9 @@ describe("Módulo de Autenticación (Auth)", () => {
     });
 
     it("9. Debe permitir el inicio de sesión y vinculación con Google OAuth", async () => {
-        const mockGoogleToken = jwt.sign(
-            { sub: "google_123456789_test", email: testEmail, name: "Carlos Gómez" },
-            "test_secret"
-        );
+        const mockGoogleToken = `valid-google-token:${testEmail}`;
 
-        const googleRes = await authService.loginWithGoogle({ token: mockGoogleToken });
+        const googleRes = await authService.loginWithGoogle({ idToken: mockGoogleToken });
 
         expect(googleRes.token).toBeDefined();
         expect(googleRes.usuario.email).toBe(testEmail);
@@ -107,6 +109,6 @@ describe("Módulo de Autenticación (Auth)", () => {
 
         const { Usuario } = connectionManager.centralModels;
         const usuarioDb = await Usuario.findByPk(testEmail);
-        expect(usuarioDb.googleId).toBe("google_123456789_test");
+        expect(usuarioDb.googleId).toBe(`google_id_${testEmail}`);
     });
 });

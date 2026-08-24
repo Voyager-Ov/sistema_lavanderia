@@ -39,10 +39,16 @@ class CancelacionService {
         // Calcular total cobrado previamente en este pedido usando la propiedad correcta (montoAbonado)
         let totalCobrado = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
-            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.montoAbonado) || 0), 0);
+            for (const c of pedido.cobros) {
+                const monto = Number(c.montoAbonado !== null ? c.montoAbonado : c.monto);
+                if (isNaN(monto) || monto < 0) throw new AppError("Registro de cobro corrupto.", 500, "INVALID_DATA");
+                totalCobrado += monto;
+            }
         }
         if (totalCobrado <= 0 && pedido.cobrado) {
-            totalCobrado = parseFloat(pedido.total) || 0;
+            const t = Number(pedido.total);
+            if (isNaN(t) || t < 0) throw new AppError("Monto total del pedido corrupto.", 500, "INVALID_DATA");
+            totalCobrado = t;
         }
 
         if (totalCobrado > 0) {
@@ -52,7 +58,9 @@ class CancelacionService {
                 if (!cuenta) {
                     cuenta = await CuentaCorriente.create({ clienteId: pedido.clienteId, saldo: 0 });
                 }
-                const nuevoSaldo = (parseFloat(cuenta.saldo) || 0) + totalCobrado;
+                const currentSaldo = Number(cuenta.saldo);
+                if (isNaN(currentSaldo)) throw new AppError("Saldo de cuenta corriente corrupto.", 500, "INVALID_DATA");
+                const nuevoSaldo = currentSaldo + totalCobrado;
                 await cuenta.update({ saldo: nuevoSaldo });
 
                 await MovimientoCuenta.create({
@@ -64,7 +72,8 @@ class CancelacionService {
                 });
             } else if (data.accionDinero === "DEVOLVER") {
                 const { Caja, MovimientoCaja } = await this._getModels(negocioId);
-                const empleadoId = data.empleadoId || data.usuarioId;
+                const empleadoId = data.usuarioId;
+                if (!empleadoId) throw new AppError("ID de usuario es requerido para la devolución.", 400, "MISSING_USER_ID");
                 
                 let cajaAbierta = null;
                 if (empleadoId) {

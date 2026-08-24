@@ -16,6 +16,10 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
+			usuarioEmail: {
+				type: DataTypes.STRING,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "sesiones",

@@ -17,12 +17,11 @@ class TicketService {
         const { Pedido, Cliente, DetallePedido, Servicio, Cobro } = await this._getModels(negocioId);
         const { Negocio } = connectionManager.centralModels;
 
-        let negocio = null;
-        try {
-            negocio = await Negocio.findByPk(negocioId);
-        } catch (e) {
-            console.warn("⚠️ [TicketService] No se pudo cargar Negocio:", e.message);
+        const negocio = await Negocio.findByPk(negocioId);
+        if (!negocio) {
+            throw new AppError("Negocio no encontrado.", 404, "TENANT_NOT_FOUND");
         }
+
         const pedido = await Pedido.findOne({
             where: { numeroPedido },
             include: [
@@ -40,57 +39,66 @@ class TicketService {
             throw new AppError("Pedido no encontrado para imprimir ticket.", 404, "ORDER_NOT_FOUND");
         }
 
-        const nombreNegocio = negocio?.razonSocial || "LAVANDERÍA";
-        const direccionNegocio = negocio?.direccion || "";
-        const telefonoNegocio = negocio?.telefonoContacto || "";
-        const mensajeTicket = negocio?.mensajeTicket || "¡Gracias por su preferencia!";
-        const simboloMoneda = negocio?.simboloMoneda || "$";
-        const mostrarQr = Boolean(negocio?.mostrarQrTicket);
+        const nombreNegocio = negocio.razonSocial || "LAVANDERÍA";
+        const direccionNegocio = negocio.direccion || "";
+        const telefonoNegocio = negocio.telefonoContacto || "";
+        const mensajeTicket = negocio.mensajeTicket || "¡Gracias por su preferencia!";
+        const simboloMoneda = negocio.simboloMoneda || "$";
 
-        const clienteNombre = pedido.cliente ? pedido.cliente.nombre : "Cliente Mostrador";
+        const clienteNombre = pedido.cliente ? pedido.cliente.nombre : "Consumidor Final";
         const clienteTel = pedido.cliente?.telefono || "N/A";
 
         let subtotal = 0;
         let itemsHTML = "";
 
-        if (pedido.detalles && Array.isArray(pedido.detalles)) {
-            for (const item of pedido.detalles) {
-                const srvNombre = item.servicio ? item.servicio.nombre : "Servicio";
-                const cant = item.cantidad || 1;
-                const precio = parseFloat(item.precioHistorico) || 0;
-                const totalItem = cant * precio;
-                subtotal += totalItem;
-
-                itemsHTML += `
-                <tr>
-                    <td style="text-align: left; padding: 2px 0;">${cant}x ${srvNombre}</td>
-                    <td style="text-align: right; padding: 2px 0;">${simboloMoneda}${totalItem.toFixed(2)}</td>
-                </tr>`;
-            }
+        if (!pedido.detalles || !Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+            throw new AppError("El pedido no contiene detalles para generar el ticket.", 400, "EMPTY_ORDER");
         }
 
-        const costoEnvio = parseFloat(pedido.costoEnvio) || 0;
-        const total = subtotal + costoEnvio;
+        for (const item of pedido.detalles) {
+            const srvNombre = item.servicio ? item.servicio.nombre : "Servicio";
+            const cant = Number(item.cantidad);
+            const precio = Number(item.precioHistorico);
+            
+            if (isNaN(cant) || cant <= 0 || isNaN(precio) || precio < 0) {
+                throw new AppError(`Detalle de pedido corrupto (ID: ${item.id}). Valores inválidos.`, 500, "INVALID_DATA");
+            }
+
+            const totalItem = cant * precio;
+            subtotal += totalItem;
+
+            itemsHTML += `
+            <tr>
+                <td style="text-align: left; padding: 2px 0;">${cant}x ${srvNombre}</td>
+                <td style="text-align: right; padding: 2px 0;">${simboloMoneda}${totalItem.toFixed(2)}</td>
+            </tr>`;
+        }
+
+        const total = subtotal; // Sin costo de envío
 
         let totalCobrado = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
-            totalCobrado = pedido.cobros.reduce((sum, c) => sum + (parseFloat(c.montoAbonado || c.monto) || 0), 0);
+            for (const c of pedido.cobros) {
+                const monto = Number(c.montoAbonado !== null ? c.montoAbonado : c.monto);
+                if (isNaN(monto) || monto < 0) {
+                    throw new AppError(`Registro de cobro corrupto (ID: ${c.id}). Monto inválido.`, 500, "INVALID_DATA");
+                }
+                totalCobrado += monto;
+            }
         }
-        if (pedido.cobrado && totalCobrado === 0) {
-            totalCobrado = total;
-        }
+        
         const saldo = Math.max(0, total - totalCobrado);
 
         const fechaStr = new Date(pedido.fechaHoraCreacion).toLocaleString("es-AR");
         const entregaStr = pedido.fechaHoraEntregaEstimada ? new Date(pedido.fechaHoraEntregaEstimada).toLocaleString("es-AR") : "A confirmar";
         const estadoCobroText = pedido.cobrado || totalCobrado >= total ? "PAGADO" : "PENDIENTE DE PAGO";
 
-        const anchoPapel = negocio?.anchoPapel === "58mm" ? "58mm" : "80mm";
+        const anchoPapel = negocio.anchoPapel === "58mm" ? "58mm" : "80mm";
         const widthPx = anchoPapel === "58mm" ? "220px" : "280px";
 
         const token = crypto
             .createHmac("sha256", "SECRET_TRACKING_KEY")
-            .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion || pedido.createdAt}`)
+            .update(`${negocioId}:${pedido.numeroPedido}:${pedido.fechaHoraCreacion}`)
             .digest("hex")
             .substring(0, 16);
 
@@ -144,7 +152,6 @@ class TicketService {
             </table>
             <div class="line"></div>
             <div>Subtotal: ${simboloMoneda}${subtotal.toFixed(2)}</div>
-            ${costoEnvio > 0 ? `<div>Costo Envío: ${simboloMoneda}${costoEnvio.toFixed(2)}</div>` : ''}
             <div class="bold" style="font-size: 14px; margin-top: 4px;">TOTAL: ${simboloMoneda}${total.toFixed(2)}</div>
             <div>Abonado: ${simboloMoneda}${totalCobrado.toFixed(2)}</div>
             <div class="bold" style="font-size: 13px;">SALDO PENDIENTE: ${simboloMoneda}${saldo.toFixed(2)}</div>
@@ -174,9 +181,12 @@ class TicketService {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }
 
-        const cant = parseInt(cantidad) || 1;
-        const result = [];
+        const cant = Number(cantidad);
+        if (isNaN(cant) || cant <= 0) {
+            throw new AppError("Cantidad inválida para generar tickets.", 400, "INVALID_DATA");
+        }
 
+        const result = [];
         for (let i = 1; i <= cant; i++) {
             result.push({
                 id: i,
@@ -205,11 +215,16 @@ class TicketService {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }
 
-        let totalPrendas = 0;
-        if (pedido.detalles && Array.isArray(pedido.detalles)) {
-            totalPrendas = pedido.detalles.reduce((sum, d) => sum + (parseInt(d.cantidad) || 1), 0);
+        if (!pedido.detalles || !Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+            throw new AppError("El pedido no contiene detalles.", 400, "EMPTY_ORDER");
         }
-        if (totalPrendas === 0) totalPrendas = 1;
+
+        let totalPrendas = 0;
+        for (const d of pedido.detalles) {
+            const cant = Number(d.cantidad);
+            if (isNaN(cant) || cant <= 0) throw new AppError(`Detalle corrupto (ID: ${d.id}).`, 500, "INVALID_DATA");
+            totalPrendas += cant;
+        }
 
         return this.generarTicketsPrenda(negocioId, numeroPedido, totalPrendas);
     }

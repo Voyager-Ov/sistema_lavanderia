@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-aprobacion-y-aislamiento-multitenant",
+  "title": "Plan de Tareas Ejecutables: Aprobación de Negocios, Aislamiento Multi-Tenant y WebSockets",
+  "version": "1.0.0",
+  "batches": [
+    {
+      "batch_id": "BATCH-1",
+      "name": "Infraestructura de Datos y WebSockets",
+      "description": "Asegurar modelo Usuario con negocioId y canal Socket.io para SuperAdmin.",
+      "tasks": ["TASK-01", "TASK-02"]
+    },
+    {
+      "batch_id": "BATCH-2",
+      "name": "Refactor de Autenticación y Erradicación de Bucles Cruzados",
+      "description": "Eliminar bucles 'for (const neg of negocios)', asegurar login directo por negocioId y detección de 403 SOLICITUD_PENDIENTE.",
+      "tasks": ["TASK-03", "TASK-04", "TASK-05"]
+    },
+    {
+      "batch_id": "BATCH-3",
+      "name": "Reconstrucción Limpia del Módulo SuperAdmin",
+      "description": "Reescribir servicios y controladores de SuperAdmin con métricas reales y eventos WebSockets.",
+      "tasks": ["TASK-06", "TASK-07"]
+    },
+    {
+      "batch_id": "BATCH-4",
+      "name": "Integración en Front-End y Protección de Portales",
+      "description": "Conectar hook useSuperAdminSocket, refresco reactivo y blindaje de guards ante 403 SOLICITUD_PENDIENTE.",
+      "tasks": ["TASK-08", "TASK-09"]
+    },
+    {
+      "batch_id": "BATCH-5",
+      "name": "Auditoría en Vivo y Pruebas de Integración",
+      "description": "Ejecutar pruebas automáticas contra Neon PostgreSQL y verificación de TypeScript en cliente.",
+      "tasks": ["TASK-10", "TASK-11"]
+    }
+  ],
+  "todos": [
+    {
+      "id": "TASK-01",
+      "title": "Asegurar campo negocioId en Usuario y esquemas limpios en connectionManager",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "affected_files": [
+        "back2/src/models/Usuario.js",
+        "back2/src/models/connectionManager.js"
+      ],
+      "outputs": "Modelo Usuario con clave foránea negocioId y método getTenantDb garantizando provisión aislada en Neon.",
+      "exit_criteria": "public.usuarios posee columna negocioId y connectionManager auto-migra la estructura sin errores."
+    },
+    {
+      "id": "TASK-02",
+      "title": "Configurar sala superadmin_room y helper emitSuperAdminEvent en socket.js",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": [],
+      "affected_files": [
+        "back2/src/socket.js"
+      ],
+      "outputs": "Canal Socket.io para SuperAdmin con emisión tipada de eventos.",
+      "exit_criteria": "socket.js exporta emitSuperAdminEvent(eventName, payload) transmitiendo a superadmin_room."
+    },
+    {
+      "id": "TASK-03",
+      "title": "Refactorizar login.service.js eliminando bucles cruzados y soportando 403 SOLICITUD_PENDIENTE",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-01"],
+      "affected_files": [
+        "back2/src/modules/auth/services/login.service.js"
+      ],
+      "outputs": "Login directo por usuario.negocioId sin escaneo en otros tenants y detección de solicitudes pendientes.",
+      "exit_criteria": "Zero bucles for (const neg of negocios) en login.service.js y retorno de 403 SOLICITUD_PENDIENTE si la solicitud no fue aprobada."
+    },
+    {
+      "id": "TASK-04",
+      "title": "Refactorizar profile.service.js eliminando búsquedas cruzadas entre tenants",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-01"],
+      "affected_files": [
+        "back2/src/modules/auth/services/profile.service.js"
+      ],
+      "outputs": "Consulta de perfil directa por req.user.negocioId y req.user.empleadoId.",
+      "exit_criteria": "Zero bucles for (const neg of negocios) en profile.service.js."
+    },
+    {
+      "id": "TASK-05",
+      "title": "Refactorizar register.service.js para provisión atómica limpia en 0 al aprobar",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-01", "TASK-02"],
+      "affected_files": [
+        "back2/src/modules/auth/services/register.service.js"
+      ],
+      "outputs": "Registro diferido (solo SolicitudNegocio PENDIENTE), provisión atómica de tenant_<id> en 0 al aprobar y rechazo con motivo.",
+      "exit_criteria": "sustanciarAprobacionNegocio crea el esquema tenant_<id>, inicializa usuario con negocioId y empleado #1, y emite evento WebSockets."
+    },
+    {
+      "id": "TASK-06",
+      "title": "Reescribir superadmin.service.js con métricas reales, latencia SQL y WebSockets",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-02", "TASK-05"],
+      "affected_files": [
+        "back2/src/modules/superadmin/services/superadmin.service.js"
+      ],
+      "outputs": "Servicio de SuperAdmin limpio con getDashboard, runHealthCheck (SELECT 1 con dbLatency en ms), y gestión de cuotas/suscripciones.",
+      "exit_criteria": "Servicio de SuperAdmin completamente desacoplado y funcional con emisión de eventos Socket.io."
+    },
+    {
+      "id": "TASK-07",
+      "title": "Reescribir superadmin.controller.js y superadmin.routes.js",
+      "owner_role": "Backend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-06"],
+      "affected_files": [
+        "back2/src/modules/superadmin/controllers/superadmin.controller.js",
+        "back2/src/modules/superadmin/superadmin.routes.js"
+      ],
+      "outputs": "Controladores y rutas de SuperAdmin con rate limiting adaptativo y respuestas successResponse.",
+      "exit_criteria": "Endpoints responden con código 200/201 y formato uniforme { success: true, message, data }."
+    },
+    {
+      "id": "TASK-08",
+      "title": "Crear hook useSuperAdminSocket e integrarlo en superadmin/page.tsx",
+      "owner_role": "Fullstack Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": ["TASK-02"],
+      "affected_files": [
+        "front/src/shared/hooks/useSuperAdminSocket.ts",
+        "front/src/app/(superadmin)/superadmin/page.tsx"
+      ],
+      "outputs": "Conexión WebSockets del portal SuperAdmin para actualización en tiempo real de KPIs y tablas.",
+      "exit_criteria": "Al emitirse eventos superadmin:*, la interfaz refresca automáticamente los datos."
+    },
+    {
+      "id": "TASK-09",
+      "title": "Asegurar intercepción de 403 SOLICITUD_PENDIENTE y protección en apiClient y guards",
+      "owner_role": "Frontend Engineer",
+      "status": "completed",
+      "parallelizable": true,
+      "depends_on": ["TASK-03"],
+      "affected_files": [
+        "front/src/shared/api/apiClient.ts",
+        "front/src/shared/ui/layout/guards/RoleGuard.tsx"
+      ],
+      "outputs": "Manejo uniforme de redirección a /solicitud-pendiente ante 403 SOLICITUD_PENDIENTE y bloqueo de accesos no autorizados.",
+      "exit_criteria": "Intentos de acceso a /admin o /pos sin estar aprobado redirigen al usuario inmediatamente."
+    },
+    {
+      "id": "TASK-10",
+      "title": "Crear y ejecutar script de prueba integral contra Neon PostgreSQL",
+      "owner_role": "QA Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-03", "TASK-04", "TASK-05", "TASK-06", "TASK-07"],
+      "affected_files": [
+        "back2/scripts/test_superadmin_clean_architecture.js"
+      ],
+      "outputs": "Script de prueba que valida registro, bloqueo 403, aprobación SuperAdmin, provisión de esquema en 0, login aislado y suspensión.",
+      "exit_criteria": "Script finaliza con exit code 0 y todos los tests en verde."
+    },
+    {
+      "id": "TASK-11",
+      "title": "Verificación de compilación TypeScript en Front-End",
+      "owner_role": "Frontend Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-08", "TASK-09"],
+      "affected_files": [
+        "front/src"
+      ],
+      "outputs": "Chequeo de tipos en todo el proyecto frontend.",
+      "exit_criteria": "npx tsc --noEmit --skipLibCheck finaliza con código 0."
+    }
+  ]
+}

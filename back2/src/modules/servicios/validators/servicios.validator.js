@@ -16,17 +16,73 @@ export const validateServicio = [
         .notEmpty()
         .withMessage("El nombre del servicio es obligatorio"),
     body("precioActual")
+        .notEmpty()
+        .withMessage("El precio actual del servicio es obligatorio")
+        .isFloat({ min: 0 })
+        .withMessage("El precio actual debe ser un número mayor o igual a 0"),
+    body("costoEstimado")
         .optional()
         .isFloat({ min: 0 })
-        .withMessage("El precio debe ser un número mayor o igual a 0"),
-    body("precio")
+        .withMessage("El costo estimado debe ser un número mayor o igual a 0"),
+    body("tiempoEstimadoMinutos")
         .optional()
-        .isFloat({ min: 0 })
-        .withMessage("El precio debe ser un número mayor o igual a 0"),
+        .isInt({ min: 0 })
+        .withMessage("El tiempo estimado debe ser un número entero mayor o igual a 0"),
     body("categoriaId")
         .optional()
         .isInt({ min: 1 })
         .withMessage("Debes seleccionar una categoría válida"),
+    handleValidationErrors
+];
+
+export const validateServicioUpdate = [
+    body("nombre")
+        .optional()
+        .trim()
+        .notEmpty()
+        .withMessage("El nombre del servicio no puede estar vacío"),
+    body("precioActual")
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("El precio actual debe ser un número mayor o igual a 0"),
+    body("costoEstimado")
+        .optional()
+        .isFloat({ min: 0 })
+        .withMessage("El costo estimado debe ser un número mayor o igual a 0"),
+    body("tiempoEstimadoMinutos")
+        .optional()
+        .isInt({ min: 0 })
+        .withMessage("El tiempo estimado debe ser un número entero mayor o igual a 0"),
+    body("categoriaId")
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage("Debes seleccionar una categoría válida"),
+    handleValidationErrors
+];
+
+export const validateBulkPrecios = [
+    body("servicios")
+        .isArray({ min: 1 })
+        .withMessage("Se requiere una lista de 'servicios' no vacía para actualizar precios"),
+    body("servicios.*.id")
+        .isInt({ min: 1 })
+        .withMessage("Cada servicio a actualizar debe incluir un 'id' numérico válido"),
+    body("servicios.*.precioActual")
+        .isFloat({ min: 0 })
+        .withMessage("Cada servicio debe incluir un 'precioActual' numérico mayor o igual a 0"),
+    handleValidationErrors
+];
+
+export const validateBulkDisponibilidad = [
+    body("ids")
+        .isArray({ min: 1 })
+        .withMessage("Se requiere una lista de 'ids' no vacía"),
+    body("ids.*")
+        .isInt({ min: 1 })
+        .withMessage("Cada id debe ser un número entero válido"),
+    body("disponible")
+        .isBoolean()
+        .withMessage("El campo 'disponible' debe ser un valor booleano (true/false)"),
     handleValidationErrors
 ];
 

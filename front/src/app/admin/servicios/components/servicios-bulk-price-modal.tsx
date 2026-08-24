@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/forms/input"
 import { Badge } from "@/shared/ui/data-display/badge"
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Percent, ArrowRight } from "lucide-react"
 import { apiClient } from "@/shared/lib/api-client"
+import { actualizarPreciosMasivo } from "@/domains/productos/api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 
@@ -60,14 +61,14 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
           id: s.id,
           precioActual: getPreviewPrice(parseFloat(s.precioActual))
         }));
-        await apiClient.put("/productos/bulk/precios", { updates })
+        await actualizarPreciosMasivo(updates)
         toast.success(`Precios actualizados con ${pctValue > 0 ? "+" : ""}${pctValue}% para ${selectedServices.length} servicio(s)`)
       } else {
         const updates = selectedServices.map(s => ({
           id: s.id,
           precioActual: parseFloat(individualPrices[s.id] || s.precioActual)
-        })).filter(u => !isNaN(u.precioActual) && u.precioActual > 0)
-        await apiClient.put("/productos/bulk/precios", { updates })
+        })).filter(u => !isNaN(u.precioActual) && u.precioActual >= 0)
+        await actualizarPreciosMasivo(updates)
         toast.success(`Precios actualizados para ${updates.length} servicio(s)`)
       }
       onOpenChange(false)

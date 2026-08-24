@@ -15,7 +15,7 @@ export const AuthApi = {
   
   register: (data: any) => apiClient.post<AuthResponse>("/auth/register", data),
   
-  googleLogin: (token: string) => apiClient.post<AuthResponse>("/auth/google", { token }),
+  googleLogin: (token: string) => apiClient.post<AuthResponse>("/auth/google", { idToken: token }),
   
   verifyEmail: (data: { email: string; code: string }) => apiClient.post<{status: string, message: string}>("/auth/verify-email", data),
   

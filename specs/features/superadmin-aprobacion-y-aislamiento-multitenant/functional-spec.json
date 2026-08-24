@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "feature_id": "superadmin-aprobacion-y-aislamiento-multitenant",
+  "title": "Aprobación de Solicitudes de Negocio, Provisión Aislada de Esquemas y Aislamiento Multi-Tenant Estricto",
+  "description": "Especificación funcional para corregir y blindar el ciclo de vida de registro de lavanderías, eliminando la fuga de datos entre tenants durante el login y consulta de perfil, erradicando bucles de escaneo cruzado entre esquemas, garantizando que los nuevos negocios comiencen en 0 con esquemas PostgreSQL aislados ('tenant_<id>'), implementando aprobación diferida por SuperAdmin y bloqueo absoluto a portales no autorizados.",
+  "domain": "SuperAdmin / Autenticación / Multi-Tenancy",
+  "version": "1.1.0",
+  "product_scope": {
+    "in_scope": [
+      "Registro de lavandería con creación diferida de esquemas: la solicitud queda en estado PENDIENTE sin crear tablas ni usuarios en ningún tenant existente.",
+      "Bloqueo absoluto de acceso a portales (/admin, /pos, /dashboard) y APIs para usuarios pendientes o no autenticados: cualquier intento de ingreso directo por URL es interceptado y redirigido al login/solicitud pendiente, rechazando toda consulta de datos con 401/403.",
+      "Aprobación por SuperAdmin: provisión atómica del esquema PostgreSQL 'tenant_<id>' en Neon, siembra de tablas iniciales (estados, método de pago efectivo, configuración) vacías en 0, creación del usuario central vinculado estrictamente a 'negocioId' y creación del Empleado #1 (admin) en dicho esquema.",
+      "Aislamiento Multi-Tenant estricto: erradicación total de bucles 'for (const neg of negocios)' en login.service.js, profile.service.js y controladores. El usuario solo consulta e interactúa con su propio 'negocioId'.",
+      "Gestión de empleados local al tenant: el usuario aprobado opera como ADMIN de su propia lavandería y gestiona a sus empleados exclusivamente dentro de su portal (/admin/empleados), sin que el sistema busque ni toque registros de otros tenants.",
+      "Rechazo por SuperAdmin con registro de motivo y notificación por correo.",
+      "Diagnóstico y envío confiable de correos electrónicos transaccionales con fallback seguro a log controlado."
+    ],
+    "out_of_scope": [
+      "Integración de pasarelas de pago recurrentes automáticas (MercadoPago Suscripciones) en esta etapa.",
+      "Migración de datos históricos entre esquemas ya creados."
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-01-REGISTRO-Y-ESPERA",
+      "actor": "Nuevo Dueño de Lavandería",
+      "title": "Registro de Lavandería, Espera de Aprobación y Bloqueo a Portales",
+      "steps": [
+        "El usuario ingresa al formulario de Registro (/register) con sus datos personales, nombre del negocio, subdominio y contraseña.",
+        "El sistema valida unicidad y crea la 'SolicitudNegocio' en estado 'PENDIENTE'. No crea esquemas ni usuarios operativos en ningún negocio.",
+        "El sistema notifica al SuperAdmin por correo y muestra la pantalla 'Solicitud en Revisión' al usuario.",
+        "Si el usuario intenta ingresar directamente por URL a cualquier portal protegido (/admin, /pos, /dashboard, etc.) o invocar APIs protegidas sin estar aprobado, el sistema bloquea inmediatamente la petición (HTTP 401/403), rechaza cualquier consulta de datos y lo redirige automáticamente a /login o /solicitud-pendiente, impidiendo visualizar información alguna.",
+        "Si el usuario intenta iniciar sesión con sus credenciales antes de ser aprobado, el sistema detecta la solicitud pendiente y responde con HTTP 403 SOLICITUD_PENDIENTE, impidiendo el acceso a los portales."
+      ]
+    },
+    {
+      "journey_id": "UJ-02-APROBACION-SUPERADMIN",
+      "actor": "SuperAdmin",
+      "title": "Aprobación y Provisión Atómica de la Nueva Lavandería",
+      "steps": [
+        "El SuperAdmin visualiza la nueva solicitud en su Consola Unificada (/superadmin) en tiempo real vía WebSockets.",
+        "El SuperAdmin presiona 'Aprobar Solicitud'.",
+        "El Back-End crea el Negocio central, aprovisiona el esquema 'tenant_<id>' en Neon PostgreSQL, crea los estados base, crea el usuario central con 'negocioId' asignado, y crea el Empleado Legajo #1 (admin) en el nuevo esquema.",
+        "El sistema envía el correo de bienvenida y confirmación al solicitante con sus datos de acceso.",
+        "El SuperAdmin ve la solicitud marcada como 'APROBADA' y el nuevo negocio listado con métricas en 0."
+      ]
+    },
+    {
+      "journey_id": "UJ-03-PRIMER-LOGIN-TENANT-LIMPIO",
+      "actor": "Dueño de Lavandería Aprobado",
+      "title": "Primer Inicio de Sesión en Negocio Aislado en 0",
+      "steps": [
+        "El usuario ingresa sus credenciales en /login.",
+        "El Back-End consulta únicamente el registro del usuario y su 'negocioId' asignado, sin buscar en ningún otro tenant.",
+        "El Back-End conecta al esquema 'tenant_<id>' de la nueva lavandería y emite el JWT con 'negocioId' del nuevo negocio.",
+        "El usuario entra al panel de administración o mostrador POS y ve todas sus tablas, pedidos, clientes, gastos y cajas en 0, sin mezcla con ninguna otra lavandería existente.",
+        "Si el administrador desea dar de alta colaboradores, lo hace desde su propio módulo /admin/empleados, quedando guardados exclusivamente en su esquema 'tenant_<id>'."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "given": "Un usuario completa el formulario de registro de nueva lavandería",
+      "when": "Se envía la petición POST /api/auth/register",
+      "then": "Se crea un registro en SolicitudNegocio con estado 'PENDIENTE', NO se crea ningún esquema en PostgreSQL, NO se crea ningún usuario en 'public.usuarios', y se despacha la notificación al SuperAdmin."
+    },
+    {
+      "id": "AC-02",
+      "given": "Un usuario con una SolicitudNegocio en estado 'PENDIENTE' intenta ingresar a /admin, /pos o hacer login",
+      "when": "Se intenta el acceso o se envía POST /api/auth/login",
+      "then": "Cualquier consulta a las APIs de datos es rechazada con HTTP 401/403 y el frontend redirige inmediatamente a /solicitud-pendiente o /login sin exponer datos de ningún tenant."
+    },
+    {
+      "id": "AC-03",
+      "given": "El SuperAdmin presiona 'Aprobar' sobre una SolicitudNegocio pendiente",
+      "when": "Se ejecuta PATCH /api/superadmin/solicitudes/:id/aprobar",
+      "then": "Se crea el registro 'Negocio' (activo: true, estadoSuscripcion: 'PRUEBA'), se aprovisiona el esquema 'tenant_<id>', se sincronizan sus tablas en 0, se crea el Usuario con 'negocioId', se crea el Empleado #1 en 'tenant_<id>', se marca la solicitud como 'APROBADA' y se emite el evento WebSocket 'superadmin:solicitud_updated'."
+    },
+    {
+      "id": "AC-04",
+      "given": "Un usuario cuyo negocio acaba de ser aprobado inicia sesión",
+      "when": "Se procesa el login o la consulta de perfil /api/auth/me en el Back-End",
+      "then": "El sistema busca el empleado y datos EXCLUSIVAMENTE en el esquema 'tenant_<usuario.negocioId>', sin iterar sobre otros negocios, emitiendo un token que accede a una base de datos completamente limpia y en 0."
+    },
+    {
+      "id": "AC-05",
+      "given": "El SuperAdmin rechaza una solicitud con un motivo de rechazo",
+      "when": "Se ejecuta PATCH /api/superadmin/solicitudes/:id/rechazar",
+      "then": "La solicitud se marca como 'RECHAZADA', se guarda el motivo, se envía el correo al solicitante y se emite el evento WebSocket 'superadmin:solicitud_updated'."
+    }
+  ],
+  "business_rules": [
+    {
+      "rule_id": "BR-TENANT-ISOLATION",
+      "statement": "Ningún usuario puede consultar o recibir tokens con acceso a un negocio distinto al 'negocioId' asignado explícitamente a su cuenta. Queda prohibido cualquier bucle de escaneo entre tenants."
+    },
+    {
+      "rule_id": "BR-DEFERRED-PROVISIONING",
+      "statement": "El aprovisionamiento de bases de datos y esquemas PostgreSQL ('tenant_<id>') está estrictamente condicionado a la aprobación explícita del SuperAdmin."
+    },
+    {
+      "rule_id": "BR-FRESH-TENANT-STATE",
+      "statement": "Todo negocio recién aprobado debe inicializarse con métricas y tablas vacías (0 pedidos, 0 clientes, 0 movimientos de caja, 0 gastos) y únicamente con catálogos base indispensables (estados del pedido y método de pago Efectivo)."
+    },
+    {
+      "rule_id": "BR-SERVICE-SUSPENSION",
+      "statement": "Si un negocio tiene 'activo = false' o 'estadoSuscripcion = SUSPENDIDA', todo intento de operación en su esquema debe ser rechazado inmediatamente con HTTP 403 BUSINESS_SUSPENDED."
+    },
+    {
+      "rule_id": "BR-PORTAL-PROTECTION",
+      "statement": "Todo acceso directo a portales protegidos (/admin, /pos, /dashboard) por parte de usuarios no autenticados o con solicitudes pendientes debe ser bloqueado en seco, redirigiendo al login y rechazando cualquier solicitud a APIs de datos."
+    }
+  ],
+  "ux_behavior_and_interactions": {
+    "portal_guards": "Los Guards del frontend (RoleGuard / GuestGuard) interceptan intentos de acceso directo por URL sin sesión activa, redirigiendo de inmediato a /login.",
+    "login_feedback": "Si la solicitud está pendiente, la interfaz muestra el banner explicativo con los datos del trámite y el botón para volver al inicio.",
+    "superadmin_actions": "Al presionar Aprobar o Rechazar en la consola de SuperAdmin, el estado se actualiza instantáneamente en la tabla vía WebSockets y se muestra una notificación toast de confirmación.",
+    "email_fallback": "Si el servidor SMTP experimenta problemas de red, la operación en base de datos no se revierte; el error se registra en auditoría y el sistema permite continuar operativamente."
+  }
+}

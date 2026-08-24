@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { useGSAP } from "@gsap/react"
@@ -67,7 +67,7 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
     if (e) e.preventDefault()
     
     if (!motivo.trim() || !descripcion.trim()) {
-      toast.error("Motivo y descripción son obligatorios.")
+      toast.error("Motivo y descripciÃ³n son obligatorios.")
       return
     }
 
@@ -80,7 +80,7 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
       if (currentIndex < pedidos.length - 1) {
         animateNext()
       } else {
-        toast.success("Todos los pedidos seleccionados fueron cancelados con éxito.")
+        toast.success("Todos los pedidos seleccionados fueron cancelados con Ã©xito.")
         onComplete()
         onOpenChange(false)
       }
@@ -100,7 +100,7 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
       title={
         <div className="flex items-center gap-2 text-2xl font-bold text-red-600">
           <XCircle className="h-6 w-6" />
-          Cancelación Masiva
+          CancelaciÃ³n Masiva
         </div> as any
       }
       description={`Cancelando ${currentIndex + 1} de ${pedidos.length} pedidos seleccionados.`}
@@ -108,23 +108,23 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
       <div className="flex-1 space-y-6" ref={formRef}>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label>Motivo de Cancelación <span className="text-red-500">*</span></Label>
+            <Label>Motivo de CancelaciÃ³n <span className="text-red-500">*</span></Label>
             <Select value={motivo} onValueChange={setMotivo} disabled={isSubmitting}>
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Seleccione un motivo..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Cliente se arrepintió">Cliente se arrepintió</SelectItem>
+                <SelectItem value="Cliente se arrepintiÃ³">Cliente se arrepintiÃ³</SelectItem>
                 <SelectItem value="Error de carga">Error de carga</SelectItem>
                 <SelectItem value="Falta de stock/insumos">Falta de stock/insumos</SelectItem>
-                <SelectItem value="Prendas dañadas previas">Prendas dañadas previas</SelectItem>
+                <SelectItem value="Prendas daÃ±adas previas">Prendas daÃ±adas previas</SelectItem>
                 <SelectItem value="Otro">Otro</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Descripción Detallada <span className="text-red-500">*</span></Label>
+            <Label>DescripciÃ³n Detallada <span className="text-red-500">*</span></Label>
             <Textarea 
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
@@ -144,7 +144,7 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
           disabled={isSubmitting || !motivo.trim() || !descripcion.trim()}
         >
           {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : null}
-          {isSubmitting ? "Cancelando..." : "Confirmar Cancelación"}
+          {isSubmitting ? "Cancelando..." : "Confirmar CancelaciÃ³n"}
         </Button>
         <Button 
           variant="outline" 
@@ -187,22 +187,22 @@ export function BulkCancellationWizard({ open, onOpenChange, pedidos, onComplete
             {/* Order Items Summary */}
             <div className="space-y-2.5 pb-4 border-b border-gray-100/80">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <Package className="w-3.5 h-3.5" /> Ítems del pedido
+                <Package className="w-3.5 h-3.5" /> Ãtems del pedido
               </div>
-              {currentPedido.items?.slice(0, 3).map((item, idx) => (
+              {currentPedido.detalles?.slice(0, 3).map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2 truncate pr-4">
                     <span className="text-gray-400 font-medium">{item.cantidad}x</span>
-                    <span className="text-gray-700 truncate">{item.producto?.nombre}</span>
+                    <span className="text-gray-700 truncate">{item.servicio?.nombre}</span>
                   </div>
                   <span className="font-medium text-gray-900 shrink-0">
                     ${Number(item.subtotal).toLocaleString("es-AR")}
                   </span>
                 </div>
               ))}
-              {(currentPedido.items?.length || 0) > 3 && (
+              {(currentPedido.detalles?.length || 0) > 3 && (
                 <p className="text-xs text-gray-400 italic">
-                  + {(currentPedido.items?.length || 0) - 3} ítems más...
+                  + {(currentPedido.detalles?.length || 0) - 3} Ã­tems mÃ¡s...
                 </p>
               )}
             </div>

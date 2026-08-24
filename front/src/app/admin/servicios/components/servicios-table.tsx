@@ -5,6 +5,7 @@ import { getServicioColumns } from "./servicio-columns"
 import { ServiciosBulkPriceModal } from "./servicios-bulk-price-modal"
 import { DollarSign, Power, PowerOff, Percent } from "lucide-react"
 import { apiClient } from "@/shared/lib/api-client"
+import { actualizarDisponibilidadMasiva } from "@/domains/productos/api"
 import { toast } from "sonner"
 
 export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
@@ -59,7 +60,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
       onClick: async (rows, clearSelection) => {
         try {
           const ids = rows.map((s: any) => s.id)
-          await apiClient.patch("/productos/bulk/disponibilidad", { ids, disponible: true })
+          await actualizarDisponibilidadMasiva(ids, true)
           toast.success(`${rows.length} servicio(s) activados`)
           data.fetchServicios()
           clearSelection()
@@ -75,7 +76,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
       onClick: async (rows, clearSelection) => {
         try {
           const ids = rows.map((s: any) => s.id)
-          await apiClient.patch("/productos/bulk/disponibilidad", { ids, disponible: false })
+          await actualizarDisponibilidadMasiva(ids, false)
           toast.success(`${rows.length} servicio(s) pausados`)
           data.fetchServicios()
           clearSelection()

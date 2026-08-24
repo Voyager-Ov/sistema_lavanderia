@@ -11,7 +11,7 @@ class ServiciosService {
     }
 
     // Listar servicios / productos con paginación, filtros y ordenamiento
-    async listarServicios(negocioId, query) {
+    async listarServicios(negocioId, query = {}) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
@@ -34,7 +34,10 @@ class ServiciosService {
 
         // Filtro por categoría
         if (query.categoriaId && query.categoriaId !== "ALL") {
-            where.categoriaId = query.categoriaId;
+            const catId = parseInt(query.categoriaId);
+            if (!isNaN(catId) && catId > 0) {
+                where.categoriaId = catId;
+            }
         }
 
         // Filtro por disponibilidad
@@ -45,7 +48,7 @@ class ServiciosService {
         // Ordenamiento seguro
         let orderClause;
         const sortBy = query.sortBy || "id";
-        const sortOrder = (query.sortOrder || "DESC").toUpperCase();
+        const sortOrder = (query.sortOrder || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 
         if (sortBy === "categoria" || sortBy === "categoria.nombre" || sortBy === "categoriaId") {
             orderClause = [[{ model: CategoriaServicio, as: "categoria" }, "nombre", sortOrder]];
@@ -111,6 +114,9 @@ class ServiciosService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
+        if (!id) {
+            throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
+        }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
         const servicio = await Servicio.findOne({
@@ -122,43 +128,44 @@ class ServiciosService {
         });
 
         if (!servicio) {
-            throw new AppError("Servicio no encontrado", 404, "SERVICE_NOT_FOUND");
+            throw new AppError("Servicio no encontrado.", 404, "SERVICE_NOT_FOUND");
         }
 
         return servicio;
     }
 
-    // Crear nuevo servicio
+    // Crear nuevo servicio (Fail-Fast: exige precioActual canónico y valida categoriaId real)
     async crearServicio(negocioId, data, imagenPath = null) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
         const { Servicio, CategoriaServicio, HistorialPrecioServicio } = await this._getModels(negocioId);
 
-        const precioFinal = data.precioActual !== undefined ? data.precioActual : data.precio;
-        if (!data.nombre || precioFinal === undefined || precioFinal === null) {
-            throw new AppError("Nombre y precio son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
+        if (!data.nombre || data.nombre.trim() === "") {
+            throw new AppError("El nombre del servicio es obligatorio.", 400, "MISSING_SERVICE_NAME");
         }
 
-        let catId = data.categoriaId ? parseInt(data.categoriaId) : null;
-        if (catId) {
-            const categoria = await CategoriaServicio.findByPk(catId);
+        if (data.precioActual === undefined || data.precioActual === null || data.precioActual === "") {
+            throw new AppError("El precio actual es obligatorio.", 400, "MISSING_PRICE");
+        }
+
+        const precioNum = parseFloat(data.precioActual);
+        if (isNaN(precioNum) || precioNum < 0) {
+            throw new AppError("El precio actual debe ser un número mayor o igual a 0.", 400, "INVALID_PRICE");
+        }
+
+        let catId = null;
+        if (data.categoriaId !== undefined && data.categoriaId !== null && data.categoriaId !== "") {
+            const parsedCatId = parseInt(data.categoriaId);
+            if (isNaN(parsedCatId) || parsedCatId <= 0) {
+                throw new AppError("El ID de categoría debe ser un número entero positivo válido.", 400, "INVALID_CATEGORY_ID");
+            }
+            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, activo: true } });
             if (!categoria) {
-                let defaultCat = await CategoriaServicio.findOne({ where: { activo: true } });
-                if (!defaultCat) {
-                    defaultCat = await CategoriaServicio.create({ nombre: "General", activo: true });
-                }
-                catId = defaultCat.id;
+                throw new AppError("La categoría seleccionada no existe.", 404, "CATEGORY_NOT_FOUND");
             }
-        } else {
-            let defaultCat = await CategoriaServicio.findOne({ where: { activo: true } });
-            if (!defaultCat) {
-                defaultCat = await CategoriaServicio.create({ nombre: "General", activo: true });
-            }
-            catId = defaultCat.id;
+            catId = parsedCatId;
         }
-
-        const precioNum = parseFloat(precioFinal);
 
         if (imagenPath) {
             const fotosActuales = await Servicio.count({
@@ -175,11 +182,11 @@ class ServiciosService {
         }
 
         const nuevoServicio = await Servicio.create({
-            nombre: data.nombre,
-            descripcion: data.descripcion || null,
+            nombre: data.nombre.trim(),
+            descripcion: data.descripcion ? data.descripcion.trim() : null,
             precioActual: precioNum,
-            costoEstimado: parseFloat(data.costoEstimado || 0),
-            tiempoEstimadoMinutos: parseInt(data.tiempoEstimadoMinutos || 0),
+            costoEstimado: data.costoEstimado !== undefined && data.costoEstimado !== "" ? parseFloat(data.costoEstimado) : 0,
+            tiempoEstimadoMinutos: data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "" ? parseInt(data.tiempoEstimadoMinutos) : 0,
             disponible: data.disponible === "true" || data.disponible === true || data.disponible === undefined,
             activo: true,
             imagenUrl: imagenPath || data.imagenUrl || null,
@@ -209,7 +216,10 @@ class ServiciosService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        const { Servicio, HistorialPrecioServicio } = await this._getModels(negocioId);
+        if (!id) {
+            throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
+        }
+        const { Servicio, CategoriaServicio, HistorialPrecioServicio } = await this._getModels(negocioId);
 
         const servicio = await Servicio.findOne({ where: { id, activo: true } });
         if (!servicio) {
@@ -217,12 +227,27 @@ class ServiciosService {
         }
 
         const updateFields = {};
-        if (data.nombre !== undefined) updateFields.nombre = data.nombre;
-        if (data.descripcion !== undefined) updateFields.descripcion = data.descripcion;
-        if (data.costoEstimado !== undefined) updateFields.costoEstimado = parseFloat(data.costoEstimado);
-        if (data.tiempoEstimadoMinutos !== undefined) updateFields.tiempoEstimadoMinutos = parseInt(data.tiempoEstimadoMinutos);
+        if (data.nombre !== undefined) {
+            if (data.nombre.trim() === "") throw new AppError("El nombre del servicio no puede estar vacío.", 400, "INVALID_NAME");
+            updateFields.nombre = data.nombre.trim();
+        }
+        if (data.descripcion !== undefined) updateFields.descripcion = data.descripcion ? data.descripcion.trim() : null;
+        if (data.costoEstimado !== undefined && data.costoEstimado !== "") updateFields.costoEstimado = parseFloat(data.costoEstimado);
+        if (data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "") updateFields.tiempoEstimadoMinutos = parseInt(data.tiempoEstimadoMinutos);
         if (data.disponible !== undefined) updateFields.disponible = data.disponible === "true" || data.disponible === true;
-        if (data.categoriaId !== undefined) updateFields.categoriaId = parseInt(data.categoriaId);
+        
+        if (data.categoriaId !== undefined && data.categoriaId !== null && data.categoriaId !== "") {
+            const parsedCatId = parseInt(data.categoriaId);
+            if (isNaN(parsedCatId) || parsedCatId <= 0) {
+                throw new AppError("El ID de categoría debe ser un número entero positivo válido.", 400, "INVALID_CATEGORY_ID");
+            }
+            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, activo: true } });
+            if (!categoria) {
+                throw new AppError("La categoría seleccionada no existe.", 404, "CATEGORY_NOT_FOUND");
+            }
+            updateFields.categoriaId = parsedCatId;
+        }
+
         if (imagenPath) {
             const yaTeniaFoto = Boolean(servicio.imagenUrl);
             if (!yaTeniaFoto) {
@@ -249,28 +274,33 @@ class ServiciosService {
             updateFields.imagenUrl = null;
         }
 
-        let nuevoPrecio = data.precioActual !== undefined ? parseFloat(data.precioActual) : (data.precio !== undefined ? parseFloat(data.precio) : undefined);
+        if (data.precioActual !== undefined && data.precioActual !== null && data.precioActual !== "") {
+            const nuevoPrecio = parseFloat(data.precioActual);
+            if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+                throw new AppError("El precio actual debe ser un número mayor o igual a 0.", 400, "INVALID_PRICE");
+            }
 
-        if (nuevoPrecio !== undefined && nuevoPrecio !== parseFloat(servicio.precioActual)) {
-            updateFields.precioActual = nuevoPrecio;
+            if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
+                updateFields.precioActual = nuevoPrecio;
 
-            // Cerrar precio previo e insertar nuevo en historial
-            const ahora = new Date();
-            try {
-                await HistorialPrecioServicio.update(
-                    { fechaHasta: ahora },
-                    { where: { servicioId: id, negocioId, fechaHasta: null } }
-                );
-                await HistorialPrecioServicio.create({
-                    servicioId: id,
-                    precio: nuevoPrecio,
-                    fechaDesde: ahora,
-                    fechaHasta: null,
-                    motivo: data.motivo || "Edición de precio",
-                    negocioId
-                });
-            } catch (e) {
-                console.warn("⚠️ No se pudo actualizar historial de precio:", e.message);
+                // Cerrar precio previo e insertar nuevo en historial
+                const ahora = new Date();
+                try {
+                    await HistorialPrecioServicio.update(
+                        { fechaHasta: ahora },
+                        { where: { servicioId: id, negocioId, fechaHasta: null } }
+                    );
+                    await HistorialPrecioServicio.create({
+                        servicioId: id,
+                        precio: nuevoPrecio,
+                        fechaDesde: ahora,
+                        fechaHasta: null,
+                        motivo: data.motivo || "Edición de precio",
+                        negocioId
+                    });
+                } catch (e) {
+                    console.warn("⚠️ No se pudo actualizar historial de precio:", e.message);
+                }
             }
         }
 
@@ -283,6 +313,9 @@ class ServiciosService {
     async cambiarDisponibilidad(negocioId, id, disponible) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        if (!id) {
+            throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
         const { Servicio } = await this._getModels(negocioId);
 
@@ -297,46 +330,49 @@ class ServiciosService {
         return servicio;
     }
 
-    // Actualizar precios de forma masiva
-    async actualizarPreciosMasivo(negocioId, updates) {
+    // Actualizar precios de forma masiva (Fail-Fast y validación estricta del array de servicios)
+    async actualizarPreciosMasivo(negocioId, servicios) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
-        if (!Array.isArray(updates) || updates.length === 0) {
-            throw new AppError("Se requiere un arreglo de actualizaciones de precios válidos.", 400, "INVALID_BULK_DATA");
+        if (!Array.isArray(servicios) || servicios.length === 0) {
+            throw new AppError("Se requiere un arreglo de 'servicios' no vacío para actualizar precios.", 400, "INVALID_BULK_DATA");
         }
 
         const { Servicio, HistorialPrecioServicio } = await this._getModels(negocioId);
         const resultados = [];
         const ahora = new Date();
 
-        for (const u of updates) {
-            if (!u.id || u.precioActual === undefined || isNaN(parseFloat(u.precioActual)) || parseFloat(u.precioActual) < 0) {
-                continue;
+        for (const item of servicios) {
+            if (!item.id || item.precioActual === undefined || isNaN(parseFloat(item.precioActual)) || parseFloat(item.precioActual) < 0) {
+                throw new AppError(`El servicio ID ${item?.id || 'desconocido'} no contiene un precioActual válido.`, 400, "INVALID_SERVICE_ITEM");
             }
-            const servicio = await Servicio.findOne({ where: { id: u.id, activo: true, negocioId } });
-            if (!servicio) continue;
+            const servicio = await Servicio.findOne({ where: { id: item.id, activo: true } });
+            if (!servicio) {
+                throw new AppError(`Servicio con ID ${item.id} no encontrado o inactivo.`, 404, "SERVICE_NOT_FOUND");
+            }
 
-            const nuevoPrecio = parseFloat(u.precioActual);
-            if (nuevoPrecio !== undefined && nuevoPrecio !== parseFloat(servicio.precioActual)) {
+            const nuevoPrecio = parseFloat(item.precioActual);
+            if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
                 await servicio.update({ precioActual: nuevoPrecio });
 
-                // Registrar en historial si la tabla y modelo existen
                 if (HistorialPrecioServicio) {
                     try {
                         await HistorialPrecioServicio.update(
                             { fechaHasta: ahora },
-                            { where: { servicioId: u.id, negocioId, fechaHasta: null } }
+                            { where: { servicioId: item.id, negocioId, fechaHasta: null } }
                         );
                         await HistorialPrecioServicio.create({
-                            servicioId: u.id,
+                            servicioId: item.id,
                             precio: nuevoPrecio,
                             fechaDesde: ahora,
                             fechaHasta: null,
                             motivo: "Ajuste Masivo de Precios",
                             negocioId
                         });
-                    } catch (e) {}
+                    } catch (e) {
+                        console.warn("⚠️ No se pudo registrar historial masivo:", e.message);
+                    }
                 }
             }
             resultados.push(servicio);
@@ -351,7 +387,7 @@ class ServiciosService {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
         if (!Array.isArray(ids) || ids.length === 0) {
-            throw new AppError("Se requiere un arreglo de IDs válidos.", 400, "INVALID_IDS");
+            throw new AppError("Se requiere un arreglo de IDs válido y no vacío.", 400, "INVALID_IDS");
         }
 
         const { Servicio } = await this._getModels(negocioId);
@@ -359,7 +395,7 @@ class ServiciosService {
 
         const [affectedCount] = await Servicio.update(
             { disponible: isDisponible },
-            { where: { id: { [Op.in]: ids }, activo: true, negocioId } }
+            { where: { id: { [Op.in]: ids }, activo: true } }
         );
 
         return { count: affectedCount };
@@ -369,6 +405,9 @@ class ServiciosService {
     async obtenerHistorialPrecios(negocioId, id) {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        }
+        if (!id) {
+            throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
         const { Servicio, HistorialPrecioServicio } = await this._getModels(negocioId);
 
@@ -387,7 +426,6 @@ class ServiciosService {
             console.warn("⚠️ No se pudo consultar historial en la BD:", e.message);
         }
 
-        // Si no hay registros aún en el historial, devolvemos un registro sintético basado en el servicio actual
         if (historial.length === 0) {
             const p = parseFloat(servicio.precioActual);
             historial = [
@@ -427,9 +465,12 @@ class ServiciosService {
         if (!negocioId) {
             throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
         }
+        if (!id) {
+            throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
+        }
         const { Servicio } = await this._getModels(negocioId);
 
-        const servicio = await Servicio.findOne({ where: { id } });
+        const servicio = await Servicio.findOne({ where: { id, activo: true } });
         if (!servicio) {
             throw new AppError("Servicio no encontrado para eliminar.", 404, "SERVICE_NOT_FOUND");
         }
@@ -440,4 +481,3 @@ class ServiciosService {
 }
 
 export const serviciosService = new ServiciosService();
-

@@ -4,6 +4,7 @@ import { cancelacionService } from "../services/cancelacion.service.js";
 import { facturacionService } from "../services/facturacion.service.js";
 import { ticketService } from "../services/ticket.service.js";
 import { trackingService } from "../services/tracking.service.js";
+import { pedidosSocket } from "../sockets/pedidos.socket.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { AppError } from "../../../utils/appError.js";
 
@@ -61,7 +62,10 @@ export const cambiarEstado = async (req, res, next) => {
         const { estado, motivoCancelacion, descripcionCancelacion, accionDinero } = req.body;
 
         if (estado === "CANCELADO") {
-            const empleadoId = req.user?.empleadoId || req.user?.id;
+            const empleadoId = req.user?.id;
+            if (!empleadoId) {
+                throw new AppError("No se ha identificado el empleado activo.", 400, "MISSING_USER_ID");
+            }
             await cancelacionService.cancelarPedido(negocioId, req.params.id, {
                 motivoCancelacion,
                 descripcionCancelacion,
@@ -73,6 +77,9 @@ export const cambiarEstado = async (req, res, next) => {
         }
 
         const pedidoActualizado = await pedidosService.obtenerPedidoPorNumero(negocioId, req.params.id);
+        
+        pedidosSocket.emitirEstadoCambiado(negocioId, pedidoActualizado, estado);
+        
         return successResponse(res, 200, "Estado del pedido actualizado exitosamente", pedidoActualizado);
     } catch (error) {
         next(error);
@@ -113,7 +120,10 @@ export const marcarTicketImpreso = async (req, res, next) => {
 export const generarTicketsPrenda = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const cantidad = req.body.cantidad || 1;
+        const cantidad = Number(req.body.cantidad);
+        if (isNaN(cantidad) || cantidad <= 0) {
+            throw new AppError("La cantidad debe ser un número mayor a 0.", 400, "INVALID_DATA");
+        }
         const tickets = await ticketService.generarTicketsPrenda(negocioId, req.params.id, cantidad);
         return successResponse(res, 201, "Tickets de prendas generados exitosamente", tickets);
     } catch (error) {

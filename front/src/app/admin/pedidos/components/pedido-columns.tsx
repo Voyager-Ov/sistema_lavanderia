@@ -81,7 +81,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     accessorKey: "fechaHoraPedido",
     header: "Fecha",
     cell: ({ row }) => {
-      const fechaVal = row.original.fechaHoraPedido || (row.original as any).fechaPedido || row.original.fechaRecepcion || row.original.createdAt
+      const fechaVal = row.original.fechaHoraPedido || (row.original as any).fechaPedido || row.original.fechaHoraPedido || row.original.createdAt
       return (
         <div className="text-gray-600 dark:text-neutral-400 font-medium transition-colors">
           {safeFormatDate(fechaVal, "dd MMM HH:mm")}
@@ -94,16 +94,16 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     header: "Detalle",
     enableSorting: false,
     cell: ({ row }) => {
-      const items = row.original.items || []
+      const items = row.original.detalles || row.original.items || []
       return (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
-          {items.map((item, index) => (
+          {items.map((item: any, index: number) => (
             <span 
               key={index} 
               className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 transition-colors"
             >
               <span className="font-bold mr-1">{item.cantidad}x</span>
-              {item.producto?.nombre}
+              {item.servicio?.nombre || item.producto?.nombre || "Servicio"}
             </span>
           ))}
           {items.length === 0 && <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">-</span>}
@@ -126,7 +126,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     cell: ({ row }) => {
       const pedido = row.original
       const cobrado = pedido.cobrado
-      const metodo = pedido.pago?.metodoPago?.nombre || "N/A"
+      const metodo = pedido.cobros?.[0]?.metodoPago?.nombre || "N/A"
       
       return (
         <div className="flex flex-col gap-1">
@@ -136,20 +136,19 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                 <CheckCircle2 className="w-3 h-3" /> COBRADO
               </span>
               <span className="text-[10px] font-medium text-gray-500 dark:text-neutral-400 uppercase transition-colors">{metodo}</span>
-              {pedido.pago && (
-                <>
-                  {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
-                      Con Saldo a Favor
-                    </span>
-                  )}
-                  {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
-                      + Saldo a Favor
-                    </span>
-                  ) : null}
-                </>
-              )}
+              {pedido.cobros?.[0] && (() => {
+                const montoAbonado = Number(pedido.cobros[0].montoAbonado || 0);
+                const totalPedido = Number(pedido.total || 0);
+                return (
+                  <>
+                    {totalPedido - montoAbonado > 0 && montoAbonado > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
+                        Con Saldo a Favor
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-2 py-0.5 rounded w-fit transition-colors">
@@ -161,7 +160,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
     },
   },
   {
-    accessorKey: "fechaEntregaEstimada",
+    accessorKey: "fechaHoraEntregaEstimada",
     header: ({ column }) => {
       return (
         <Button
@@ -175,11 +174,11 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
       )
     },
     cell: ({ row }) => {
-      if (!row.original.fechaEntregaEstimada) {
+      if (!row.original.fechaHoraEntregaEstimada) {
         return <span className="text-gray-400 dark:text-neutral-500 text-xs italic transition-colors">No def.</span>
       }
 
-      const fechaEst = new Date(row.original.fechaEntregaEstimada)
+      const fechaEst = new Date(row.original.fechaHoraEntregaEstimada)
       const hoy = new Date()
       let isUrgent = false
       let isOverdue = false
@@ -192,7 +191,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
       return (
         <div className="flex flex-col gap-1">
           <span className="text-gray-900 dark:text-neutral-50 font-medium whitespace-nowrap transition-colors">
-            {safeFormatDate(row.original.fechaEntregaEstimada, "dd MMM HH:mm", "No def.")}
+            {safeFormatDate(row.original.fechaHoraEntregaEstimada, "dd MMM HH:mm", "No def.")}
           </span>
           {isOverdue && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/20 px-1.5 py-0.5 rounded w-fit transition-colors">
@@ -261,7 +260,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
       const handleWhatsApp = () => {
         if (!telefono) return
         const estadoText = ESTADOS.find(e => e.value === pedido.estado)?.label?.toLowerCase() || "registrado"
-        const detalle = pedido.items?.map(i => i.producto?.nombre).join(', ') || "Servicios de lavandería"
+        const detalle = pedido.detalles?.map(i => i.servicio?.nombre || i.producto?.nombre).filter(Boolean).join(', ') || "Servicios de lavandería"
         
         let template = useConfigStore.getState().notificationsConfig.whatsappMensajeManual 
           || "Hola {{nombre}}, te escribimos para informarte que tu pedido {{codigo}} se encuentra *{{estado}}*. Detalle: {{detalle}}";
@@ -341,7 +340,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                     className={
                       pedido.estado === "CANCELADO"
                         ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full"
-                        : pedido.facturado
+                        : pedido.factura
                           ? "h-8 w-8 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 rounded-full cursor-default"
                           : (!pedido.cobrado 
                               ? "h-8 w-8 text-gray-400 dark:text-neutral-600 cursor-not-allowed rounded-full" 
@@ -349,23 +348,23 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
                             )
                     }
                     onClick={() => {
-                      if (!pedido.facturado && pedido.cobrado) {
+                      if (!pedido.factura && pedido.cobrado) {
                         actions.onGenerateFactura(pedido)
                       }
                     }}
-                    disabled={pedido.facturado || !pedido.cobrado}
+                    disabled={pedido.factura || !pedido.cobrado}
                   >
-                    {pedido.facturado ? <CheckCircle2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {pedido.factura ? <CheckCircle2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent 
                   className={
-                    !pedido.cobrado && !pedido.facturado
+                    !pedido.cobrado && !pedido.factura
                       ? "bg-white dark:bg-neutral-900 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 font-semibold shadow-md"
                       : "bg-white dark:bg-neutral-900 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-900 font-semibold shadow-md"
                   }
                 >
-                  {pedido.facturado ? "Facturado" : (!pedido.cobrado ? "Cobrar para facturar" : "Generar Factura AFIP")}
+                  {pedido.factura ? "Facturado" : (!pedido.cobrado ? "Cobrar para facturar" : "Generar Factura AFIP")}
                 </TooltipContent>
               </Tooltip>
 
@@ -397,7 +396,7 @@ export const getPedidoColumns = (actions: PedidoColumnsActions): ColumnDef<Pedid
               </Tooltip>
             </div>
 
-            {/* Vista en pantallas pequeñas/medianas: menú de 3 puntos */}
+            {/* Vista en pantallas pequeÃ±as/medianas: menÃº de 3 puntos */}
             <div className="xl:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -33,7 +33,7 @@ export default function CrearPedidoPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fechaHoraPedido, setFechaHoraPedido] = useState<Date | undefined>(undefined)
-  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState<Date | undefined>(undefined)
+  const [fechaHoraEntregaEstimada, setfechaHoraEntregaEstimada] = useState<Date | undefined>(undefined)
 
   // Fetch initial data
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function CrearPedidoPage() {
         setCategorias(catsRes)
         setProductos(prodsRes)
       } catch (error) {
-        toast.error("Error al cargar el catálogo de servicios")
+        toast.error("Error al cargar el catÃ¡logo de servicios")
         console.error(error)
       } finally {
         setIsFetchingData(false)
@@ -82,10 +82,10 @@ export default function CrearPedidoPage() {
       await crearPedido({
         clienteId: selectedClient.id,
         fechaHoraPedido: fechaHoraPedido ? fechaHoraPedido.toISOString() : undefined,
-        fechaEntregaEstimada: fechaEntregaEstimada ? fechaEntregaEstimada.toISOString() : undefined,
-        items: cart.map(c => ({ productoId: c.producto.id, cantidad: c.cantidad }))
+        fechaHoraEntregaEstimada: fechaHoraEntregaEstimada ? fechaHoraEntregaEstimada.toISOString() : undefined,
+        detalles: cart.map(c => ({ servicioId: c.producto.id, cantidad: c.cantidad }))
       })
-      toast.success("¡Pedido creado con éxito!")
+      toast.success("Â¡Pedido creado con Ã©xito!")
       router.push("/admin/pedidos")
       router.refresh()
     } catch (error) {
@@ -127,7 +127,7 @@ export default function CrearPedidoPage() {
               />
             </div>
             <div className="w-full lg:w-3/5 flex flex-col gap-2">
-              <label className="text-sm font-semibold text-muted-foreground transition-colors">Categoría</label>
+              <label className="text-sm font-semibold text-muted-foreground transition-colors">CategorÃ­a</label>
               <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] h-[56px]">
                 <Button
                   onClick={() => setActiveCategoryId("ALL")}
@@ -184,8 +184,8 @@ export default function CrearPedidoPage() {
             selectedClient={selectedClient}
             fechaHoraPedido={fechaHoraPedido}
             setFechaHoraPedido={setFechaHoraPedido}
-            fechaEntregaEstimada={fechaEntregaEstimada}
-            setFechaEntregaEstimada={setFechaEntregaEstimada}
+            fechaHoraEntregaEstimada={fechaHoraEntregaEstimada}
+            setfechaHoraEntregaEstimada={setfechaHoraEntregaEstimada}
             onCheckout={handleCreateOrder}
             isSubmitting={isSubmitting}
           />

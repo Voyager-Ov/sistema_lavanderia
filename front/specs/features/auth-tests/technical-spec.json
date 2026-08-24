@@ -1,0 +1,415 @@
+{
+  "feature_id": "auth-tests",
+  "title": "Technical Specification for Auth Module Testing Suite (Backend + Frontend)",
+  "version": "1.0.0",
+  "architecture": {
+    "backend": {
+      "runner": "Jest (v29+)",
+      "http_client": "Supertest (v7+)",
+      "orm": "Sequelize with ConnectionManager multi-tenant context",
+      "database_environment": "PostgreSQL test database / SQLite in-memory configured in back2/src/tests/setup.js",
+      "isolation_strategy": "Per-suite database cleanup / transaction isolation and unique email generators",
+      "execution_command": "npm test src/tests/auth"
+    },
+    "frontend": {
+      "runner": "@playwright/test (v1.62+)",
+      "browser_targets": ["Chromium (Desktop)"],
+      "environment": "Next.js App Router standalone or local dev server (http://localhost:3000)",
+      "mocking_layer": "Playwright page.route() network interceptor for deterministic UI unit/integration testing",
+      "execution_command": "npx playwright test e2e/auth"
+    }
+  },
+  "modules_and_files": {
+    "backend_test_files": [
+      {
+        "file": "back2/src/tests/helpers/auth.helper.js",
+        "role": "Fixtures & Factory helper",
+        "description": "Utilidades para crear usuarios de prueba, tenants iniciales, emitir tokens JWT mockeados y generar emails únicos para evitar colisiones entre tests."
+      },
+      {
+        "file": "back2/src/tests/helpers/email.mock.js",
+        "role": "Email Interceptor Store",
+        "description": "Mock espía en memoria de emailService que almacena en un buffer local todos los correos despachados (destinatario, asunto, token, código) para realizar aserciones deterministas."
+      },
+      {
+        "file": "back2/src/tests/auth/auth.registration.test.js",
+        "role": "Suite CU-AUTH-01",
+        "description": "Pruebas de registro público de solicitudes de negocio, validaciones Fail-Fast de campos canónicos y detección de conflictos (409)."
+      },
+      {
+        "file": "back2/src/tests/auth/auth.login.test.js",
+        "role": "Suite CU-AUTH-02 & CU-AUTH-03",
+        "description": "Pruebas de login local y Google OAuth, validación de compuertas de negocio (pendientes, rechazadas, inactivos, no verificados) y firma de JWTs."
+      },
+      {
+        "file": "back2/src/tests/auth/auth.email-verification.test.js",
+        "role": "Suite CU-AUTH-04 & CU-AUTH-05",
+        "description": "Pruebas del ciclo de vida del código de 6 dígitos: verificación exitosa, código incorrecto, código expirado e idempotencia."
+      },
+      {
+        "file": "back2/src/tests/auth/auth.password-recovery.test.js",
+        "role": "Suite CU-AUTH-06, CU-AUTH-07 & CU-AUTH-08",
+        "description": "Pruebas de flujo de olvido de clave (anti-enumeración), reset password con token hex de 32 bytes y change-password en sesión activa."
+      },
+      {
+        "file": "back2/src/tests/auth/auth.profile-session.test.js",
+        "role": "Suite CU-AUTH-09",
+        "description": "Pruebas de consulta de perfil (/api/auth/me) y auditoría de sesiones en esquemas tenant."
+      }
+    ],
+    "frontend_test_files": [
+      {
+        "file": "front/e2e/helpers/auth-mock.helper.ts",
+        "role": "Playwright Route Mock Helper",
+        "description": "Funciones auxiliares para interceptar rutas (/api/auth/*) con page.route() simulando respuestas 200, 201, 400, 401, 403, 409 y 500."
+      },
+      {
+        "file": "front/e2e/auth/login.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /login: validación Zod, animaciones de error, toasts y redirecciones por roles y compuertas de estado."
+      },
+      {
+        "file": "front/e2e/auth/register.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /register: validación en tiempo real, envío de DTO canónico y navegación a /solicitud-pendiente."
+      },
+      {
+        "file": "front/e2e/auth/verify-email.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /verify-email: lectura de searchParams (?email=&token=), input de código de 6 dígitos, reenvío y redirección."
+      },
+      {
+        "file": "front/e2e/auth/forgot-password.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /forgot-password: formulario de recuperación, validación de email y transición de estado a tarjeta informativa."
+      },
+      {
+        "file": "front/e2e/auth/reset-password.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /reset-password: verificación de token en URL, coincidencia de passwords y feedback visual tras reseteo."
+      },
+      {
+        "file": "front/e2e/auth/solicitud-pendiente.spec.ts",
+        "role": "E2E View Test",
+        "description": "Pruebas de la página /solicitud-pendiente: estados visuales para solicitudes PENDIENTE y RECHAZADO con motivo explícito."
+      }
+    ]
+  },
+  "mocking_and_isolation_strategy": {
+    "email_service": {
+      "strategy": "In-Memory Interceptor via Jest Spy",
+      "implementation": "jest.spyOn(emailService, 'enviarCodigoVerificacion').mockImplementation(async (email, nombre, code) => { emailStore.push({ to: email, type: 'VERIFY', code }); });",
+      "assertions": "Permite a los tests consultar emailStore.getLastEmail(email) para extraer el código o token exacto y utilizarlo en la siguiente aserción."
+    },
+    "google_oauth": {
+      "strategy": "OAuth2Client Prototype Spy",
+      "implementation": "jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockImplementation(async ({ idToken }) => { if (idToken === 'valid-google-token') return { getPayload: () => ({ email: 'google.user@test.com', sub: 'google-sub-123', email_verified: true }) }; throw new Error('Invalid token'); });",
+      "safety": "Garantiza que llamadas sin idToken o con tokens inválidos sigan arrojando AppError 401 INVALID_GOOGLE_TOKEN sin atajos en NODE_ENV."
+    },
+    "playwright_api_mocking": {
+      "strategy": "page.route('**/api/auth/**', route => ...)",
+      "patterns": [
+        "page.route('**/api/auth/login', route => route.fulfill({ status: 200, json: { data: { token: 'mock-jwt', usuario: { rol: 'ADMIN' } } } }));",
+        "page.route('**/api/auth/login', route => route.fulfill({ status: 403, json: { message: 'Debes verificar tu email antes de ingresar.' } }));",
+        "page.route('**/api/auth/register', route => route.fulfill({ status: 201, json: { data: { solicitud: { id: 1, estado: 'PENDIENTE' } } } }));"
+      ]
+    }
+  },
+  "canonical_contracts_and_dto": {
+    "register_request": {
+      "endpoint": "POST /api/auth/register",
+      "body": {
+        "email": "string (email, obligatorio)",
+        "password": "string (min 8 chars, obligatorio)",
+        "usuarioNombre": "string (min 2 chars, obligatorio, CANÓNICO)",
+        "negocioNombre": "string (min 2 chars, obligatorio, CANÓNICO)",
+        "cuit": "string (opcional)",
+        "subdominio": "string (opcional)",
+        "telefono": "string (opcional)"
+      }
+    },
+    "login_request": {
+      "endpoint": "POST /api/auth/login",
+      "body": {
+        "email": "string (email, obligatorio)",
+        "password": "string (obligatorio)"
+      }
+    },
+    "google_login_request": {
+      "endpoint": "POST /api/auth/google",
+      "body": {
+        "idToken": "string (obligatorio, CANÓNICO)"
+      }
+    },
+    "verify_email_request": {
+      "endpoint": "POST /api/auth/verify-email",
+      "body": {
+        "email": "string (email, obligatorio)",
+        "code": "string (6 dígitos, obligatorio, CANÓNICO)"
+      }
+    },
+    "forgot_password_request": {
+      "endpoint": "POST /api/auth/forgot-password",
+      "body": {
+        "email": "string (email, obligatorio)"
+      }
+    },
+    "reset_password_request": {
+      "endpoint": "POST /api/auth/reset-password",
+      "body": {
+        "token": "string (hex 32 bytes, obligatorio)",
+        "newPassword": "string (min 8 chars, obligatorio, CANÓNICO)",
+        "email": "string (email, opcional)"
+      }
+    },
+    "change_password_request": {
+      "endpoint": "PATCH /api/auth/change-password",
+      "headers": { "Authorization": "Bearer <jwt>" },
+      "body": {
+        "oldPassword": "string (obligatorio)",
+        "newPassword": "string (min 8 chars, obligatorio)"
+      }
+    }
+  },
+  "test_execution_matrix": [
+    {
+      "test_id": "TEST-BE-REG-01",
+      "cu": "CU-AUTH-01",
+      "suite": "auth.registration.test.js",
+      "scenario": "Registro exitoso crea SolicitudNegocio en PENDIENTE y despacha email a SuperAdmin",
+      "input": "{ email: 'nuevo@solicitud.com', password: 'Password123!', usuarioNombre: 'Juan Perez', negocioNombre: 'Lavanderia Flash' }",
+      "expected_status": 201,
+      "assertions": [
+        "res.body.data.solicitud.estado === 'PENDIENTE'",
+        "emailStore.hasEmailForSuperAdmin('nuevo@solicitud.com') === true",
+        "SolicitudNegocio.findOne({ where: { emailSolicitante: 'nuevo@solicitud.com' } }) !== null"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-REG-02",
+      "cu": "CU-AUTH-01",
+      "suite": "auth.registration.test.js",
+      "scenario": "Fail-Fast ante campos requeridos faltantes (usuarioNombre / negocioNombre sin fallbacks)",
+      "input": "{ email: 'nuevo@solicitud.com', password: 'Password123!' }",
+      "expected_status": 400,
+      "assertions": [
+        "res.body.errorCode === 'MISSING_USER_NAME' || res.body.errorCode === 'VALIDATION_ERROR'",
+        "No se inserta registro en SolicitudNegocio"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-REG-03",
+      "cu": "CU-AUTH-01",
+      "suite": "auth.registration.test.js",
+      "scenario": "Conflicto cuando email ya existe en Usuario activo o Solicitud pendiente",
+      "input": "{ email: 'existente@sistema.com', password: 'Password123!', usuarioNombre: 'Carlos', negocioNombre: 'LavaMax' }",
+      "expected_status": 409,
+      "assertions": [
+        "res.body.errorCode === 'EMAIL_ALREADY_IN_USE' || res.body.errorCode === 'REQUEST_ALREADY_PENDING'"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-LOG-01",
+      "cu": "CU-AUTH-02",
+      "suite": "auth.login.test.js",
+      "scenario": "Login exitoso emite JWT válido y registra auditoría de Sesión en Tenant",
+      "input": "{ email: 'admin@lavanderia.com', password: 'CorrectPassword123' }",
+      "expected_status": 200,
+      "assertions": [
+        "res.body.data.token !== undefined",
+        "jwt.verify(token) contiene { email, negocioId, empleadoId, rol }",
+        "Sesion.findOne({ where: { usuarioEmail: 'admin@lavanderia.com' } }) !== null"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-LOG-02",
+      "cu": "CU-AUTH-02",
+      "suite": "auth.login.test.js",
+      "scenario": "Rechazo de login si el email no ha sido verificado",
+      "input": "{ email: 'unverified@test.com', password: 'Password123' }",
+      "expected_status": 403,
+      "assertions": [
+        "res.body.errorCode === 'EMAIL_NOT_VERIFIED'"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-LOG-03",
+      "cu": "CU-AUTH-02",
+      "suite": "auth.login.test.js",
+      "scenario": "Respuesta 403 con datos si el usuario tiene solicitud en revisión o rechazada",
+      "input": "{ email: 'pending@solicitud.com', password: 'Password123' }",
+      "expected_status": 403,
+      "assertions": [
+        "res.body.errorCode === 'REGISTRATION_PENDING' || res.body.errorCode === 'REGISTRATION_REJECTED'",
+        "res.body.solicitud !== undefined"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-LOG-04",
+      "cu": "CU-AUTH-03",
+      "suite": "auth.login.test.js",
+      "scenario": "Google Login falla con 401 ante token inválido o manipulado (Cero bypass)",
+      "input": "{ idToken: 'fake-or-expired-token' }",
+      "expected_status": 401,
+      "assertions": [
+        "res.body.errorCode === 'INVALID_GOOGLE_TOKEN'"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-VER-01",
+      "cu": "CU-AUTH-04",
+      "suite": "auth.email-verification.test.js",
+      "scenario": "Verificación exitosa con código de 6 dígitos actualiza emailConfirmado",
+      "input": "{ email: 'user@test.com', code: '123456' }",
+      "expected_status": 200,
+      "assertions": [
+        "Usuario.findByPk('user@test.com').emailConfirmado === true",
+        "Usuario.findByPk('user@test.com').tokenConfirmacion === null"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-VER-02",
+      "cu": "CU-AUTH-04",
+      "suite": "auth.email-verification.test.js",
+      "scenario": "Fallo con código incorrecto o código expirado",
+      "input": "{ email: 'user@test.com', code: '999999' }",
+      "expected_status": 400,
+      "assertions": [
+        "res.body.errorCode === 'INVALID_CODE' || res.body.errorCode === 'EXPIRED_CODE'"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-PWD-01",
+      "cu": "CU-AUTH-06",
+      "suite": "auth.password-recovery.test.js",
+      "scenario": "Forgot password genera token hex y responde 200 genérico incluso si el email no existe (Anti-Enumeration)",
+      "input": "{ email: 'nonexistent@random.com' }",
+      "expected_status": 200,
+      "assertions": [
+        "res.body.message.includes('Si el correo ingresado coincide')",
+        "emailStore.hasEmailFor('nonexistent@random.com') === false"
+      ]
+    },
+    {
+      "test_id": "TEST-BE-PWD-02",
+      "cu": "CU-AUTH-07",
+      "suite": "auth.password-recovery.test.js",
+      "scenario": "Reset password con token de 32 bytes actualiza contraseña con bcrypt",
+      "input": "{ token: 'valid-32-byte-hex-token', newPassword: 'NewSecurePassword123' }",
+      "expected_status": 200,
+      "assertions": [
+        "bcrypt.compare('NewSecurePassword123', usuario.password) === true",
+        "usuario.tokenConfirmacion === null"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-LOG-01",
+      "cu": "CU-AUTH-02",
+      "suite": "login.spec.ts",
+      "scenario": "Validación visual de formulario y bloqueo de submit si los inputs están vacíos",
+      "actions": "Visitar /login, click en 'Ingresar' sin llenar campos",
+      "assertions": [
+        "expect(page.getByText('Ingresa un correo electrónico válido')).toBeVisible()",
+        "expect(page.getByText('La contraseña es obligatoria')).toBeVisible()"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-LOG-02",
+      "cu": "CU-AUTH-02",
+      "suite": "login.spec.ts",
+      "scenario": "Redirección automática a /verify-email cuando el backend retorna EMAIL_NOT_VERIFIED",
+      "actions": "Llenar formulario con unverified@test.com y enviar",
+      "mock_response": "{ status: 403, body: { message: 'Debes verificar tu email antes de ingresar.' } }",
+      "assertions": [
+        "expect(page).toHaveURL(/.*\\/verify-email\\?email=unverified%40test\\.com/)",
+        "expect(page.getByText('Cuenta no verificada')).toBeVisible()"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-LOG-03",
+      "cu": "CU-AUTH-02",
+      "suite": "login.spec.ts",
+      "scenario": "Redirección automática a /solicitud-pendiente cuando la solicitud está en revisión",
+      "actions": "Llenar formulario con pending@solicitud.com y enviar",
+      "mock_response": "{ status: 403, body: { message: 'Tu solicitud de apertura de negocio aún está en revisión por el Super Admin.' } }",
+      "assertions": [
+        "expect(page).toHaveURL(/.*\\/solicitud-pendiente\\?email=pending%40solicitud\\.com&status=PENDIENTE/)"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-REG-01",
+      "cu": "CU-AUTH-01",
+      "suite": "register.spec.ts",
+      "scenario": "Envío exitoso de registro redirige a /solicitud-pendiente con parámetros",
+      "actions": "Completar nombre, email, negocioNombre, password >= 8 y click en 'Crear cuenta'",
+      "mock_response": "{ status: 201, body: { data: { solicitud: { id: 10, estado: 'PENDIENTE' } } } }",
+      "assertions": [
+        "expect(page).toHaveURL(/.*\\/solicitud-pendiente\\?email=.*&negocio=.*/)",
+        "expect(page.getByText('Solicitud enviada')).toBeVisible()"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-VER-01",
+      "cu": "CU-AUTH-04",
+      "suite": "verify-email.spec.ts",
+      "scenario": "Auto-población de token desde URL y verificación exitosa con redirección a /login",
+      "actions": "Visitar /verify-email?email=test@test.com&token=123456 y click en 'Verificar cuenta'",
+      "mock_response": "{ status: 200, body: { message: 'Correo electrónico verificado exitosamente.' } }",
+      "assertions": [
+        "expect(page.getByPlaceholder('Código de 6 dígitos')).toHaveValue('123456')",
+        "expect(page).toHaveURL(/.*\\/login/)"
+      ]
+    },
+    {
+      "test_id": "TEST-FE-PWD-01",
+      "cu": "CU-AUTH-07",
+      "suite": "reset-password.spec.ts",
+      "scenario": "Redirige a /login inmediatamente si no se provee el query param ?token=",
+      "actions": "Visitar /reset-password directamente",
+      "assertions": [
+        "expect(page).toHaveURL(/.*\\/login/)",
+        "expect(page.getByText('Enlace inválido')).toBeVisible()"
+      ]
+    }
+  ],
+  "phased_implementation_plan": {
+    "phase_1": {
+      "goal": "Construir harness, utilidades y stores de mock en memoria para el Back-End",
+      "tasks": [
+        "Crear back2/src/tests/helpers/email.mock.js para capturar correos.",
+        "Crear back2/src/tests/helpers/auth.helper.js para generar usuarios, tenants y tokens."
+      ],
+      "dod": "Helpers importables y listos sin dependencias externas."
+    },
+    "phase_2": {
+      "goal": "Implementar suites de integración completas en Back-End (Jest)",
+      "tasks": [
+        "Implementar auth.registration.test.js (CU-AUTH-01).",
+        "Implementar auth.login.test.js (CU-AUTH-02, CU-AUTH-03).",
+        "Implementar auth.email-verification.test.js (CU-AUTH-04, CU-AUTH-05).",
+        "Implementar auth.password-recovery.test.js (CU-AUTH-06, CU-AUTH-07, CU-AUTH-08).",
+        "Implementar auth.profile-session.test.js (CU-AUTH-09)."
+      ],
+      "dod": "npm test src/tests/auth ejecuta y pasa al 100% con aserciones estrictas."
+    },
+    "phase_3": {
+      "goal": "Construir helpers de simulación de red para Front-End (Playwright)",
+      "tasks": [
+        "Crear front/e2e/helpers/auth-mock.helper.ts."
+      ],
+      "dod": "Helper listo para interceptar cualquier endpoint de auth."
+    },
+    "phase_4": {
+      "goal": "Implementar specs E2E de Playwright para todas las vistas de Auth",
+      "tasks": [
+        "Crear front/e2e/auth/login.spec.ts.",
+        "Crear front/e2e/auth/register.spec.ts.",
+        "Crear front/e2e/auth/verify-email.spec.ts.",
+        "Crear front/e2e/auth/forgot-password.spec.ts.",
+        "Crear front/e2e/auth/reset-password.spec.ts.",
+        "Crear front/e2e/auth/solicitud-pendiente.spec.ts."
+      ],
+      "dod": "npx playwright test e2e/auth compila y corre satisfactoriamente."
+    }
+  }
+}

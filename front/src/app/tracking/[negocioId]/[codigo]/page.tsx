@@ -158,7 +158,7 @@ export default function TrackingPage() {
           <div className="track-card bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <h4 className="text-lg font-black text-gray-900 mb-4">Detalle de Servicios</h4>
             <div className="space-y-4">
-              {data.items.map((item, i) => (
+              {data.detalles.map((item, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center font-bold text-gray-700">
                     {item.cantidad}x

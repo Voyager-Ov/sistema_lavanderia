@@ -1,0 +1,199 @@
+{
+  "feature_id": "auth-tests",
+  "version": "1.0.0",
+  "status": "READY_FOR_APPROVAL",
+  "batches": [
+    {
+      "batch_id": "BATCH-01",
+      "name": "Backend Test Harness & Mock Stores",
+      "type": "PARALLEL",
+      "tasks": ["TASK-BE-01", "TASK-BE-02"]
+    },
+    {
+      "batch_id": "BATCH-02",
+      "name": "Backend Integration Test Suites (Jest)",
+      "type": "PARALLEL",
+      "tasks": ["TASK-BE-03", "TASK-BE-04", "TASK-BE-05", "TASK-BE-06", "TASK-BE-07"]
+    },
+    {
+      "batch_id": "BATCH-03",
+      "name": "Frontend Playwright Helper Layer",
+      "type": "SEQUENTIAL",
+      "tasks": ["TASK-FE-01"]
+    },
+    {
+      "batch_id": "BATCH-04",
+      "name": "Frontend Playwright E2E Suites",
+      "type": "PARALLEL",
+      "tasks": ["TASK-FE-02", "TASK-FE-03", "TASK-FE-04", "TASK-FE-05", "TASK-FE-06", "TASK-FE-07"]
+    },
+    {
+      "batch_id": "BATCH-05",
+      "name": "Verification & Test Run Gates",
+      "type": "SEQUENTIAL",
+      "tasks": ["TASK-VERIFY-01", "TASK-VERIFY-02"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-BE-01",
+      "title": "Crear In-Memory Email Store Mock (email.mock.js)",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["back2/src/tests/helpers/email.mock.js"],
+      "exit_criteria": "Exporta funciones setupEmailMock, clearEmailStore y getLastEmail para inspeccionar tokens y códigos sin despachar emails reales."
+    },
+    {
+      "id": "TASK-BE-02",
+      "title": "Crear Factory de Fixtures de Autenticación (auth.helper.js)",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": [],
+      "outputs": ["back2/src/tests/helpers/auth.helper.js"],
+      "exit_criteria": "Exporta createTestUser, createTestTenantWithAdmin, generateUniqueEmail y buildValidJwt para crear contextos de prueba aislados."
+    },
+    {
+      "id": "TASK-BE-03",
+      "title": "Implementar Suite CU-AUTH-01: Registro de Solicitud de Negocio",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02"],
+      "outputs": ["back2/src/tests/auth/auth.registration.test.js"],
+      "exit_criteria": "Pruebas completas de registro: 201 Created con estado PENDIENTE, 400 Fail-Fast ante campos faltantes (sin fallbacks) y 409 Conflict."
+    },
+    {
+      "id": "TASK-BE-04",
+      "title": "Implementar Suite CU-AUTH-02 & CU-AUTH-03: Login Local y Google OAuth",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02"],
+      "outputs": ["back2/src/tests/auth/auth.login.test.js"],
+      "exit_criteria": "Pruebas de login exitoso (Admin, Empleado, SuperAdmin), compuertas 403 (pendientes, rechazadas, no verificados) y 401 ante Google token inválido (cero bypass)."
+    },
+    {
+      "id": "TASK-BE-05",
+      "title": "Implementar Suite CU-AUTH-04 & CU-AUTH-05: Verificación y Reenvío de Código",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02"],
+      "outputs": ["back2/src/tests/auth/auth.email-verification.test.js"],
+      "exit_criteria": "Pruebas de verificación de código de 6 dígitos: éxito (emailConfirmado = true), código incorrecto (400), código expirado (400) e idempotencia."
+    },
+    {
+      "id": "TASK-BE-06",
+      "title": "Implementar Suite CU-AUTH-06, CU-AUTH-07 & CU-AUTH-08: Olvido, Reset y Cambio de Clave",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02"],
+      "outputs": ["back2/src/tests/auth/auth.password-recovery.test.js"],
+      "exit_criteria": "Pruebas de forgot-password (anti-enumeración), reset-password con token de 32 bytes hex y change-password en sesión autenticada."
+    },
+    {
+      "id": "TASK-BE-07",
+      "title": "Implementar Suite CU-AUTH-09: Perfil de Usuario y Auditoría de Sesión",
+      "owner_role": "Backend Test Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-BE-01", "TASK-BE-02"],
+      "outputs": ["back2/src/tests/auth/auth.profile-session.test.js"],
+      "exit_criteria": "Pruebas de /api/auth/me con validación de identidad multitenant y verificación de registro en tabla Sesion del tenant."
+    },
+    {
+      "id": "TASK-FE-01",
+      "title": "Crear Helper de Mocking de Red Playwright (auth-mock.helper.ts)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": ["front/e2e/helpers/auth-mock.helper.ts"],
+      "exit_criteria": "Exporta funciones mockLoginSuccess, mockLoginError, mockRegisterSuccess, mockPendingState, mockVerifySuccess para interceptar page.route()."
+    },
+    {
+      "id": "TASK-FE-02",
+      "title": "Implementar Playwright E2E: Login View (/login)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/login.spec.ts"],
+      "exit_criteria": "Prueba validaciones Zod, animación de error, redirecciones a /solicitud-pendiente, /verify-email y por roles (/admin/dashboard, /superadmin/dashboard, /pos/pedidos)."
+    },
+    {
+      "id": "TASK-FE-03",
+      "title": "Implementar Playwright E2E: Register View (/register)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/register.spec.ts"],
+      "exit_criteria": "Prueba validación en tiempo real de campos, despacho del DTO canónico y redirección exitosa a /solicitud-pendiente."
+    },
+    {
+      "id": "TASK-FE-04",
+      "title": "Implementar Playwright E2E: Verify Email View (/verify-email)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/verify-email.spec.ts"],
+      "exit_criteria": "Prueba auto-llenado desde query params, input de 6 dígitos, botón 'Reenviar código' y redirección a /login tras verificar."
+    },
+    {
+      "id": "TASK-FE-05",
+      "title": "Implementar Playwright E2E: Forgot Password View (/forgot-password)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/forgot-password.spec.ts"],
+      "exit_criteria": "Prueba formulario, validación de email y transición de interfaz hacia la tarjeta '¡Revisa tu correo!'."
+    },
+    {
+      "id": "TASK-FE-06",
+      "title": "Implementar Playwright E2E: Reset Password View (/reset-password)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/reset-password.spec.ts"],
+      "exit_criteria": "Prueba redirección a /login si no hay token en URL, validación de coincidencia de claves y mensaje de éxito tras actualizar."
+    },
+    {
+      "id": "TASK-FE-07",
+      "title": "Implementar Playwright E2E: Solicitud Pendiente View (/solicitud-pendiente)",
+      "owner_role": "Frontend QA Engineer",
+      "status": "PENDING",
+      "parallelizable": true,
+      "depends_on": ["TASK-FE-01"],
+      "outputs": ["front/e2e/auth/solicitud-pendiente.spec.ts"],
+      "exit_criteria": "Prueba renderizado diferenciado para status PENDIENTE y status RECHAZADO con motivo explícito."
+    },
+    {
+      "id": "TASK-VERIFY-01",
+      "title": "Ejecutar y Validar Suite Completa de Back-End (Jest)",
+      "owner_role": "Lead Tech / QA",
+      "status": "PENDING",
+      "parallelizable": false,
+      "depends_on": ["TASK-BE-03", "TASK-BE-04", "TASK-BE-05", "TASK-BE-06", "TASK-BE-07"],
+      "outputs": ["back2/src/tests/auth/*"],
+      "exit_criteria": "Todas las pruebas de Jest pasan con 0 errores y validan aserciones de código y base de datos."
+    },
+    {
+      "id": "TASK-VERIFY-02",
+      "title": "Ejecutar y Validar Suite Completa de Front-End (Playwright)",
+      "owner_role": "Lead Tech / QA",
+      "status": "PENDING",
+      "parallelizable": false,
+      "depends_on": ["TASK-FE-02", "TASK-FE-03", "TASK-FE-04", "TASK-FE-05", "TASK-FE-06", "TASK-FE-07"],
+      "outputs": ["front/e2e/auth/*"],
+      "exit_criteria": "Todos los specs de Playwright pasan con 0 fallos de UI o navegación."
+    }
+  ]
+}

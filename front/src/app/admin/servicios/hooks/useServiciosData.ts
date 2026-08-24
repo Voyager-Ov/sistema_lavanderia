@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { apiClient } from "@/shared/lib/api-client"
+import { Servicio, ServicioStats, ServiciosResponse } from "@/domains/productos/api"
+import { Categoria, getCategorias } from "@/domains/categorias/api"
 import { SortingState } from "@tanstack/react-table"
 
 export function useServiciosData() {
-  const [servicios, setServicios] = useState<any[]>([])
-  const [categorias, setCategorias] = useState<any[]>([])
-  const [stats, setStats] = useState<any>({ total: 0, activos: 0, categorias: 0, masSolicitado: null })
+  const [servicios, setServicios] = useState<Servicio[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [stats, setStats] = useState<ServicioStats>({ total: 0, activos: 0, categorias: 0, masSolicitado: null })
   
   const [isTableFetching, setIsTableFetching] = useState(true)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
@@ -35,10 +37,10 @@ export function useServiciosData() {
         searchParams.append("sortOrder", (sorting[0] as any).desc ? "DESC" : "ASC")
       }
       
-      const data: any = await apiClient.get(`/productos?${searchParams.toString()}`)
-      setServicios(data.data?.items || [])
-      setTotalPages(data.data?.meta?.totalPages || 1)
-      setTotalItems(data.data?.meta?.totalItems || data.data?.meta?.total || (data.data?.items || []).length)
+      const response = await apiClient.get<ServiciosResponse>(`/servicios?${searchParams.toString()}`)
+      setServicios(response.data?.items ?? [])
+      setTotalPages(response.data?.meta?.totalPages ?? 1)
+      setTotalItems(response.data?.meta?.totalItems ?? (response.data?.items ?? []).length)
     } catch (error: any) {
       console.error("API error fetchServicios:", error)
       toast.error(`Error al cargar los servicios: ${error.message}`)
@@ -49,8 +51,8 @@ export function useServiciosData() {
 
   const fetchCategorias = useCallback(async () => {
     try {
-      const data: any = await apiClient.get(`/categorias`)
-      setCategorias(data.data?.items || data.data || [])
+      const items = await getCategorias()
+      setCategorias(items)
     } catch (error) {
       console.error("Error fetching categorias:", error)
     }
@@ -59,8 +61,8 @@ export function useServiciosData() {
   const fetchStats = useCallback(async () => {
     setIsStatsLoading(true)
     try {
-      const data: any = await apiClient.get(`/productos/stats`)
-      setStats(data.data)
+      const response = await apiClient.get<{ success: boolean; data: ServicioStats }>(`/servicios/stats`)
+      setStats(response.data)
     } catch (error: any) {
       console.error("API error fetchStats:", error)
     } finally {

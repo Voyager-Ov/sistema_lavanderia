@@ -12,23 +12,26 @@ class RegisterService {
     async register(data) {
         const { Usuario, SolicitudNegocio } = connectionManager.centralModels;
         
-        const email = (data.email || "").trim().toLowerCase();
+        if (!data.email) {
+            throw new AppError("El campo 'email' es obligatorio.", 400, "MISSING_EMAIL");
+        }
+        if (!data.password) {
+            throw new AppError("El campo 'password' es obligatorio.", 400, "MISSING_PASSWORD");
+        }
+        if (!data.usuarioNombre) {
+            throw new AppError("El campo 'usuarioNombre' es obligatorio.", 400, "MISSING_USER_NAME");
+        }
+        if (!data.negocioNombre) {
+            throw new AppError("El campo 'negocioNombre' es obligatorio.", 400, "MISSING_BUSINESS_NAME");
+        }
+
+        const email = data.email.trim().toLowerCase();
         const password = data.password;
-        const usuarioNombre = (data.usuarioNombre || data.nombre || "").trim();
-        const negocioNombre = (data.negocioNombre || data.razonSocial || "").trim();
+        const usuarioNombre = data.usuarioNombre.trim();
+        const negocioNombre = data.negocioNombre.trim();
         const cuit = data.cuit ? String(data.cuit).trim() : `20${Math.floor(10000000 + Math.random() * 90000000)}9`;
         const subdominio = data.subdominio ? String(data.subdominio).trim().toLowerCase() : negocioNombre.toLowerCase().replace(/[^a-z0-9]/g, "");
         const telefono = data.telefono ? String(data.telefono).trim() : "";
-
-        if (!email) {
-            throw new AppError("El correo electrónico es requerido.", 400, "MISSING_EMAIL");
-        }
-        if (!password) {
-            throw new AppError("La contraseña es requerida.", 400, "MISSING_PASSWORD");
-        }
-        if (!negocioNombre) {
-            throw new AppError("El nombre del negocio o razón social es requerido.", 400, "MISSING_BUSINESS_NAME");
-        }
 
         // 1. Verificar si el usuario ya existe activamente en central
         const usuarioExistente = await Usuario.findByPk(email);

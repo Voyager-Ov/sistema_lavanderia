@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
@@ -59,7 +59,7 @@ export default function TerminalPage() {
   const [activeCategoryId, setActiveCategoryId] = useState<number | "ALL">("ALL")
   const [cart, setCart] = useState<CartItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState<Date | undefined>(undefined)
+  const [fechaHoraEntregaEstimada, setfechaHoraEntregaEstimada] = useState<Date | undefined>(undefined)
 
   // Parked Carts State
   const [parkedCarts, setParkedCarts] = useState<ParkedCart[]>([])
@@ -82,7 +82,7 @@ export default function TerminalPage() {
     fetchCaja(true)
   }, [])
 
-  // WebSockets en vivo para actualizar cajaActual automáticamente
+  // WebSockets en vivo para actualizar cajaActual automÃ¡ticamente
   useEffect(() => {
     if (!socket) return
 
@@ -122,7 +122,7 @@ export default function TerminalPage() {
         setCategorias(catsRes)
         setProductos(prodsRes.filter(p => p.activo !== false && p.disponible !== false))
       } catch (error) {
-        toast.error("Error al cargar el catálogo de servicios")
+        toast.error("Error al cargar el catÃ¡logo de servicios")
         console.error(error)
       } finally {
         setIsFetchingData(false)
@@ -146,13 +146,13 @@ export default function TerminalPage() {
       id: Math.random().toString(36).substring(7),
       client: selectedClient,
       cart: [...cart],
-      fecha: fechaEntregaEstimada,
+      fecha: fechaHoraEntregaEstimada,
       timestamp: Date.now()
     }
     setParkedCarts([...parkedCarts, newParked])
     setCart([])
     setSelectedClient(null)
-    setFechaEntregaEstimada(undefined)
+    setfechaHoraEntregaEstimada(undefined)
     toast.info("Ticket pausado y guardado en espera")
   }
 
@@ -165,7 +165,7 @@ export default function TerminalPage() {
         id: Math.random().toString(36).substring(7),
         client: selectedClient,
         cart: [...cart],
-        fecha: fechaEntregaEstimada,
+        fecha: fechaHoraEntregaEstimada,
         timestamp: Date.now()
       }
       setParkedCarts(prev => [...prev.filter(p => p.id !== parkedId), currentToPark])
@@ -175,7 +175,7 @@ export default function TerminalPage() {
 
     setCart(parked.cart)
     setSelectedClient(parked.client)
-    setFechaEntregaEstimada(parked.fecha)
+    setfechaHoraEntregaEstimada(parked.fecha)
     setActiveTab("NUEVO")
     toast.success("Ticket restaurado")
   }
@@ -194,14 +194,14 @@ export default function TerminalPage() {
     try {
       await crearPedido({
         clienteId: selectedClient.id,
-        fechaEntregaEstimada: fechaEntregaEstimada ? fechaEntregaEstimada.toISOString() : undefined,
-        items: cart.map(c => ({ productoId: c.producto.id, cantidad: c.cantidad }))
+        fechaHoraEntregaEstimada: fechaHoraEntregaEstimada ? fechaHoraEntregaEstimada.toISOString() : undefined,
+        detalles: cart.map(c => ({ servicioId: c.producto.id, cantidad: c.cantidad }))
       })
-      toast.success("¡Pedido creado con éxito!")
+      toast.success("Â¡Pedido creado con Ã©xito!")
       
       setCart([])
       setSelectedClient(null)
-      setFechaEntregaEstimada(undefined)
+      setfechaHoraEntregaEstimada(undefined)
       
     } catch (error) {
       toast.error("Hubo un error al crear el pedido")
@@ -227,7 +227,7 @@ export default function TerminalPage() {
   const renderTerminalContent = () => (
     <div className="flex-1 flex flex-col h-full gap-3 w-full p-2 sm:px-4 sm:pt-1 sm:pb-4 lg:overflow-hidden bg-gray-50/50 dark:bg-background transition-colors">
       
-      {/* Tabs compactos, Filtros y Acciones rápidas de Caja */}
+      {/* Tabs compactos, Filtros y Acciones rÃ¡pidas de Caja */}
       <div className="fade-up-element flex items-center justify-between flex-shrink-0 z-20 overflow-x-auto pb-1 gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         <div className="flex items-center gap-4 flex-shrink-0">
@@ -254,7 +254,7 @@ export default function TerminalPage() {
               )}
             >
               <LayoutDashboard className="w-4 h-4" />
-              Producción
+              ProducciÃ³n
             </button>
           </div>
 
@@ -315,7 +315,7 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* Botones Estándar de Acciones Rápidas: Registrar Gasto & Cerrar Turno */}
+        {/* Botones EstÃ¡ndar de Acciones RÃ¡pidas: Registrar Gasto & Cerrar Turno */}
         {cajaActual && (
           <PosHeaderActions
             caja={cajaActual}
@@ -369,8 +369,8 @@ export default function TerminalPage() {
               cart={cart}
               setCart={setCart}
               selectedClient={selectedClient}
-              fechaEntregaEstimada={fechaEntregaEstimada}
-              setFechaEntregaEstimada={setFechaEntregaEstimada}
+              fechaHoraEntregaEstimada={fechaHoraEntregaEstimada}
+              setfechaHoraEntregaEstimada={setfechaHoraEntregaEstimada}
               onCheckout={handleCreateOrder}
               isSubmitting={isSubmitting}
             />
@@ -389,7 +389,7 @@ export default function TerminalPage() {
     </div>
   )
 
-  // Si la caja NO está abierta: renderizar POS desenfocado de fondo + modal de Apertura centrado
+  // Si la caja NO estÃ¡ abierta: renderizar POS desenfocado de fondo + modal de Apertura centrado
   if (!isCajaAbierta) {
     return (
       <div className="relative flex-1 flex flex-col h-full w-full overflow-hidden">

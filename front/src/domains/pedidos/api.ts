@@ -1,7 +1,7 @@
 import { apiClient } from "@/shared/lib/api-client"
 
 export interface PedidoItem {
-  productoId: number
+  servicioId: number
   cantidad: number
 }
 
@@ -12,16 +12,18 @@ export interface Cliente {
 }
 
 export interface PedidoItemDetail {
-  productoId: number
+  id?: number
+  servicioId: number
   cantidad: number
-  precioUnitario: number
-  subtotal: number
-  producto?: {
+  precioUnitario?: number
+  precioHistorico?: number
+  subtotal?: number
+  servicio?: {
     id: number
     nombre: string
     imagenUrl?: string
   }
-  servicio?: {
+  producto?: {
     id: number
     nombre: string
     imagenUrl?: string
@@ -33,7 +35,7 @@ export interface PedidoHistorial {
   estadoAnterior: string | null
   estadoNuevo: string
   comentario: string | null
-  createdAt: string
+  fechaHoraInicio: string
   usuario?: {
     id: number
     nombre: string
@@ -49,8 +51,9 @@ export interface PedidoPago {
     nombre: string
   }
   monto: number
-  montoAFavorGenerado?: number
-  saldoAFavorDisponible?: number
+  montoAbonado?: number
+  montoRecibidoEfectivo?: number
+  vueltoEntregado?: number
   comprobanteUrl: string | null
   createdAt: string
 }
@@ -65,19 +68,19 @@ export interface Pedido {
   cobrado: boolean
   fechaHoraPedido?: string
   fechaHoraCreacion?: string
-  fechaRecepcion?: string
-  fechaEntregaEstimada?: string
+  fechaHoraEntregaEstimada?: string
   fechaEntregadoReal?: string
-  notas?: string
-  facturado?: boolean
+  observaciones?: string
+  factura?: any
   facturaCae?: string
   facturaVtoCae?: string
   facturaNro?: string
   createdAt: string
   cliente?: Cliente
+  detalles?: PedidoItemDetail[]
   items?: PedidoItemDetail[]
-  historial?: PedidoHistorial[]
-  pago?: PedidoPago
+  cambiosEstado?: PedidoHistorial[]
+  cobros?: PedidoPago[]
   motivoCancelacion?: string
   descripcionCancelacion?: string
 }
@@ -164,9 +167,9 @@ export const generarFactura = async (pedidoId: number) => {
 export interface CrearPedidoPayload {
   clienteId: number
   fechaHoraPedido?: string // ISO string o fecha seleccionada
-  fechaEntregaEstimada?: string // ISO string or Date string
-  items: {
-    productoId: number
+  fechaHoraEntregaEstimada?: string // ISO string or Date string
+  detalles: {
+    servicioId: number
     cantidad: number
   }[]
 }
@@ -199,9 +202,9 @@ export interface TrackingResponse {
   cobrado: boolean
   clienteNombre: string
   total: number
-  fechaRecepcion: string
-  fechaEntregaEstimada: string | null
-  items: { nombre: string; cantidad: number }[]
+  fechaHoraPedido: string
+  fechaHoraEntregaEstimada: string | null
+  detalles: { nombre: string; cantidad: number }[]
 }
 
 export const getTrackingInfoAPI = async (negocioId: string, codigo: string, token?: string): Promise<TrackingResponse> => {

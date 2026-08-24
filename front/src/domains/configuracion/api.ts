@@ -2,30 +2,32 @@ import { apiClient } from "@/shared/lib/api-client"
 
 export interface ConfiguracionResponse {
   id: number
-  negocioId: number
-  logoUrl: string | null
-  colorPrincipal: string
-  simboloMoneda: string
-  zonaHoraria: string
   razonSocial: string | null
   cuit: string | null
   direccion: string | null
   telefonoContacto: string | null
+  colorPrincipal: string
+  colorSecundario: string
+  logoUrl: string | null
+  simboloMoneda: string
+  zonaHoraria: string
   mensajeTicket: string | null
   imprimirTicketAutomatico: boolean
   mostrarQrTicket: boolean
-  anchoPapel?: '58mm' | '80mm' | string | null
+  anchoPapel: string
+  facturacionHabilitada: boolean
   afipActivo: boolean
-  afipModoFacturacion: "AUTOMATICO" | "MANUAL" | "DESACTIVADO"
+  afipModoFacturacion: string
   afipPuntoVenta: number | null
-  afipCertificado?: string | null 
+  certificadoAfipPath: string | null
+  llaveAfipPath: string | null
   whatsappActivo: boolean
   whatsappEstadoConexion: string
-  whatsappMensajeListo: string
+  whatsappMensajeListo: string | null
   whatsappMensajeManual: string | null
-  mercadopagoAccessToken: string | null
-  mpModoCobro: string
+  tokenMercadoPago: string | null
   mercadopagoPublicKey: string | null
+  mpModoCobro: string
   aliasMp: string | null
 }
 

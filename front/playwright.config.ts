@@ -11,7 +11,7 @@ export default defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }]
   ],
   use: {
-    baseURL: process.env.FRONTEND_URL || 'http://127.0.0.1:3000',
+    baseURL: process.env.FRONTEND_URL || 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -25,33 +25,23 @@ export default defineConfig({
       name: 'api',
       testMatch: /.*\.api\.spec\.ts/,
       use: {
-        baseURL: process.env.API_URL || 'http://127.0.0.1:5000'
+        baseURL: process.env.API_URL || 'http://localhost:5000'
       }
     },
     {
       name: 'ui',
-      testMatch: /.*\.ui\.spec\.ts/,
+      testMatch: /.*\.(ui\.)?spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: process.env.FRONTEND_URL || 'http://127.0.0.1:3000'
+        baseURL: process.env.FRONTEND_URL || 'http://localhost:3000'
       }
     }
   ],
-  webServer: [
-    {
-      command: 'npm start',
-      cwd: '../back',
-      url: 'http://127.0.0.1:5000/api/health',
-      reuseExistingServer: true,
-      timeout: 120000,
-    },
-    {
-      command: 'npm run dev',
-      cwd: '.',
-      url: 'http://127.0.0.1:3000',
-      reuseExistingServer: true,
-      timeout: 120000,
-    }
-  ]
+  webServer: {
+    command: 'npx next dev -p 3000',
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,
+    timeout: 60000,
+  }
 });
 

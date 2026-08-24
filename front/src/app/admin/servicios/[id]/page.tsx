@@ -122,8 +122,8 @@ export default function ServicioDetallePage() {
     const fetchAll = async () => {
       try {
         const results = await Promise.allSettled([
-          apiClient.get(`/productos/${id}`),
-          apiClient.get(`/productos/${id}/historial`),
+          apiClient.get(`/servicios/${id}`),
+          apiClient.get(`/servicios/${id}/historial`),
         ])
 
         const sRes = results[0]

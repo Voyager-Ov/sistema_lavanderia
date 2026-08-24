@@ -150,7 +150,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {!hideActions && onGenerateFactura && !pedido.facturado && pedido.estado !== "CANCELADO" && (
+          {!hideActions && onGenerateFactura && !pedido.factura && pedido.estado !== "CANCELADO" && (
             <Button 
               variant="outline"
               size="sm"
@@ -247,10 +247,10 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                 </div>
               </div>
 
-              {pedido.notas && (
+              {pedido.observaciones && (
                 <div className="mt-6 pt-6 border-t border-border relative z-10 transition-colors">
                   <h4 className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-2 transition-colors">Notas del Pedido</h4>
-                  <p className="text-sm text-foreground bg-muted/50 border border-border p-4 rounded-xl italic shadow-sm transition-colors">&quot;{pedido.notas}&quot;</p>
+                  <p className="text-sm text-foreground bg-muted/50 border border-border p-4 rounded-xl italic shadow-sm transition-colors">&quot;{pedido.observaciones}&quot;</p>
                 </div>
               )}
             </CardContent>
@@ -267,13 +267,13 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
               <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
                 <span className="text-muted-foreground font-medium transition-colors">Recepción</span>
                 <span className="font-bold text-foreground transition-colors">
-                  {safeFormatDate(pedido.fechaRecepcion || pedido.createdAt, "dd/MM/yyyy HH:mm")}
+                  {safeFormatDate(pedido.fechaHoraPedido || pedido.createdAt, "dd/MM/yyyy HH:mm")}
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm border-b border-border pb-3 transition-colors">
                 <span className="text-muted-foreground font-medium transition-colors">Entrega Estimada</span>
                 <span className="font-bold text-foreground transition-colors">
-                  {safeFormatDate(pedido.fechaEntregaEstimada, "dd/MM/yyyy", "No especificada")}
+                  {safeFormatDate(pedido.fechaHoraEntregaEstimada, "dd/MM/yyyy", "No especificada")}
                 </span>
               </div>
               
@@ -305,7 +305,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                 {/* Vertical line */}
                 <div className="absolute left-6 top-2 bottom-2 w-px bg-border transition-colors"></div>
 
-                {pedido.historial?.map((hist, i) => (
+                {pedido.cambiosEstado?.map((hist, i) => (
                   <div key={hist.id} className="timeline-item relative flex gap-4 z-10">
                     <div className="flex flex-col items-center mt-1">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${i === 0 ? 'bg-brand-blue shadow-[0_0_10px_rgba(0,0,0,0.1)] ring-4 ring-card' : 'bg-muted border-2 border-card'}`}>
@@ -315,7 +315,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                     <div className="flex-1">
                       <p className="text-sm font-bold text-foreground transition-colors">{hist.estadoNuevo?.replace(/_/g, ' ') || 'Desconocido'}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 transition-colors">
-                        {safeFormatDate(hist.createdAt, "dd MMM, HH:mm")}
+                        {safeFormatDate(hist.fechaHoraInicio, "dd MMM, HH:mm")}
                         {hist.usuario && (
                           <>
                             <span>•</span>
@@ -352,7 +352,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
               <div className="flex justify-between items-end">
                 <div>
                   <CardTitle className="text-2xl font-black tracking-tight text-foreground mb-1 transition-colors">Ticket de Servicios</CardTitle>
-                  <CardDescription className="text-sm font-medium">{pedido.items?.length || 0} ítems</CardDescription>
+                  <CardDescription className="text-sm font-medium">{pedido.detalles?.length || 0} ítems</CardDescription>
                 </div>
                 
                 <div className="text-right">
@@ -370,8 +370,8 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
             </CardHeader>
 
             <CardContent className="px-6 space-y-4 mb-2 min-h-[150px]">
-              {pedido.items?.map((item: any, i) => {
-                const img = getImageUrl(item.producto?.imagenUrl || item.servicio?.imagenUrl)
+              {pedido.detalles?.map((item: any, i: number) => {
+                const img = getImageUrl(item.servicio?.imagenUrl || item.servicio?.imagenUrl)
                 return (
                   <div key={i} className="group flex justify-between items-center p-3.5 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
                     <div className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                         {img ? (
                           <img
                             src={img}
-                            alt={item.producto?.nombre || item.servicio?.nombre || 'Item'}
+                            alt={item.servicio?.nombre || item.servicio?.nombre || 'Item'}
                             className="w-full h-full object-cover"
                             onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none' }}
                           />
@@ -391,7 +391,7 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-foreground text-sm transition-colors">{item.producto?.nombre || item.servicio?.nombre || 'Item'}</p>
+                        <p className="font-bold text-foreground text-sm transition-colors">{item.servicio?.nombre || item.servicio?.nombre || 'Item'}</p>
                         <p className="text-xs text-muted-foreground font-medium mt-0.5 transition-colors">{formatCurrency(item.precioUnitario)} c/u</p>
                       </div>
                     </div>
@@ -412,30 +412,33 @@ export function PedidoDetailView({ id, onPrintComprobante, onCobrar, onCancel, o
                 </span>
               </div>
               
-              {pedido.pago && (
+              {pedido.cobros?.[0] && (
                 <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2 text-sm transition-colors">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground transition-colors">Método de pago</span>
-                    <span className="font-bold text-foreground uppercase transition-colors">{pedido.pago.metodoPago?.nombre || 'Otro'}</span>
+                    <span className="font-bold text-foreground uppercase transition-colors">{pedido.cobros?.[0]?.metodoPago?.nombre || 'Otro'}</span>
                   </div>
-                  {parseFloat(pedido.pago.monto.toString()) > 0 && parseFloat(pedido.pago.monto.toString()) !== parseFloat(pedido.total.toString()) && (
-                    <div className="flex justify-between items-center text-muted-foreground transition-colors">
-                      <span className="text-muted-foreground transition-colors">Monto abonado en caja</span>
-                      <span className="font-medium">{formatCurrency(pedido.pago.monto)}</span>
-                    </div>
-                  )}
-                  {parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()) > 0 && (
-                    <div className="flex justify-between items-center text-brand-blue bg-brand-blue/10 p-2 rounded-lg mt-1 border border-brand-blue/20 transition-colors">
-                      <span className="font-medium">Pagado con Saldo a Favor</span>
-                      <span className="font-bold">{formatCurrency(parseFloat(pedido.total.toString()) + (pedido.pago.montoAFavorGenerado ? parseFloat(pedido.pago.montoAFavorGenerado.toString()) : 0) - parseFloat(pedido.pago.monto.toString()))}</span>
-                    </div>
-                  )}
-                  {pedido.pago.montoAFavorGenerado && parseFloat(pedido.pago.montoAFavorGenerado.toString()) > 0 ? (
-                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10 p-2 rounded-lg mt-1 border border-emerald-100 dark:border-emerald-900/20 transition-colors">
-                      <span className="font-medium">Generó Saldo a Favor</span>
-                      <span className="font-bold">+{formatCurrency(pedido.pago.montoAFavorGenerado)}</span>
-                    </div>
-                  ) : null}
+                  {(() => {
+                    const primerCobro = pedido.cobros?.[0];
+                    const montoAbonado = primerCobro?.montoAbonado ? Number(primerCobro.montoAbonado) : 0;
+                    const totalPedido = Number(pedido.total || 0);
+                    return (
+                      <>
+                        {montoAbonado > 0 && montoAbonado !== totalPedido && (
+                          <div className="flex justify-between items-center text-muted-foreground transition-colors">
+                            <span className="text-muted-foreground transition-colors">Monto abonado en caja</span>
+                            <span className="font-medium">{formatCurrency(montoAbonado)}</span>
+                          </div>
+                        )}
+                        {totalPedido - montoAbonado > 0 && montoAbonado > 0 && (
+                          <div className="flex justify-between items-center text-brand-blue bg-brand-blue/10 p-2 rounded-lg mt-1 border border-brand-blue/20 transition-colors">
+                            <span className="font-medium">Pagado con Saldo a Favor</span>
+                            <span className="font-bold">{formatCurrency(totalPedido - montoAbonado)}</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>

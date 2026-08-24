@@ -28,29 +28,42 @@ class FacturacionService {
         }
 
         if (pedido.factura) {
+            const numStr = pedido.factura.numeroFactura.split('-')[1]; // format '0001-00001234'
+            const nroComprobante = Number(numStr);
+            if (isNaN(nroComprobante)) throw new AppError("Número de factura inválido o corrupto en base de datos.", 500, "INVALID_DATA");
+
             return {
                 cae: pedido.factura.cae,
-                nroComprobante: parseInt(pedido.factura.numeroFactura) || 1,
+                nroComprobante,
                 factura: pedido.factura
             };
         }
 
-        let negocio = null;
-        try {
-            negocio = await Negocio.findByPk(negocioId);
-        } catch (e) {}
-        const tipoFactura = negocio && negocio.condicionIva === "RESPONSABLE_INSCRIPTO" ? "A" : "B";
-
-        // Calcular importes de la factura
-        let subtotal = 0;
-        if (pedido.detalles && Array.isArray(pedido.detalles)) {
-            subtotal = pedido.detalles.reduce((sum, item) => sum + (parseFloat(item.precioHistorico) * parseInt(item.cantidad)), 0);
+        const negocio = await Negocio.findByPk(negocioId);
+        if (!negocio) {
+            throw new AppError("Negocio no encontrado en la base central.", 404, "TENANT_NOT_FOUND");
         }
-        const costoEnvio = parseFloat(pedido.costoEnvio) || 0;
-        const total = subtotal + costoEnvio;
+        const tipoFactura = negocio.condicionIva === "RESPONSABLE_INSCRIPTO" ? "A" : "B";
 
-        const baseImponible = parseFloat((total / 1.21).toFixed(2));
-        const iva = parseFloat((total - baseImponible).toFixed(2));
+        // Calcular importes de la factura (Regla: Modelo de Mostrador 100% On-Site, costoEnvio = 0, total = subtotal)
+        let subtotal = 0;
+        if (!pedido.detalles || !Array.isArray(pedido.detalles) || pedido.detalles.length === 0) {
+             throw new AppError("El pedido no contiene detalles para facturar.", 400, "EMPTY_ORDER");
+        }
+
+        for (const item of pedido.detalles) {
+             const precio = Number(item.precioHistorico);
+             const cant = Number(item.cantidad);
+             if (isNaN(precio) || precio < 0 || isNaN(cant) || cant <= 0) {
+                 throw new AppError(`Detalle con ID ${item.id} contiene valores inválidos.`, 400, "INVALID_DATA");
+             }
+             subtotal += (precio * cant);
+        }
+
+        const total = subtotal; // No hay costo de envío
+
+        const baseImponible = Number((total / 1.21).toFixed(2));
+        const iva = Number((total - baseImponible).toFixed(2));
 
         // Generar CAE mock o real
         const cae = Math.floor(10000000000000 + Math.random() * 90000000000000).toString();

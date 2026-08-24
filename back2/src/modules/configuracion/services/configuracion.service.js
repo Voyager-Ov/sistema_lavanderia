@@ -7,33 +7,33 @@ class ConfiguracionService {
     _formatConfigResponse(negocio) {
         return {
             id: negocio.id,
-            negocioId: negocio.id,
-            razonSocial: negocio.razonSocial || null,
-            cuit: negocio.cuit || null,
-            direccion: negocio.direccion || null,
-            telefonoContacto: negocio.telefonoContacto || null,
-            colorPrincipal: negocio.colorPrincipal || "#2563eb",
-            colorSecundario: negocio.colorSecundario || "#1e40af",
-            logoUrl: negocio.logoUrl || null,
-            simboloMoneda: negocio.simboloMoneda || "$",
-            zonaHoraria: negocio.zonaHoraria || "America/Argentina/Buenos_Aires",
-            mensajeTicket: negocio.mensajeTicket || null,
-            imprimirTicketAutomatico: Boolean(negocio.imprimirTicketAutomatico),
-            mostrarQrTicket: Boolean(negocio.mostrarQrTicket),
-            anchoPapel: negocio.anchoPapel || "80mm",
-            afipActivo: Boolean(negocio.afipActivo || negocio.facturacionHabilitada),
-            afipModoFacturacion: negocio.afipModoFacturacion || "DESACTIVADO",
-            afipPuntoVenta: negocio.afipPuntoVenta || null,
-            afipCertificado: negocio.certificadoAfipPath || null,
-            afipLlavePrivada: negocio.llaveAfipPath || null,
-            whatsappActivo: Boolean(negocio.whatsappActivo),
-            whatsappEstadoConexion: negocio.whatsappEstadoConexion || "DESCONECTADO",
-            whatsappMensajeListo: negocio.whatsappMensajeListo || null,
-            whatsappMensajeManual: negocio.whatsappMensajeManual || null,
-            mercadopagoAccessToken: negocio.tokenMercadoPago || null,
-            mercadopagoPublicKey: negocio.mercadopagoPublicKey || null,
-            mpModoCobro: negocio.mpModoCobro || "DIRECTO",
-            aliasMp: negocio.aliasMp || null
+            razonSocial: negocio.razonSocial,
+            cuit: negocio.cuit,
+            direccion: negocio.direccion,
+            telefonoContacto: negocio.telefonoContacto,
+            colorPrincipal: negocio.colorPrincipal,
+            colorSecundario: negocio.colorSecundario,
+            logoUrl: negocio.logoUrl,
+            simboloMoneda: negocio.simboloMoneda,
+            zonaHoraria: negocio.zonaHoraria,
+            mensajeTicket: negocio.mensajeTicket,
+            imprimirTicketAutomatico: negocio.imprimirTicketAutomatico,
+            mostrarQrTicket: negocio.mostrarQrTicket,
+            anchoPapel: negocio.anchoPapel,
+            facturacionHabilitada: negocio.facturacionHabilitada,
+            afipActivo: negocio.afipActivo,
+            afipModoFacturacion: negocio.afipModoFacturacion,
+            afipPuntoVenta: negocio.afipPuntoVenta,
+            certificadoAfipPath: negocio.certificadoAfipPath,
+            llaveAfipPath: negocio.llaveAfipPath,
+            whatsappActivo: negocio.whatsappActivo,
+            whatsappEstadoConexion: negocio.whatsappEstadoConexion,
+            whatsappMensajeListo: negocio.whatsappMensajeListo,
+            whatsappMensajeManual: negocio.whatsappMensajeManual,
+            tokenMercadoPago: negocio.tokenMercadoPago,
+            mercadopagoPublicKey: negocio.mercadopagoPublicKey,
+            mpModoCobro: negocio.mpModoCobro,
+            aliasMp: negocio.aliasMp
         };
     }
 
@@ -82,19 +82,12 @@ class ConfiguracionService {
         if (data.anchoPapel !== undefined) updateFields.anchoPapel = data.anchoPapel;
 
         // AFIP
-        if (data.afipActivo !== undefined || data.facturacionHabilitada !== undefined) {
-            const val = Boolean(data.afipActivo !== undefined ? data.afipActivo : data.facturacionHabilitada);
-            updateFields.afipActivo = val;
-            updateFields.facturacionHabilitada = val;
-        }
+        if (data.afipActivo !== undefined) updateFields.afipActivo = Boolean(data.afipActivo);
+        if (data.facturacionHabilitada !== undefined) updateFields.facturacionHabilitada = Boolean(data.facturacionHabilitada);
         if (data.afipModoFacturacion !== undefined) updateFields.afipModoFacturacion = data.afipModoFacturacion;
         if (data.afipPuntoVenta !== undefined) updateFields.afipPuntoVenta = data.afipPuntoVenta;
-        if (data.afipCertificado !== undefined || data.certificadoAfipPath !== undefined) {
-            updateFields.certificadoAfipPath = data.afipCertificado || data.certificadoAfipPath;
-        }
-        if (data.afipLlavePrivada !== undefined || data.llaveAfipPath !== undefined) {
-            updateFields.llaveAfipPath = data.afipLlavePrivada || data.llaveAfipPath;
-        }
+        if (data.certificadoAfipPath !== undefined) updateFields.certificadoAfipPath = data.certificadoAfipPath;
+        if (data.llaveAfipPath !== undefined) updateFields.llaveAfipPath = data.llaveAfipPath;
 
         // WhatsApp / Notificaciones
         if (data.whatsappActivo !== undefined) updateFields.whatsappActivo = Boolean(data.whatsappActivo);
@@ -103,9 +96,7 @@ class ConfiguracionService {
         if (data.whatsappMensajeManual !== undefined) updateFields.whatsappMensajeManual = data.whatsappMensajeManual;
 
         // Mercado Pago
-        if (data.mercadopagoAccessToken !== undefined || data.tokenMercadoPago !== undefined) {
-            updateFields.tokenMercadoPago = data.mercadopagoAccessToken || data.tokenMercadoPago;
-        }
+        if (data.tokenMercadoPago !== undefined) updateFields.tokenMercadoPago = data.tokenMercadoPago;
         if (data.mercadopagoPublicKey !== undefined) updateFields.mercadopagoPublicKey = data.mercadopagoPublicKey;
         if (data.mpModoCobro !== undefined) updateFields.mpModoCobro = data.mpModoCobro;
         if (data.aliasMp !== undefined) updateFields.aliasMp = data.aliasMp;
@@ -155,35 +146,7 @@ class ConfiguracionService {
         return this._formatConfigResponse(negocio);
     }
 
-    // Validar token Mercado Pago
-    async validarMercadoPagoToken(negocioId, token) {
-        if (!token || typeof token !== "string" || token.trim().length < 5) {
-            throw new AppError("El token de Mercado Pago proporcionado es inválido.", 400, "INVALID_TOKEN");
-        }
 
-        try {
-            const response = await fetch("https://api.mercadopago.com/v1/payment_methods", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok && response.status === 401) {
-                throw new AppError("El token de Mercado Pago proporcionado es inválido o ha expirado.", 401, "INVALID_GATEWAY_CREDENTIALS");
-            }
-        } catch (err) {
-            if (err instanceof AppError) throw err;
-            // En offline / dev mode, permitir si parece token valido
-            if (!token.startsWith("APP_USR-") && !token.startsWith("TEST-")) {
-                console.warn("⚠️ [MercadoPago] No se pudo verificar token con la API externa, guardando de todos modos en desarrollo.");
-            }
-        }
-
-        // Persistir token validado
-        await this.actualizarConfiguracion(negocioId, { tokenMercadoPago: token });
-
-        return { estadoConexion: "Activo" };
-    }
 
     // Motivos de Cancelación CRUD
     async listarMotivosCancelacion(negocioId) {

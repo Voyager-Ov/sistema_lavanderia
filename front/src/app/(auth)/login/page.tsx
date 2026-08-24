@@ -71,7 +71,7 @@ export default function LoginPage() {
         toast.success("¡Bienvenido!", { description: "Has iniciado sesión exitosamente." });
         
         const rol = res.data.usuario.rol?.toLowerCase() || "";
-        if (rol.includes("superadmin")) {
+        if (rol.includes("super_admin") || rol.includes("superadmin")) {
           localStorage.setItem("superadmin_token", res.data.token);
           router.push("/superadmin/dashboard");
         } else if (rol.includes("admin")) {
