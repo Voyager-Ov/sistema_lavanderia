@@ -51,18 +51,16 @@ class PedidosService {
         let totalCobrado = 0;
         if (plain.cobros && Array.isArray(plain.cobros)) {
             for (const cobro of plain.cobros) {
-                 const m = Number(cobro.montoAbonado !== null && cobro.montoAbonado !== undefined ? cobro.montoAbonado : cobro.monto);
+                 const m = Number(cobro.montoAbonado);
                  if (isNaN(m) || m < 0) throw new AppError(`Cobro corrupto (ID: ${cobro.id}).`, 500, "INVALID_DATA");
                  totalCobrado += m;
             }
         }
 
-        const isCobradoFlag = !!plain.cobrado;
-        const cobrado = isCobradoFlag || (totalCobrado >= total && total > 0);
+        const cobrado = Boolean(plain.cobrado);
         let estadoPago = "NO_PAGADO";
         if (cobrado) {
             estadoPago = "PAGADO";
-            if (totalCobrado === 0) totalCobrado = total;
         } else if (totalCobrado > 0) {
             estadoPago = "PARCIAL";
         }

@@ -17,8 +17,11 @@ class ServiciosService {
         }
         const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
 
-        const page = parseInt(query.page) || 1;
-        const limit = parseInt(query.limit) || 10;
+        const parsedPage = parseInt(query.page, 10);
+        const page = !isNaN(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
+        const parsedLimit = parseInt(query.limit, 10);
+        const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
         const offset = (page - 1) * limit;
 
         const where = { activo: true };
@@ -34,7 +37,7 @@ class ServiciosService {
 
         // Filtro por categoría
         if (query.categoriaId && query.categoriaId !== "ALL") {
-            const catId = parseInt(query.categoriaId);
+            const catId = parseInt(query.categoriaId, 10);
             if (!isNaN(catId) && catId > 0) {
                 where.categoriaId = catId;
             }
@@ -47,8 +50,9 @@ class ServiciosService {
 
         // Ordenamiento seguro
         let orderClause;
-        const sortBy = query.sortBy || "id";
-        const sortOrder = (query.sortOrder || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
+        const sortBy = typeof query.sortBy === "string" && query.sortBy.trim() !== "" ? query.sortBy : "id";
+        const rawSortOrder = typeof query.sortOrder === "string" ? query.sortOrder.toUpperCase() : "DESC";
+        const sortOrder = rawSortOrder === "ASC" ? "ASC" : "DESC";
 
         if (sortBy === "categoria" || sortBy === "categoria.nombre" || sortBy === "categoriaId") {
             orderClause = [[{ model: CategoriaServicio, as: "categoria" }, "nombre", sortOrder]];
@@ -71,7 +75,7 @@ class ServiciosService {
             distinct: true
         });
 
-        const totalPages = Math.ceil(count / limit) || 1;
+        const totalPages = count > 0 ? Math.ceil(count / limit) : 1;
 
         return {
             items: rows,
@@ -189,7 +193,7 @@ class ServiciosService {
             tiempoEstimadoMinutos: data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "" ? parseInt(data.tiempoEstimadoMinutos) : 0,
             disponible: data.disponible === "true" || data.disponible === true || data.disponible === undefined,
             activo: true,
-            imagenUrl: imagenPath || data.imagenUrl || null,
+            imagenUrl: imagenPath ? imagenPath : (data.imagenUrl ? data.imagenUrl : null),
             categoriaId: catId,
             negocioId
         });
@@ -295,7 +299,7 @@ class ServiciosService {
                         precio: nuevoPrecio,
                         fechaDesde: ahora,
                         fechaHasta: null,
-                        motivo: data.motivo || "Edición de precio",
+                        motivo: typeof data.motivo === "string" && data.motivo.trim() !== "" ? data.motivo.trim() : "Edición de precio",
                         negocioId
                     });
                 } catch (e) {
@@ -344,8 +348,9 @@ class ServiciosService {
         const ahora = new Date();
 
         for (const item of servicios) {
-            if (!item.id || item.precioActual === undefined || isNaN(parseFloat(item.precioActual)) || parseFloat(item.precioActual) < 0) {
-                throw new AppError(`El servicio ID ${item?.id || 'desconocido'} no contiene un precioActual válido.`, 400, "INVALID_SERVICE_ITEM");
+            if (!item || !item.id || item.precioActual === undefined || isNaN(parseFloat(item.precioActual)) || parseFloat(item.precioActual) < 0) {
+                const targetId = item && item.id ? item.id : 'desconocido';
+                throw new AppError(`El servicio ID ${targetId} no contiene un precioActual válido.`, 400, "INVALID_SERVICE_ITEM");
             }
             const servicio = await Servicio.findOne({ where: { id: item.id, activo: true } });
             if (!servicio) {
@@ -452,7 +457,7 @@ class ServiciosService {
                     createdAt: h.fechaDesde,
                     fechaDesde: h.fechaDesde,
                     fechaHasta: h.fechaHasta,
-                    motivo: h.motivo || "Cambio de precio"
+                    motivo: h.motivo ? h.motivo : "Cambio de precio"
                 };
             });
         }

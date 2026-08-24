@@ -82,14 +82,14 @@ export function ServicioForm({ id }: ServicioFormProps) {
           const sRes = await apiClient.get<{ success: boolean; data: Servicio }>(`/servicios/${id}`)
           const s = sRes.data
           setFormData({
-            nombre: s.nombre || "",
-            descripcion: s.descripcion || "",
+            nombre: s.nombre ? s.nombre : "",
+            descripcion: s.descripcion ? s.descripcion : "",
             precioActual: s.precioActual !== undefined && s.precioActual !== null ? s.precioActual.toString() : "",
             costoEstimado: s.costoEstimado !== undefined && s.costoEstimado !== null ? s.costoEstimado.toString() : "",
             tiempoEstimadoMinutos: s.tiempoEstimadoMinutos !== undefined && s.tiempoEstimadoMinutos !== null ? s.tiempoEstimadoMinutos.toString() : "",
             categoriaId: s.categoriaId ? s.categoriaId.toString() : (s.categoria?.id ? s.categoria.id.toString() : ""),
             disponible: s.disponible,
-            imagenUrl: s.imagenUrl || "",
+            imagenUrl: s.imagenUrl ? s.imagenUrl : "",
           })
         }
       } catch (err: unknown) {
