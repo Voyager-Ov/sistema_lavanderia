@@ -2,9 +2,25 @@ import React from "react"
 import { FormSheet } from "@/shared/ui/composite/form-sheet"
 import { Loader2 } from "lucide-react"
 import { getHistorialPrecios, HistorialPrecioItem, Servicio } from "@/domains/productos/api"
+import { Categoria } from "@/domains/categorias/api"
 import { CategoriasModal } from "./categorias-modal"
 
-export function ServiciosModals({ data, actions, modals }: any) {
+interface ServiciosModalsProps {
+  data: {
+    categorias: Categoria[];
+    fetchCategorias: () => void;
+  };
+  modals: {
+    isHistoryModalOpen: boolean;
+    setIsHistoryModalOpen: (open: boolean) => void;
+    servicioToHistory: Servicio | null;
+    setServicioToHistory: (servicio: Servicio | null) => void;
+    isCategoriesModalOpen: boolean;
+    setIsCategoriesModalOpen: (open: boolean) => void;
+  };
+}
+
+export function ServiciosModals({ data, modals }: ServiciosModalsProps) {
   return (
     <>
       <HistorySheet 
@@ -25,7 +41,7 @@ export function ServiciosModals({ data, actions, modals }: any) {
 
 function HistorySheet({ isOpen, onClose, servicio }: { isOpen: boolean; onClose: () => void; servicio: Servicio | null }) {
   const [history, setHistory] = React.useState<HistorialPrecioItem[]>([])
-  const [loading, setLoading] = React.useState(false)
+  const [loading, setLoading] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     if (isOpen && servicio) {
@@ -34,8 +50,8 @@ function HistorySheet({ isOpen, onClose, servicio }: { isOpen: boolean; onClose:
         try {
           const data = await getHistorialPrecios(servicio.id)
           setHistory(data)
-        } catch (error) {
-          console.error(error)
+        } catch (error: unknown) {
+          console.error("Error fetching price history:", error)
         } finally {
           setLoading(false)
         }
@@ -49,7 +65,7 @@ function HistorySheet({ isOpen, onClose, servicio }: { isOpen: boolean; onClose:
       open={isOpen} 
       onOpenChange={(open) => !open && onClose()}
       title="Historial de Precios"
-      description={servicio?.nombre}
+      description={servicio?.nombre || "Servicio"}
     >
       <div className="mt-2 min-h-[300px]">
         {loading ? (
@@ -61,8 +77,8 @@ function HistorySheet({ isOpen, onClose, servicio }: { isOpen: boolean; onClose:
           </div>
         ) : (
           <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-indigo-300 before:to-transparent">
-            {history.map((h, i) => (
-              <div key={h.id || i} className="relative flex items-center gap-4 group is-active">
+            {history.map((h) => (
+              <div key={h.id} className="relative flex items-center gap-4 group is-active">
                 <div className="flex items-center justify-center w-10 h-10 rounded-full border-[3px] border-white bg-indigo-100 text-indigo-500 shadow shrink-0 z-10 shadow-indigo-200">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                 </div>

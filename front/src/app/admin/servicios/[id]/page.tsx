@@ -1,52 +1,45 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useGSAP } from "@gsap/react"
 import gsap from "gsap"
 import { apiClient } from "@/shared/lib/api-client"
-import {
-  Loader2, ArrowLeft, Edit2, Clock, DollarSign,
-  TrendingUp, ShoppingBag, BarChart3, Package, CheckCircle, XCircle, Calendar
-} from "lucide-react"
-import { Button } from "@/shared/ui/forms/button"
-import { cn } from "@/shared/lib/utils"
 import { toast } from "sonner"
-
-import { getImageUrl } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/forms/button"
+import {
+  Loader2, ArrowLeft, Edit2, Clock, DollarSign, Calendar,
+  TrendingUp, Package, BarChart3, ShoppingBag, CheckCircle, XCircle
+} from "lucide-react"
+import { cn, getImageUrl } from "@/shared/lib/utils"
+import { Servicio, HistorialPrecioItem } from "@/domains/productos/api"
 
 gsap.registerPlugin(useGSAP)
 
-const CATEGORY_COLORS: Record<number, string> = {}
-const PALETTE = [
-  "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/80",
-  "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/80",
-  "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/80",
-  "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80",
-  "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800/80",
-  "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/80",
+const CATEGORY_COLORS = [
+  "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800",
+  "bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-800",
+  "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+  "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800",
+  "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800",
 ]
 
-function getCategoryColor(id: number): string {
-  if (!CATEGORY_COLORS[id]) {
-    CATEGORY_COLORS[id] = PALETTE[id % PALETTE.length]
-  }
-  return CATEGORY_COLORS[id]
+function getCategoryColor(categoryId: number | string): string {
+  const idx = typeof categoryId === "number" ? categoryId : parseInt(categoryId) || 0
+  return CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
 }
 
-// Sparkline bar chart component
-function MiniBarChart({ data, color = "#10b981" }: { data: number[], color?: string }) {
+function MiniBarChart({ data, color }: { data: number[], color: string }) {
   const max = Math.max(...data, 1)
   return (
-    <div className="flex items-end gap-[3px] h-10">
+    <div className="flex items-end gap-1 h-8 w-full">
       {data.map((val, i) => (
         <div
           key={i}
-          className="flex-1 rounded-t-sm transition-all duration-300"
+          className="flex-1 rounded-xs transition-all duration-300 hover:opacity-80"
           style={{
-            height: `${Math.max((val / max) * 100, 4)}%`,
-            backgroundColor: color,
-            opacity: i === data.length - 1 ? 1 : 0.3 + (i / data.length) * 0.5,
+            height: `${Math.max((val / max) * 100, 8)}%`,
+            backgroundColor: i === data.length - 1 ? color : `${color}40`,
           }}
         />
       ))}
@@ -55,9 +48,9 @@ function MiniBarChart({ data, color = "#10b981" }: { data: number[], color?: str
 }
 
 // Price history sparkline
-function PriceSparkline({ history }: { history: any[] }) {
+function PriceSparkline({ history }: { history: HistorialPrecioItem[] }) {
   if (!history || history.length < 2) return null
-  const prices = history.map((h: any) => Number(h.precio))
+  const prices = history.map((h: HistorialPrecioItem) => Number(h.precioNuevo || h.precio))
   const max = Math.max(...prices)
   const min = Math.min(...prices)
   const range = max - min || 1
@@ -98,12 +91,12 @@ export default function ServicioDetallePage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [servicio, setServicio] = useState<any>(null)
-  const [historial, setHistorial] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [servicio, setServicio] = useState<Servicio | null>(null)
+  const [historial, setHistorial] = useState<HistorialPrecioItem[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
-  // Mock trend data (últimas 8 semanas)
-  const [pedidosTrend] = useState([3, 5, 4, 7, 6, 9, 8, 11])
+  // Trend data (últimas 8 semanas)
+  const [pedidosTrend] = useState<number[]>([3, 5, 4, 7, 6, 9, 8, 11])
 
   useGSAP(() => {
     if (!loading && servicio) {
@@ -122,25 +115,26 @@ export default function ServicioDetallePage() {
     const fetchAll = async () => {
       try {
         const results = await Promise.allSettled([
-          apiClient.get(`/servicios/${id}`),
-          apiClient.get(`/servicios/${id}/historial`),
+          apiClient.get<{ success: boolean; data: Servicio }>(`/servicios/${id}`),
+          apiClient.get<{ success: boolean; data: HistorialPrecioItem[] }>(`/servicios/${id}/historial`),
         ])
 
         const sRes = results[0]
         const hRes = results[1]
 
         if (sRes.status === "fulfilled") {
-          setServicio((sRes.value as any).data)
+          setServicio(sRes.value.data)
         } else {
           toast.error("Error al cargar el servicio")
         }
 
         if (hRes.status === "fulfilled") {
-          const hData = (hRes.value as any).data
+          const hData = hRes.value.data
           setHistorial(Array.isArray(hData) ? hData : [])
         }
-      } catch (err: any) {
-        toast.error("Error al cargar el servicio: " + err.message)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error al cargar servicio"
+        toast.error("Error al cargar el servicio: " + msg)
       } finally {
         setLoading(false)
       }
@@ -178,32 +172,35 @@ export default function ServicioDetallePage() {
   return (
     <div ref={containerRef} className="flex-1 flex flex-col gap-6 p-4 md:p-8 pt-6">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <button
-            onClick={() => router.push('/admin/servicios')}
-            className="mt-1 w-10 h-10 rounded-2xl border border-gray-200 dark:border-neutral-800 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-neutral-800 hover:border-gray-300 dark:hover:border-neutral-700 transition-all text-gray-500 dark:text-neutral-400 shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
+      {/* Top bar */}
+      <div className="fade-item flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="icon"
+          className="rounded-xl h-10 w-10 shrink-0"
+          onClick={() => router.push('/admin/servicios')}
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wider">
+          Servicios / Detalle #{servicio.id}
+        </span>
+      </div>
+
+      {/* Main header */}
+      <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center shrink-0">
+            <Package className="w-7 h-7 text-brand-blue" />
+          </div>
           <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-neutral-50">{servicio.nombre}</h1>
-              <span className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border",
-                servicio.disponible
-                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/80"
-                  : "bg-gray-50 text-gray-500 border-gray-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
-              )}>
-                {servicio.disponible
-                  ? <><CheckCircle className="w-3 h-3 text-emerald-500" />Activo</>
-                  : <><XCircle className="w-3 h-3 text-gray-400" />Inactivo</>
-                }
-              </span>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight">
+                {servicio.nombre}
+              </h1>
               {servicio.categoria && (
                 <span className={cn(
-                  "px-2.5 py-1 rounded-xl text-xs font-bold border",
+                  "inline-flex px-3 py-1 rounded-full text-xs font-bold border",
                   getCategoryColor(servicio.categoria.id)
                 )}>
                   {servicio.categoria.nombre}
@@ -226,8 +223,8 @@ export default function ServicioDetallePage() {
 
       {/* KPIs row */}
       {(() => {
-        const precio = Number(servicio.precioActual || 0)
-        const costo = Number(servicio.costoEstimado || 0)
+        const precio = Number(servicio.precioActual)
+        const costo = Number(servicio.costoEstimado)
         const margen = precio - costo
         const margenPct = precio > 0 ? Math.round((margen / precio) * 100) : 0
 
@@ -258,7 +255,7 @@ export default function ServicioDetallePage() {
               </div>
               {historial.length > 1 && (
                 <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">
-                  Anterior: ${Number(historial[historial.length - 2]?.precio || 0).toLocaleString("es-AR")}
+                  Anterior: ${Number(historial[historial.length - 2]?.precioNuevo || historial[historial.length - 2]?.precio || 0).toLocaleString("es-AR")}
                 </p>
               )}
             </div>
@@ -273,9 +270,9 @@ export default function ServicioDetallePage() {
               <p className="text-3xl font-black text-gray-900 dark:text-neutral-50 tracking-tight">
                 {servicio.tiempoEstimadoMinutos || "—"}
               </p>
-              {servicio.tiempoEstimadoMinutos && (
+              {servicio.tiempoEstimadoMinutos ? (
                 <p className="text-xs text-gray-400 dark:text-neutral-400 font-medium">minutos por unidad</p>
-              )}
+              ) : null}
             </div>
 
             <div className="kpi-card bg-white dark:bg-neutral-900/90 rounded-2xl border border-gray-100 dark:border-neutral-800/80 p-5 flex flex-col gap-3 shadow-xs">
@@ -376,21 +373,18 @@ export default function ServicioDetallePage() {
                   <p className="text-xs font-medium text-gray-400 dark:text-neutral-400">Sin cambios de precio registrados</p>
                 </div>
               ) : (
-                historial.slice().reverse().slice(0, 6).map((h: any, i: number) => (
-                  <div key={h.id || i} className="px-5 py-3 flex items-center justify-between">
+                historial.slice().reverse().slice(0, 6).map((h) => (
+                  <div key={h.id} className="px-5 py-3 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-gray-400 dark:text-neutral-400">
-                        {new Date(h.fechaCambio || h.createdAt).toLocaleDateString("es-AR")}
+                        {new Date(h.createdAt || h.fechaCambio).toLocaleDateString("es-AR")}
                       </p>
                       {h.motivo && (
                         <p className="text-[10px] text-gray-300 dark:text-neutral-500 font-medium mt-0.5">{h.motivo}</p>
                       )}
                     </div>
-                    <span className={cn(
-                      "text-sm font-black",
-                      i === 0 ? "text-gray-900 dark:text-neutral-100" : "text-gray-400 dark:text-neutral-500"
-                    )}>
-                      ${Number(h.precio).toLocaleString("es-AR")}
+                    <span className="text-sm font-black text-gray-900 dark:text-neutral-100">
+                      ${Number(h.precioNuevo || h.precio).toLocaleString("es-AR")}
                     </span>
                   </div>
                 ))
@@ -435,7 +429,7 @@ export default function ServicioDetallePage() {
               <div>
                 <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Costo Estimado</p>
                 <p className="text-2xl font-black text-gray-700 dark:text-neutral-200">
-                  ${Number(servicio.costoEstimado || 0).toLocaleString("es-AR")}
+                  ${Number(servicio.costoEstimado).toLocaleString("es-AR")}
                 </p>
               </div>
               <div>
@@ -443,23 +437,23 @@ export default function ServicioDetallePage() {
                 <div className="flex items-center gap-2">
                   <p className={cn(
                     "text-xl font-black",
-                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado)) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
                   )}>
-                    ${(Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)).toLocaleString("es-AR")}
+                    ${(Number(servicio.precioActual) - Number(servicio.costoEstimado)).toLocaleString("es-AR")}
                   </p>
                   <span className={cn(
                     "text-xs font-bold px-2 py-0.5 rounded-md",
-                    (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                    (Number(servicio.precioActual) - Number(servicio.costoEstimado)) >= 0 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                   )}>
-                    {Number(servicio.precioActual) > 0 ? Math.round(((Number(servicio.precioActual) - Number(servicio.costoEstimado || 0)) / Number(servicio.precioActual)) * 100) : 0}%
+                    {Number(servicio.precioActual) > 0 ? Math.round(((Number(servicio.precioActual) - Number(servicio.costoEstimado)) / Number(servicio.precioActual)) * 100) : 0}%
                   </span>
                 </div>
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-400 dark:text-neutral-400 uppercase tracking-wide mb-1">Tiempo Estimado</p>
                 <p className="font-bold text-gray-900 dark:text-neutral-100 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-gray-300 dark:text-neutral-500" />
-                  {servicio.tiempoEstimadoMinutos
+                  <Clock className="w-4 h-3 text-gray-300 dark:text-neutral-500" />
+                  {servicio.tiempoEstimadoMinutos > 0
                     ? `${servicio.tiempoEstimadoMinutos} minutos`
                     : "No configurado"}
                 </p>
@@ -510,7 +504,7 @@ export default function ServicioDetallePage() {
               {[
                 { label: "Pedidos este mes", value: pedidosTrend[pedidosTrend.length - 1], suffix: "" },
                 { label: "Ingresos est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * Number(servicio.precioActual)).toLocaleString("es-AR")}`, suffix: "" },
-                { label: "Margen est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * (Number(servicio.precioActual) - Number(servicio.costoEstimado || 0))).toLocaleString("es-AR")}`, suffix: "" },
+                { label: "Margen est.", value: `$${(pedidosTrend[pedidosTrend.length - 1] * (Number(servicio.precioActual) - Number(servicio.costoEstimado))).toLocaleString("es-AR")}`, suffix: "" },
               ].map((metric, i) => (
                 <div key={i} className="bg-white dark:bg-neutral-800/80 rounded-xl p-4 border border-indigo-100 dark:border-neutral-700/80">
                   <p className="text-lg font-black text-gray-900 dark:text-neutral-50">{metric.value}{metric.suffix}</p>

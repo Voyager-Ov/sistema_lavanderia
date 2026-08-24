@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Edit, History, Power, PowerOff, Clock, MoreHorizontal, Eye } from "lucide-react"
 import { cn, getImageUrl } from "@/shared/lib/utils"
 import { Package } from "lucide-react"
+import { Servicio } from "@/domains/productos/api"
 
 // Paleta de colores para categorías (rotativa)
 const CATEGORY_COLORS = [
@@ -29,13 +30,13 @@ function getCategoryColor(categoryId: number | string): string {
 }
 
 export interface ServicioColumnsActions {
-  onView: (servicio: any) => void
-  onEdit: (servicio: any) => void
-  onHistory: (servicio: any) => void
+  onView: (servicio: Servicio) => void
+  onEdit: (servicio: Servicio) => void
+  onHistory: (servicio: Servicio) => void
   onToggleStatus: (id: number, disponible: boolean) => void
 }
 
-export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<any, any>[] {
+export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<Servicio>[] {
   return [
     {
       id: "select",
@@ -122,8 +123,8 @@ export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<a
       accessorKey: "precioActual",
       header: "Precio / Costo",
       cell: ({ row }) => {
-        const p = Number(row.original.precioActual || 0)
-        const c = Number(row.original.costoEstimado || 0)
+        const p = Number(row.original.precioActual)
+        const c = Number(row.original.costoEstimado)
         return (
           <div className="flex flex-col gap-0.5">
             <span className="font-black text-gray-900 dark:text-neutral-100 text-base">
@@ -147,7 +148,7 @@ export function getServicioColumns(actions: ServicioColumnsActions): ColumnDef<a
       header: "Tiempo",
       cell: ({ row }) => {
         const mins = row.original.tiempoEstimadoMinutos
-        if (!mins) return <span className="text-xs text-gray-400 dark:text-neutral-500">—</span>
+        if (!mins || mins <= 0) return <span className="text-xs text-gray-400 dark:text-neutral-500">—</span>
         const h = Math.floor(mins / 60)
         const m = mins % 60
         const label = h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`

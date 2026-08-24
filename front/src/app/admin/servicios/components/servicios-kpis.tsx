@@ -1,13 +1,19 @@
 import React from "react"
 import { KpiCard as DashboardKpi } from "@/shared/ui/data-display/kpi-card"
+import { ServicioStats } from "@/domains/productos/api"
 
-export function ServiciosKpis({ stats, isLoading }: { stats: any, isLoading: boolean }) {
+interface ServiciosKpisProps {
+  stats: ServicioStats;
+  isLoading: boolean;
+}
+
+export function ServiciosKpis({ stats, isLoading }: ServiciosKpisProps) {
   return (
     <div className="fade-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <DashboardKpi 
         isLoading={isLoading} 
         title="Total Servicios" 
-        value={(stats?.total || 0).toString()} 
+        value={stats.total.toString()} 
         description="Registrados en el sistema" 
         backMessage="Ver detalles" 
         colorVariant="blue" 
@@ -15,7 +21,7 @@ export function ServiciosKpis({ stats, isLoading }: { stats: any, isLoading: boo
       <DashboardKpi 
         isLoading={isLoading} 
         title="Servicios Activos" 
-        value={(stats?.activos || 0).toString()} 
+        value={stats.activos.toString()} 
         description="Disponibles para la venta" 
         backMessage="Gestionar disponibilidad" 
         colorVariant="green" 
@@ -23,7 +29,7 @@ export function ServiciosKpis({ stats, isLoading }: { stats: any, isLoading: boo
       <DashboardKpi 
         isLoading={isLoading} 
         title="Categorías" 
-        value={(stats?.categorias || 0).toString()} 
+        value={stats.categorias.toString()} 
         description="Agrupaciones creadas" 
         backMessage="Editar categorías" 
         colorVariant="purple" 
@@ -31,8 +37,8 @@ export function ServiciosKpis({ stats, isLoading }: { stats: any, isLoading: boo
       <DashboardKpi 
         isLoading={isLoading} 
         title="Más Solicitado" 
-        value={typeof stats?.masSolicitado === "object" ? (stats.masSolicitado?.nombre || "N/A") : (stats?.masSolicitado || "N/A")} 
-        description={typeof stats?.masSolicitado === "object" && stats.masSolicitado?.cantidad ? `${stats.masSolicitado.cantidad} ventas este mes` : "Servicio más popular"} 
+        value={stats.masSolicitado || "N/A"} 
+        description="Servicio más popular" 
         backMessage="Ver historial" 
         colorVariant="orange" 
       />

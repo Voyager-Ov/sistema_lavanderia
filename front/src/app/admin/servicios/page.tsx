@@ -11,6 +11,7 @@ import { ServiciosHeader } from "./components/servicios-header"
 import { ServiciosKpis } from "./components/servicios-kpis"
 import { ServiciosTable } from "./components/servicios-table"
 import { ServiciosModals } from "./components/servicios-modals"
+import { Servicio } from "@/domains/productos/api"
 
 export default function ServiciosPage() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -31,8 +32,8 @@ export default function ServiciosPage() {
     }
   }, { scope: containerRef })
 
-  const handleView = React.useCallback((servicio: any) => router.push(`/admin/servicios/${servicio.id}`), [router])
-  const handleEdit = React.useCallback((servicio: any) => router.push(`/admin/servicios/${servicio.id}/editar`), [router])
+  const handleView = React.useCallback((servicio: Servicio) => router.push(`/admin/servicios/${servicio.id}`), [router])
+  const handleEdit = React.useCallback((servicio: Servicio) => router.push(`/admin/servicios/${servicio.id}/editar`), [router])
   const handleNewService = React.useCallback(() => router.push("/admin/servicios/nuevo"), [router])
   const handleManageCategories = React.useCallback(() => modals.setIsCategoriesModalOpen(true), [modals])
 
@@ -58,7 +59,6 @@ export default function ServiciosPage() {
 
       <ServiciosModals 
         data={data}
-        actions={actions}
         modals={modals}
       />
     </div>

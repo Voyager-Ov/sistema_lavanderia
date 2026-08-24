@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/shared/ui/data-display/badge"
 import { Clock } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
+import { Servicio } from "@/domains/productos/api"
 
 const CATEGORY_COLORS = [
   "bg-blue-50 text-blue-700 border-blue-100",
@@ -21,7 +22,7 @@ function getCategoryColor(categoryId: number | string): string {
   return CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
 }
 
-export function getPosServicioColumns(): ColumnDef<any, any>[] {
+export function getPosServicioColumns(): ColumnDef<Servicio>[] {
   return [
     {
       accessorKey: "nombre",
@@ -69,7 +70,7 @@ export function getPosServicioColumns(): ColumnDef<any, any>[] {
       header: "Tiempo Estimado",
       cell: ({ row }) => {
         const mins = row.original.tiempoEstimadoMinutos
-        if (!mins) return <span className="text-xs text-gray-400">—</span>
+        if (!mins || mins <= 0) return <span className="text-xs text-gray-400">—</span>
         const h = Math.floor(mins / 60)
         const m = mins % 60
         const label = h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`

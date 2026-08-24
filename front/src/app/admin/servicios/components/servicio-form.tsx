@@ -19,6 +19,9 @@ import {
 
 import { getImageUrl } from "@/shared/lib/utils"
 
+import { Categoria, CategoriasResponse } from "@/domains/categorias/api"
+import { Servicio } from "@/domains/productos/api"
+
 interface ServicioFormProps {
   id?: string
 }
@@ -33,7 +36,7 @@ export function ServicioForm({ id }: ServicioFormProps) {
 
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
-  const [categorias, setCategorias] = useState<any[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [isDragging, setIsDragging] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -72,25 +75,26 @@ export function ServicioForm({ id }: ServicioFormProps) {
   useEffect(() => {
     const init = async () => {
       try {
-        const catRes: any = await apiClient.get("/categorias")
-        setCategorias(catRes.data?.items || catRes.data || [])
+        const catRes = await apiClient.get<CategoriasResponse>("/categorias")
+        setCategorias(catRes.data.items)
 
         if (isEditing) {
-          const sRes: any = await apiClient.get(`/servicios/${id}`)
+          const sRes = await apiClient.get<{ success: boolean; data: Servicio }>(`/servicios/${id}`)
           const s = sRes.data
           setFormData({
             nombre: s.nombre || "",
             descripcion: s.descripcion || "",
-            precioActual: s.precioActual?.toString() || "",
-            costoEstimado: s.costoEstimado !== null && s.costoEstimado !== undefined ? s.costoEstimado.toString() : "",
-            tiempoEstimadoMinutos: s.tiempoEstimadoMinutos?.toString() || "",
-            categoriaId: s.categoria?.id?.toString() || "",
+            precioActual: s.precioActual !== undefined && s.precioActual !== null ? s.precioActual.toString() : "",
+            costoEstimado: s.costoEstimado !== undefined && s.costoEstimado !== null ? s.costoEstimado.toString() : "",
+            tiempoEstimadoMinutos: s.tiempoEstimadoMinutos !== undefined && s.tiempoEstimadoMinutos !== null ? s.tiempoEstimadoMinutos.toString() : "",
+            categoriaId: s.categoriaId ? s.categoriaId.toString() : (s.categoria?.id ? s.categoria.id.toString() : ""),
             disponible: s.disponible,
             imagenUrl: s.imagenUrl || "",
           })
         }
-      } catch (err: any) {
-        toast.error("Error al cargar datos: " + err.message)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error al cargar datos"
+        toast.error("Error al cargar datos: " + msg)
       } finally {
         setLoading(false)
       }
@@ -151,8 +155,9 @@ export function ServicioForm({ id }: ServicioFormProps) {
         toast.success("Servicio creado exitosamente")
         router.push("/admin/servicios")
       }
-    } catch (err: any) {
-      toast.error(`Error al ${isEditing ? 'actualizar' : 'crear'} el servicio: ${err.message}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error en la operación"
+      toast.error(`Error al ${isEditing ? 'actualizar' : 'crear'} el servicio: ${msg}`)
     } finally {
       setSaving(false)
     }

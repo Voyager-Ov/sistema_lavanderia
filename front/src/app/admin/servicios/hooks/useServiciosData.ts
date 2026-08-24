@@ -10,17 +10,17 @@ export function useServiciosData() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [stats, setStats] = useState<ServicioStats>({ total: 0, activos: 0, categorias: 0, masSolicitado: null })
   
-  const [isTableFetching, setIsTableFetching] = useState(true)
-  const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [isTableFetching, setIsTableFetching] = useState<boolean>(true)
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true)
   
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilter, setActiveFilter] = useState("ALL")
-  const [categoriaFilter, setCategoriaFilter] = useState("ALL")
+  const [searchTerm, setSearchTerm] = useState<string>("")
+  const [activeFilter, setActiveFilter] = useState<string>("ALL")
+  const [categoriaFilter, setCategoriaFilter] = useState<string>("ALL")
   
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
+  const [pagination, setPagination] = useState<{ pageIndex: number; pageSize: number }>({ pageIndex: 0, pageSize: 10 })
   const [sorting, setSorting] = useState<SortingState>([])
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState<number>(1)
+  const [totalItems, setTotalItems] = useState<number>(0)
 
   const fetchServicios = useCallback(async () => {
     setIsTableFetching(true)
@@ -33,17 +33,19 @@ export function useServiciosData() {
       if (activeFilter === "true") searchParams.append("disponible", "true")
       if (activeFilter === "false") searchParams.append("disponible", "false")
       if (sorting.length > 0) {
-        searchParams.append("sortBy", (sorting[0] as any).id)
-        searchParams.append("sortOrder", (sorting[0] as any).desc ? "DESC" : "ASC")
+        const sortItem = sorting[0]
+        searchParams.append("sortBy", sortItem.id)
+        searchParams.append("sortOrder", sortItem.desc ? "DESC" : "ASC")
       }
       
       const response = await apiClient.get<ServiciosResponse>(`/servicios?${searchParams.toString()}`)
-      setServicios(response.data?.items ?? [])
-      setTotalPages(response.data?.meta?.totalPages ?? 1)
-      setTotalItems(response.data?.meta?.totalItems ?? (response.data?.items ?? []).length)
-    } catch (error: any) {
+      setServicios(response.data.items)
+      setTotalPages(response.data.meta.totalPages)
+      setTotalItems(response.data.meta.totalItems)
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error desconocido al cargar servicios"
       console.error("API error fetchServicios:", error)
-      toast.error(`Error al cargar los servicios: ${error.message}`)
+      toast.error(`Error al cargar los servicios: ${msg}`)
     } finally {
       setIsTableFetching(false)
     }
@@ -53,7 +55,7 @@ export function useServiciosData() {
     try {
       const items = await getCategorias()
       setCategorias(items)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching categorias:", error)
     }
   }, [])
@@ -63,7 +65,7 @@ export function useServiciosData() {
     try {
       const response = await apiClient.get<{ success: boolean; data: ServicioStats }>(`/servicios/stats`)
       setStats(response.data)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("API error fetchStats:", error)
     } finally {
       setIsStatsLoading(false)

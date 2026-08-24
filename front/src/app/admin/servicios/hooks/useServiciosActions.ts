@@ -4,7 +4,7 @@ import { apiClient } from "@/shared/lib/api-client"
 import { eliminarProducto } from "@/domains/productos/api"
 
 export function useServiciosActions({ fetchServicios, fetchStats }: { fetchServicios: () => void, fetchStats: () => void }) {
-  const [isMutating, setIsMutating] = useState(false)
+  const [isMutating, setIsMutating] = useState<boolean>(false)
   
   const handleToggleDisponibilidad = useCallback(async (id: number, disponible: boolean) => {
     setIsMutating(true)
@@ -13,9 +13,10 @@ export function useServiciosActions({ fetchServicios, fetchStats }: { fetchServi
       toast.success("Disponibilidad actualizada")
       fetchServicios()
       fetchStats()
-    } catch (error: any) {
-      console.error(error)
-      toast.error(`Error: ${error.message}`)
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al actualizar disponibilidad"
+      console.error("Error handleToggleDisponibilidad:", error)
+      toast.error(`Error: ${msg}`)
     } finally {
       setIsMutating(false)
     }
@@ -28,9 +29,10 @@ export function useServiciosActions({ fetchServicios, fetchStats }: { fetchServi
       toast.success("Servicio eliminado")
       fetchServicios()
       fetchStats()
-    } catch (error: any) {
-      console.error(error)
-      toast.error(`Error: ${error.message}`)
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al eliminar servicio"
+      console.error("Error handleDelete:", error)
+      toast.error(`Error: ${msg}`)
     } finally {
       setIsMutating(false)
     }

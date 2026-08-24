@@ -3,27 +3,27 @@ import { apiClient } from "@/shared/lib/api-client";
 export interface CategoriaInfo {
   id: number;
   nombre: string;
-  icono?: string | null;
-  color?: string | null;
+  icono: string | null;
+  color: string | null;
 }
 
 export interface Servicio {
   id: number;
   nombre: string;
-  descripcion?: string | null;
-  precioActual: number | string;
-  costoEstimado?: number | string | null;
-  imagenUrl?: string | null;
+  descripcion: string | null;
+  precioActual: number;
+  costoEstimado: number;
+  tiempoEstimadoMinutos: number;
+  imagenUrl: string | null;
   disponible: boolean;
   activo: boolean;
   categoriaId: number | null;
-  categoria?: CategoriaInfo | null;
-  tiempoEstimadoMinutos?: number | null;
-  createdAt?: string;
-  updatedAt?: string;
+  categoria: CategoriaInfo | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Alias de compatibilidad semántica con vistas de mostrador
+// Alias de compatibilidad semántica
 export type Producto = Servicio;
 
 export interface HistorialPrecioItem {
@@ -33,22 +33,24 @@ export interface HistorialPrecioItem {
   precioAnterior: number;
   fechaCambio: string;
   createdAt: string;
-  fechaDesde?: string;
-  fechaHasta?: string | null;
-  motivo?: string | null;
+  fechaDesde: string;
+  fechaHasta: string | null;
+  motivo: string | null;
+}
+
+export interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  itemsPerPage: number;
 }
 
 export interface ServiciosResponse {
   success: boolean;
-  message?: string;
+  message: string;
   data: {
     items: Servicio[];
-    meta?: {
-      totalItems: number;
-      totalPages: number;
-      currentPage: number;
-      itemsPerPage: number;
-    };
+    meta: PaginationMeta;
   };
 }
 
@@ -80,13 +82,13 @@ export interface BulkDisponibilidadPayload {
 export const getProductos = async (queryParams?: string): Promise<Servicio[]> => {
   const url = queryParams ? `/servicios?${queryParams}` : `/servicios`;
   const response = await apiClient.get<ServiciosResponse>(url);
-  return response.data?.items ?? [];
+  return response.data.items;
 };
 
-export const getProductosPaginated = async (queryParams?: string): Promise<{ items: Servicio[]; meta?: any }> => {
+export const getProductosPaginated = async (queryParams?: string): Promise<{ items: Servicio[]; meta: PaginationMeta }> => {
   const url = queryParams ? `/servicios?${queryParams}` : `/servicios`;
   const response = await apiClient.get<ServiciosResponse>(url);
-  return response.data ?? { items: [] };
+  return response.data;
 };
 
 export const getProductosStats = async (): Promise<ServicioStats> => {
@@ -101,7 +103,7 @@ export const getProductoById = async (id: number | string): Promise<Servicio> =>
 
 export const getHistorialPrecios = async (id: number | string): Promise<HistorialPrecioItem[]> => {
   const response = await apiClient.get<{ success: boolean; data: HistorialPrecioItem[] }>(`/servicios/${id}/historial`);
-  return response.data ?? [];
+  return response.data;
 };
 
 export const actualizarPreciosMasivo = async (servicios: BulkPrecioItem[]): Promise<{ count: number; items: Servicio[] }> => {

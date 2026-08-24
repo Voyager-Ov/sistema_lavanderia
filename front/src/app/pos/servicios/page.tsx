@@ -9,12 +9,13 @@ import { getPosServicioColumns } from "./components/pos-servicio-columns"
 import { DataTable } from "@/shared/ui/data-display/data-table"
 import { ServiciosKpis } from "@/app/admin/servicios/components/servicios-kpis"
 import { ShoppingBag } from "lucide-react"
+import { Categoria } from "@/domains/categorias/api"
 
 export default function PosServiciosPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   
   const {
-    servicios, setServicios,
+    servicios,
     stats,
     categorias,
     isTableFetching, isStatsLoading,
@@ -23,8 +24,7 @@ export default function PosServiciosPage() {
     categoriaFilter, setCategoriaFilter,
     pagination, setPagination,
     sorting, setSorting,
-    totalItems, totalPages,
-    fetchServicios, fetchStats,
+    totalPages,
   } = useServiciosData()
 
   gsap.registerPlugin(useGSAP)
@@ -65,7 +65,7 @@ export default function PosServiciosPage() {
             globalFilter={searchTerm}
             onGlobalFilterChange={(val) => {
               setSearchTerm(val)
-              setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+              setPagination((p) => ({ ...p, pageIndex: 0 }))
             }}
             manualPagination={true}
             pageCount={totalPages}
@@ -82,7 +82,7 @@ export default function PosServiciosPage() {
                 value: activeFilter,
                 onChange: (val) => {
                   setActiveFilter(val)
-                  setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+                  setPagination((p) => ({ ...p, pageIndex: 0 }))
                 },
                 options: [
                   { label: "Todos", value: "ALL" },
@@ -96,11 +96,11 @@ export default function PosServiciosPage() {
                 value: categoriaFilter,
                 onChange: (val) => {
                   setCategoriaFilter(val)
-                  setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+                  setPagination((p) => ({ ...p, pageIndex: 0 }))
                 },
                 options: [
                   { label: "Todas", value: "ALL" },
-                  ...categorias.map((c: any) => ({ label: c.nombre, value: c.id.toString() }))
+                  ...categorias.map((c: Categoria) => ({ label: c.nombre, value: c.id.toString() }))
                 ]
               }
             ]}

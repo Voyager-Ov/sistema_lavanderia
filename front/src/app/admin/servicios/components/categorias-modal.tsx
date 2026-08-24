@@ -1,42 +1,53 @@
 import React, { useState } from "react";
 import { ResponsiveSheet, ResponsiveSheetContent, ResponsiveSheetHeader, ResponsiveSheetTitle, ResponsiveSheetDescription } from "@/shared/ui/overlays/responsive-sheet";
-import { crearCategoria, actualizarCategoria, eliminarCategoria } from "@/domains/categorias/api";
+import { Categoria, crearCategoria, actualizarCategoria, eliminarCategoria } from "@/domains/categorias/api";
 import { toast } from "sonner";
 import { Input } from "@/shared/ui/forms/input";
 import { Button } from "@/shared/ui/forms/button";
 import { Trash2, Edit2, Plus, Loader2, Save, X } from "lucide-react";
 
-export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias }: any) {
-  const [loading, setLoading] = useState(false);
+interface CategoriasModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  categorias: Categoria[];
+  refreshCategorias: () => void;
+}
+
+export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias }: CategoriasModalProps) {
+  const [loading, setLoading] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
-  const [newName, setNewName] = useState("");
+  const [editName, setEditName] = useState<string>("");
+  const [newName, setNewName] = useState<string>("");
   
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    const trimmed = newName.trim();
+    if (!trimmed) return;
     setLoading(true);
     try {
-      await crearCategoria({ nombre: newName });
+      await crearCategoria({ nombre: trimmed });
       toast.success("Categoría creada");
       setNewName("");
       refreshCategorias();
-    } catch (e: any) {
-      toast.error(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Error al crear categoría";
+      toast.error(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdate = async (id: number) => {
-    if (!editName.trim()) return;
+    const trimmed = editName.trim();
+    if (!trimmed) return;
     setLoading(true);
     try {
-      await actualizarCategoria(id, { nombre: editName });
+      await actualizarCategoria(id, { nombre: trimmed });
       toast.success("Categoría actualizada");
       setEditingId(null);
       refreshCategorias();
-    } catch (e: any) {
-      toast.error(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Error al actualizar categoría";
+      toast.error(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -49,8 +60,9 @@ export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias
       await eliminarCategoria(id);
       toast.success("Categoría eliminada");
       refreshCategorias();
-    } catch (e: any) {
-      toast.error(`Error: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Error al eliminar categoría";
+      toast.error(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -85,10 +97,10 @@ export function CategoriasModal({ isOpen, onClose, categorias, refreshCategorias
           {/* List */}
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-2">Categorías existentes</h3>
-            {categorias?.length === 0 ? (
+            {categorias.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-neutral-500 italic text-center py-4">No hay categorías registradas.</p>
             ) : (
-              categorias?.map((cat: any) => (
+              categorias.map((cat: Categoria) => (
                 <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-all bg-white dark:bg-neutral-800/80 group">
                   {editingId === cat.id ? (
                     <div className="flex items-center gap-2 w-full">

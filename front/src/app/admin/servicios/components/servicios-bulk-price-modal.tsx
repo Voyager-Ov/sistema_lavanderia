@@ -6,8 +6,7 @@ import { Button } from "@/shared/ui/forms/button"
 import { Input } from "@/shared/ui/forms/input"
 import { Badge } from "@/shared/ui/data-display/badge"
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Percent, ArrowRight } from "lucide-react"
-import { apiClient } from "@/shared/lib/api-client"
-import { actualizarPreciosMasivo } from "@/domains/productos/api"
+import { Servicio, actualizarPreciosMasivo } from "@/domains/productos/api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 
@@ -16,16 +15,16 @@ type Mode = "percentage" | "individual"
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  selectedServices: any[]
+  selectedServices: Servicio[]
   onSuccess: () => void
   initialMode?: Mode
 }
 
 export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, onSuccess, initialMode = "percentage" }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode)
-  const [percentage, setPercentage] = useState("")
+  const [percentage, setPercentage] = useState<string>("")
   const [individualPrices, setIndividualPrices] = useState<Record<number, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
 
   useEffect(() => {
     if (open) {
@@ -35,7 +34,6 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
       setIndividualPrices(prices)
       setPercentage("")
     } else {
-      // Safe cleanup for Radix overlay pointer-events desync
       const timer = setTimeout(() => {
         document.body.style.pointerEvents = ""
         document.body.style.overflow = ""
@@ -59,14 +57,14 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
         if (!isValidPct) { toast.error("Ingresá un porcentaje válido"); setIsLoading(false); return }
         const updates = selectedServices.map(s => ({
           id: s.id,
-          precioActual: getPreviewPrice(parseFloat(s.precioActual))
+          precioActual: getPreviewPrice(Number(s.precioActual))
         }));
         await actualizarPreciosMasivo(updates)
         toast.success(`Precios actualizados con ${pctValue > 0 ? "+" : ""}${pctValue}% para ${selectedServices.length} servicio(s)`)
       } else {
         const updates = selectedServices.map(s => ({
           id: s.id,
-          precioActual: parseFloat(individualPrices[s.id] || s.precioActual)
+          precioActual: parseFloat(individualPrices[s.id] || String(s.precioActual))
         })).filter(u => !isNaN(u.precioActual) && u.precioActual >= 0)
         await actualizarPreciosMasivo(updates)
         toast.success(`Precios actualizados para ${updates.length} servicio(s)`)
@@ -75,27 +73,19 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
       setTimeout(() => {
         onSuccess()
       }, 100)
-    } catch (error: any) {
-      toast.error(`Error al actualizar precios: ${error.message}`)
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al actualizar precios"
+      toast.error(`Error al actualizar precios: ${msg}`)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const title = (
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
-        <DollarSign className="h-4 w-4 text-white" />
-      </div>
-      Ajuste Masivo de Precios
-    </div>
-  )
-
   return (
     <FormSheet 
       open={open} 
       onOpenChange={onOpenChange}
-      title={title as any}
+      title="Ajuste Masivo de Precios"
       description={`${selectedServices.length} servicio(s) seleccionado(s)`}
     >
       {/* Mode Selector */}
@@ -175,7 +165,7 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Vista previa</label>
                 <div className="rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
                   {selectedServices.map((s) => {
-                    const prev = parseFloat(s.precioActual)
+                    const prev = Number(s.precioActual)
                     const next = getPreviewPrice(prev)
                     const diff = next - prev
                     return (
@@ -210,7 +200,7 @@ export function ServiciosBulkPriceModal({ open, onOpenChange, selectedServices, 
               <div key={s.id} className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50/80 border border-gray-100">
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-gray-900 text-sm truncate">{s.nombre}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Actual: ${parseFloat(s.precioActual).toLocaleString("es-AR")}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Actual: ${Number(s.precioActual).toLocaleString("es-AR")}</p>
                 </div>
                 <div className="relative shrink-0 w-32">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">$</span>

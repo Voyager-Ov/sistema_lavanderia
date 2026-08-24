@@ -4,14 +4,44 @@ import { BulkAction } from "@/shared/ui/data-display/data-table-bulk-actions"
 import { getServicioColumns } from "./servicio-columns"
 import { ServiciosBulkPriceModal } from "./servicios-bulk-price-modal"
 import { DollarSign, Power, PowerOff, Percent } from "lucide-react"
-import { apiClient } from "@/shared/lib/api-client"
-import { actualizarDisponibilidadMasiva } from "@/domains/productos/api"
+import { Servicio, actualizarDisponibilidadMasiva } from "@/domains/productos/api"
+import { Categoria } from "@/domains/categorias/api"
 import { toast } from "sonner"
+import { SortingState } from "@tanstack/react-table"
 
-export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
-  const [bulkPriceOpen, setBulkPriceOpen] = useState(false)
+interface ServiciosTableProps {
+  data: {
+    servicios: Servicio[];
+    categorias: Categoria[];
+    isTableFetching: boolean;
+    searchTerm: string;
+    setSearchTerm: (val: string) => void;
+    activeFilter: string;
+    setActiveFilter: (val: string) => void;
+    categoriaFilter: string;
+    setCategoriaFilter: (val: string) => void;
+    pagination: { pageIndex: number; pageSize: number };
+    setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>;
+    sorting: SortingState;
+    setSorting: React.Dispatch<React.SetStateAction<SortingState>>;
+    totalPages: number;
+    fetchServicios: () => void;
+    fetchStats: () => void;
+  };
+  actions: {
+    handleToggleDisponibilidad: (id: number, disponible: boolean) => Promise<void>;
+  };
+  modals: {
+    handleHistory: (servicio: Servicio) => void;
+  };
+  onEdit: (servicio: Servicio) => void;
+  onView: (servicio: Servicio) => void;
+}
+
+export function ServiciosTable({ data, actions, modals, onEdit, onView }: ServiciosTableProps) {
+  const [bulkPriceOpen, setBulkPriceOpen] = useState<boolean>(false)
   const [bulkPriceMode, setBulkPriceMode] = useState<"percentage" | "individual">("percentage")
-  const [selectedForBulk, setSelectedForBulk] = useState<any[]>([])
+  const [selectedForBulk, setSelectedForBulk] = useState<Servicio[]>([])
   const [clearSelectionFn, setClearSelectionFn] = useState<(() => void) | null>(null)
 
   const columns = useMemo(() => getServicioColumns({
@@ -21,7 +51,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
     onToggleStatus: actions.handleToggleDisponibilidad,
   }), [onView, onEdit, modals.handleHistory, actions.handleToggleDisponibilidad])
 
-  const bulkActions: BulkAction<any>[] = [
+  const bulkActions: BulkAction<Servicio>[] = [
     {
       label: "Ajustar Precios",
       icon: DollarSign,
@@ -30,7 +60,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
         {
           label: "Subir / Bajar por %",
           icon: Percent,
-          onClick: (rows: any, clearSelection: any) => {
+          onClick: (rows: Servicio[], clearSelection: () => void) => {
             setSelectedForBulk(rows)
             setClearSelectionFn(() => clearSelection)
             setBulkPriceMode("percentage")
@@ -42,7 +72,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
         {
           label: "Precio individual",
           icon: DollarSign,
-          onClick: (rows: any, clearSelection: any) => {
+          onClick: (rows: Servicio[], clearSelection: () => void) => {
             setSelectedForBulk(rows)
             setClearSelectionFn(() => clearSelection)
             setBulkPriceMode("individual")
@@ -57,15 +87,16 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
       label: "Activar todos",
       icon: Power,
       colorClass: "bg-green-50/80 text-green-700 hover:bg-green-100/90 border border-green-200 hover:shadow-md backdrop-blur-md",
-      onClick: async (rows, clearSelection) => {
+      onClick: async (rows: Servicio[], clearSelection: () => void) => {
         try {
-          const ids = rows.map((s: any) => s.id)
+          const ids = rows.map((s: Servicio) => s.id)
           await actualizarDisponibilidadMasiva(ids, true)
           toast.success(`${rows.length} servicio(s) activados`)
           data.fetchServicios()
           clearSelection()
-        } catch (e: any) {
-          toast.error(`Error: ${e.message}`)
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Error al activar servicios"
+          toast.error(`Error: ${msg}`)
         }
       },
     },
@@ -73,15 +104,16 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
       label: "Pausar todos",
       icon: PowerOff,
       variant: "destructive" as const,
-      onClick: async (rows, clearSelection) => {
+      onClick: async (rows: Servicio[], clearSelection: () => void) => {
         try {
-          const ids = rows.map((s: any) => s.id)
+          const ids = rows.map((s: Servicio) => s.id)
           await actualizarDisponibilidadMasiva(ids, false)
           toast.success(`${rows.length} servicio(s) pausados`)
           data.fetchServicios()
           clearSelection()
-        } catch (e: any) {
-          toast.error(`Error: ${e.message}`)
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Error al pausar servicios"
+          toast.error(`Error: ${msg}`)
         }
       },
     },
@@ -97,7 +129,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
         globalFilter={data.searchTerm}
         onGlobalFilterChange={(val) => {
           data.setSearchTerm(val)
-          data.setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+          data.setPagination((p) => ({ ...p, pageIndex: 0 }))
         }}
         manualPagination={true}
         pageCount={data.totalPages}
@@ -115,7 +147,7 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
             value: data.activeFilter,
             onChange: (val) => {
               data.setActiveFilter(val)
-              data.setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+              data.setPagination((p) => ({ ...p, pageIndex: 0 }))
             },
             options: [
               { label: "Todos", value: "ALL" },
@@ -129,11 +161,11 @@ export function ServiciosTable({ data, actions, modals, onEdit, onView }: any) {
             value: data.categoriaFilter,
             onChange: (val) => {
               data.setCategoriaFilter(val)
-              data.setPagination((p: any) => ({ ...p, pageIndex: 0 }))
+              data.setPagination((p) => ({ ...p, pageIndex: 0 }))
             },
             options: [
               { label: "Todas", value: "ALL" },
-              ...data.categorias.map((c: any) => ({ label: c.nombre, value: c.id.toString() }))
+              ...data.categorias.map((c: Categoria) => ({ label: c.nombre, value: c.id.toString() }))
             ]
           }
         ]}

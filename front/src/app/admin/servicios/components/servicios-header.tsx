@@ -2,9 +2,14 @@ import React from "react"
 import { Button } from "@/shared/ui/forms/button"
 import { LayoutGrid, Plus } from "lucide-react"
 
+interface ServiciosHeaderProps {
+  onNewService: () => void;
+  onManageCategories: () => void;
+}
+
 export function ServiciosHeader({ 
   onNewService, onManageCategories 
-}: any) {
+}: ServiciosHeaderProps) {
   return (
     <div className="fade-item flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
