@@ -17,13 +17,13 @@ export const AuthApi = {
   
   googleLogin: (token: string) => apiClient.post<AuthResponse>("/auth/google", { idToken: token }),
   
-  verifyEmail: (data: { email: string; code: string }) => apiClient.post<{status: string, message: string}>("/auth/verify-email", data),
+  verifyEmail: (data: { email: string; tokenConfirmacion: string }) => apiClient.post<{status: string, message: string}>("/auth/verify-email", data),
   
   resendVerification: (email: string) => apiClient.post<{status: string, message: string}>("/auth/resend-verification", { email }),
 
   forgotPassword: (email: string) => apiClient.post<{status: string, message: string}>("/auth/forgot-password", { email }),
   
-  resetPassword: (data: any) => apiClient.post<{status: string, message: string}>("/auth/reset-password", data),
+  resetPassword: (data: { email: string; tokenConfirmacion: string; newPassword: string }) => apiClient.post<{status: string, message: string}>("/auth/reset-password", data),
 
   getMe: () => apiClient.get<{ status: string; message: string; data: { usuario: User } }>("/auth/me"),
 

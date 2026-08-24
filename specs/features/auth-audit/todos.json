@@ -1,0 +1,104 @@
+{
+  "feature_id": "auth-audit",
+  "title": "Tareas de Implementación para Auditoría y Refactorización del Módulo de Auth",
+  "version": "1.0.0",
+  "batches": [
+    {
+      "batch_id": "BATCH-1",
+      "title": "Back-End: Validadores y Rutas de Auth",
+      "sequential": false,
+      "tasks": [
+        {
+          "id": "TASK-AUTH-01",
+          "title": "Refactorizar back2/src/modules/auth/validators/auth.validator.js con express-validator Fail-Fast",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": [],
+          "outputs": ["back2/src/modules/auth/validators/auth.validator.js"],
+          "exit_criteria": "Exporta validateLogin, validateRegister, validateVerifyEmail, validateForgotPassword, validateResetPassword con reglas Fail-Fast."
+        },
+        {
+          "id": "TASK-AUTH-02",
+          "title": "Inyectar validadores en back2/src/modules/auth/auth.routes.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": ["TASK-AUTH-01"],
+          "outputs": ["back2/src/modules/auth/auth.routes.js"],
+          "exit_criteria": "Todas las rutas de auth usan sus validadores express-validator antes del controlador."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-2",
+      "title": "Back-End: Controlador y Servicios de Auth",
+      "sequential": true,
+      "tasks": [
+        {
+          "id": "TASK-AUTH-03",
+          "title": "Refactorizar back2/src/modules/auth/services/login.service.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-AUTH-02"],
+          "outputs": ["back2/src/modules/auth/services/login.service.js"],
+          "exit_criteria": "Eliminados usuario.password || usuario.passwordHash, sub || id y fallbacks de string."
+        },
+        {
+          "id": "TASK-AUTH-04",
+          "title": "Refactorizar back2/src/modules/auth/services/register.service.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-AUTH-03"],
+          "outputs": ["back2/src/modules/auth/services/register.service.js"],
+          "exit_criteria": "Eliminados autocompletados ficticios ('Admin', 'General', 'Solicitante')."
+        },
+        {
+          "id": "TASK-AUTH-05",
+          "title": "Refactorizar verifyEmail.service.js y password.service.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-AUTH-04"],
+          "outputs": [
+            "back2/src/modules/auth/services/verifyEmail.service.js",
+            "back2/src/modules/auth/services/password.service.js"
+          ],
+          "exit_criteria": "Exige tokenConfirmacion de forma estricta y elimina fallbacks de clave."
+        },
+        {
+          "id": "TASK-AUTH-06",
+          "title": "Refactorizar profile.service.js y auth.controller.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-AUTH-05"],
+          "outputs": [
+            "back2/src/modules/auth/services/profile.service.js",
+            "back2/src/modules/auth/controllers/auth.controller.js"
+          ],
+          "exit_criteria": "Controlador y servicio de perfil consumen datos canónicos sin tuberías ||."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-3",
+      "title": "Front-End: DTOs y Sincronización de Componentes de Auth",
+      "sequential": false,
+      "tasks": [
+        {
+          "id": "TASK-AUTH-07",
+          "title": "Sincronizar interfaces en front/src/domains/auth/api/auth.api.ts",
+          "owner_role": "Frontend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": ["TASK-AUTH-06"],
+          "outputs": ["front/src/domains/auth/api/auth.api.ts"],
+          "exit_criteria": "auth.api.ts utiliza tokenConfirmacion en verifyEmail y resetPassword."
+        }
+      ]
+    }
+  ]
+}

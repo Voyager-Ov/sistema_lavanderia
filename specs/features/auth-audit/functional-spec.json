@@ -1,0 +1,146 @@
+{
+  "feature_id": "auth-audit",
+  "title": "Protocolo de Auditoría y Limpieza de Código del Módulo de Auth (SaaS Multi-Tenant)",
+  "version": "2.0.0",
+  "last_updated": "2026-08-24",
+  "author": "Senior Software Engineer & Tech Lead",
+  "overview": {
+    "purpose": "Auditar, refactorizar y erradicar todas las tuberías de fallbacks (||), alias de campos duplicados y valores por defecto ficticios en el módulo de autenticación (Login, Registro, Verificación de Email, Recuperación de Contraseña y Perfil), garantizando tipado estricto 1:1 y validaciones Fail-Fast.",
+    "architecture_stack": {
+      "backend": "Node.js / Express + Sequelize ORM + JWT Auth + PostgreSQL (Neon)",
+      "frontend": "Next.js 14 (App Router) + TypeScript + Zustand Store + Axios/Fetch client (apiClient)",
+      "ssot": "Modelos Sequelize en back2/src/models/ (Usuario.js, Negocio.js, SolicitudNegocio.js, Empleado.js)"
+    }
+  },
+  "product_scope": {
+    "in_scope": [
+      "Auditoría y refactorización completa de los servicios en back2/src/modules/auth/services/ (login.service.js, register.service.js, verifyEmail.service.js, password.service.js, profile.service.js).",
+      "Auditoría del controlador back2/src/modules/auth/controllers/auth.controller.js y middleware validador back2/src/modules/auth/validators/auth.validator.js.",
+      "Eliminación total del fallback de contraseña userPassword = usuario.password || usuario.passwordHash en favor del atributo canónico 'password' de Usuario.",
+      "Eliminación del alias 'googleId = payload.sub || payload.id' en favor del atributo canónico 'googleId'.",
+      "Eliminación de la cadena de alias 'code || token || tokenConfirmacion' en verificación de correo en favor de 'tokenConfirmacion'.",
+      "Eliminación de nombres y cadenas por defecto ficticios ('Admin', 'General', 'Solicitante', 'Sin especificar').",
+      "Sincronización 1:1 de interfaces TypeScript en front/src/domains/auth/api/auth.api.ts y shared stores."
+    ],
+    "out_of_scope": [
+      "Alteración del flujo de firmado JWT o hashing bcrypt.",
+      "Modificaciones físicas en esquemas DDL de PostgreSQL."
+    ]
+  },
+  "canonical_model_ssot": {
+    "Usuario": {
+      "table": "usuarios",
+      "attributes": {
+        "email": { "type": "STRING", "primaryKey": true, "nullable": false },
+        "password": { "type": "STRING", "nullable": true },
+        "googleId": { "type": "STRING", "nullable": true, "unique": true },
+        "tokenConfirmacion": { "type": "STRING", "nullable": true },
+        "tokenConfirmacionExpires": { "type": "DATE", "nullable": true },
+        "emailConfirmado": { "type": "BOOLEAN", "nullable": false, "defaultValue": false },
+        "activo": { "type": "BOOLEAN", "nullable": false, "defaultValue": true },
+        "empleadoId": { "type": "INTEGER", "nullable": true }
+      }
+    },
+    "SolicitudNegocio": {
+      "table": "solicitudes_negocio",
+      "attributes": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true },
+        "nombreNegocio": { "type": "STRING", "nullable": false },
+        "subdominio": { "type": "STRING", "nullable": true },
+        "cuit": { "type": "STRING", "nullable": true },
+        "razonSocial": { "type": "STRING", "nullable": true },
+        "nombreSolicitante": { "type": "STRING", "nullable": false },
+        "emailSolicitante": { "type": "STRING", "nullable": false },
+        "telefonoSolicitante": { "type": "STRING", "nullable": true },
+        "passwordHash": { "type": "STRING", "nullable": false },
+        "estado": { "type": "ENUM(PENDIENTE, APROBADO, RECHAZADO)", "nullable": false, "defaultValue": "PENDIENTE" },
+        "motivoRechazo": { "type": "TEXT", "nullable": true }
+      }
+    }
+  },
+  "anti_patterns_to_eradicate": [
+    {
+      "id": "AP-AUTH-01",
+      "pattern": "Fallback encadenado de contraseña (usuario.password || usuario.passwordHash)",
+      "fix": "Acceder estrictamente a usuario.password para autenticación de usuario. La propiedad passwordHash pertenece exclusivamente al modelo SolicitudNegocio."
+    },
+    {
+      "id": "AP-AUTH-02",
+      "pattern": "Fallback encadenado de token de verificación (code || token || tokenConfirmacion)",
+      "fix": "Estandarizar contractualmente la propiedad 'tokenConfirmacion' en el body del request POST /auth/verify-email. Rechazar de forma Fail-Fast (400 MISSING_VERIFICATION_TOKEN) si no está presente."
+    },
+    {
+      "id": "AP-AUTH-03",
+      "pattern": "Hardcodeo de datos por defecto ficticios ('Admin', 'General', 'Solicitante', 'Sin especificar')",
+      "fix": "Si un campo obligatorio falta en la petición de registro, responder con 400 Bad Request explicativo en lugar de autocompletar con nombres genéricos."
+    },
+    {
+      "id": "AP-AUTH-04",
+      "pattern": "Cadena de alias en solicitud de negocio (solicitud.razonSocial || solicitud.nombreNegocio)",
+      "fix": "Usar la propiedad canónica exacta que se requiere sin encadenamiento desordenado."
+    }
+  ],
+  "user_journeys": [
+    {
+      "journey_id": "UJ-AUTH-01",
+      "title": "Inicio de Sesión Estricto por Email y Contraseña",
+      "actor": "Usuario / Empleado / Administrador",
+      "description": "El usuario ingresa su email y contraseña. El backend valida estrictamente la presencia de ambos campos, verifica usuario.password mediante bcrypt y retorna el token JWT y perfil sin fallbacks.",
+      "flow": [
+        "1. Front envía POST /auth/login con { email, password }.",
+        "2. Validator verifica que email sea válido y password no esté vacío. Si no cumple -> 400 MISSING_EMAIL / MISSING_PASSWORD.",
+        "3. LoginService busca el usuario por email exacto (lowercase). Si no existe -> 404 USER_NOT_FOUND.",
+        "4. Compara password contra usuario.password. Si no coincide -> 401 INVALID_CREDENTIALS.",
+        "5. Emite respuesta 200 OK con token y objeto usuario canónico."
+      ]
+    },
+    {
+      "journey_id": "UJ-AUTH-02",
+      "title": "Registro de Negocio y Solicitud Tenant",
+      "actor": "Nuevo Administrador",
+      "description": "El nuevo cliente solicita el registro de su negocio. Se exigen email, password, usuarioNombre, negocioNombre de forma obligatoria.",
+      "flow": [
+        "1. Front envía POST /auth/register con { email, password, usuarioNombre, negocioNombre, cuit }.",
+        "2. Validator detiene cualquier petición sin los campos obligatorios antes de llamar al servicio.",
+        "3. RegisterService crea la SolicitudNegocio en estado PENDIENTE o APROBADO e inicializa el esquema tenant sin utilizar nombres por defecto genéricos."
+      ]
+    },
+    {
+      "journey_id": "UJ-AUTH-03",
+      "title": "Verificación de Correo Electrónico",
+      "actor": "Usuario Recientemente Registrado",
+      "description": "El usuario confirma su cuenta enviando el token recibido por correo.",
+      "flow": [
+        "1. Front envía POST /auth/verify-email con { email, tokenConfirmacion }.",
+        "2. Service compara tokenConfirmacion contra usuario.tokenConfirmacion. Si difiere o expira -> 400 INVALID_VERIFICATION_TOKEN."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-AUTH-01",
+      "given": "Una solicitud a cualquier endpoint del módulo auth",
+      "when": "Los campos obligatorios (email, password, tokenConfirmacion, etc.) faltan o vienen vacíos",
+      "then": "El servidor rechaza inmediatamente la petición con HTTP 400 Bad Request y un código de error explícito (ej. MISSING_EMAIL, MISSING_PASSWORD, MISSING_VERIFICATION_TOKEN)."
+    },
+    {
+      "id": "AC-AUTH-02",
+      "given": "El servicio de login y recuperación de contraseña",
+      "when": "Se evalúan las credenciales del usuario",
+      "then": "Se consulta exclusivamente la columna canónica usuario.password (sin recurrir a fallbacks || usuario.passwordHash)."
+    },
+    {
+      "id": "AC-AUTH-03",
+      "given": "El servicio de verificación de correo electrónico",
+      "when": "Se valida el código ingresado",
+      "then": "El DTO exige la propiedad 'tokenConfirmacion' sin encadenamientos desordenados (code || token || tokenConfirmacion)."
+    }
+  ],
+  "fail_fast_error_matrix": [
+    { "code": "MISSING_EMAIL", "status": 400, "scenario": "Falta el campo email en la solicitud" },
+    { "code": "MISSING_PASSWORD", "status": 400, "scenario": "Falta el campo password en la solicitud" },
+    { "code": "MISSING_VERIFICATION_TOKEN", "status": 400, "scenario": "Falta tokenConfirmacion en verificación de email" },
+    { "code": "INVALID_CREDENTIALS", "status": 401, "scenario": "Contraseña o credenciales incorrectas" },
+    { "code": "USER_NOT_FOUND", "status": 404, "scenario": "No existe usuario con el email indicado" }
+  ]
+}

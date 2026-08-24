@@ -13,7 +13,7 @@ import { Input } from "@/shared/ui/forms/input"
 import { Textarea } from "@/shared/ui/forms/textarea"
 import { Label } from "@/shared/ui/forms/label"
 import { AjusteCreditoParams } from "@/domains/clientes/cuenta-corriente.api"
-import { PlusCircle, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 
 interface ModalAjusteCreditoProps {
   open: boolean
@@ -31,21 +31,21 @@ export function ModalAjusteCredito({
   isSubmitting
 }: ModalAjusteCreditoProps) {
   const [monto, setMonto] = useState<string>("")
-  const [motivo, setMotivo] = useState<string>("")
+  const [concepto, setConcepto] = useState<string>("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const montoNum = parseFloat(monto)
     if (isNaN(montoNum) || montoNum <= 0) return
-    if (!motivo.trim()) return
+    if (!concepto.trim()) return
 
     try {
-      await onConfirmar({ monto: montoNum, motivo: motivo.trim() })
+      await onConfirmar({ monto: montoNum, concepto: concepto.trim() })
       setMonto("")
-      setMotivo("")
+      setConcepto("")
       onOpenChange(false)
     } catch (err) {
-      // Handled in hook
+      // Manejado por el hook invocador
     }
   }
 
@@ -91,12 +91,12 @@ export function ModalAjusteCredito({
 
           <div className="space-y-2">
             <Label className="text-xs font-semibold text-slate-700">
-              Motivo o Justificación del Ajuste *
+              Concepto o Justificación del Ajuste *
             </Label>
             <Textarea
               placeholder="Ej: Compensación comercial por retraso involuntario en entrega..."
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
+              value={concepto}
+              onChange={(e) => setConcepto(e.target.value)}
               rows={4}
               required
               className="text-sm resize-none"
@@ -115,7 +115,7 @@ export function ModalAjusteCredito({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !monto || parseFloat(monto) <= 0 || !motivo.trim()}
+              disabled={isSubmitting || !monto || parseFloat(monto) <= 0 || !concepto.trim()}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
             >
               {isSubmitting ? "Acreditando..." : "Confirmar Crédito"}

@@ -1,0 +1,376 @@
+{
+  "feature_id": "clientes-audit",
+  "title": "Protocolo Exhaustivo de Auditoría, Refactorización y Limpieza de Código del Módulo de Clientes (SaaS Multi-Tenant)",
+  "version": "2.0.0",
+  "last_updated": "2026-08-24",
+  "author": "Senior Software Engineer & Tech Lead",
+  "overview": {
+    "purpose": "Auditar, refactorizar y erradicar todas las malas prácticas de desarrollo en el módulo de clientes, garantizando contratos estrictos, seguridad multi-tenant estricta, erradicación total de fallbacks silenciosos (||), tipado estricto TypeScript 1:1 y validaciones Fail-Fast explícitas.",
+    "architecture_stack": {
+      "backend": "Node.js / Express + Sequelize ORM + PostgreSQL (Neon multi-tenant por esquemas tenant_<id>)",
+      "frontend": "Next.js 14 (App Router) + TypeScript + TailwindCSS + Zustand + Axios/Fetch client (apiClient)",
+      "ssot": "Modelos Sequelize en back2/src/models/ (Cliente.js, CuentaCorriente.js) como Fuente Única de la Verdad"
+    }
+  },
+  "product_scope": {
+    "in_scope": [
+      "Auditoría y refactorización completa del controlador back2/src/modules/clientes/controllers/clientes.controller.js.",
+      "Auditoría y refactorización completa del servicio back2/src/modules/clientes/services/clientes.service.js.",
+      "Auditoría y refactorización completa del validador back2/src/modules/clientes/validators/clientes.validator.js.",
+      "Auditoría y refactorización de rutas back2/src/modules/clientes/clientes.routes.js.",
+      "Erradicación absoluta del patrón req.user?.negocioId || 1 y req.user?.empleadoId || req.user?.id.",
+      "Erradicación absoluta de cadenas de fallback de campos como p.fechaHoraPedido || p.fechaHoraCreacion || p.createdAt.",
+      "Alineación y estandarización del contrato del DTO de ajuste de crédito: front enviará 'concepto' y 'monto' (corrigiendo la desalineación con 'motivo').",
+      "Sincronización 1:1 de interfaces TypeScript en front/src/domains/clientes/api.ts y cuenta-corriente.api.ts.",
+      "Validación de tipos estrictos en IDs numéricos (:id en params debe ser un entero positivo válido; si no, 400 INVALID_CLIENT_ID).",
+      "Auditoría de llamadas desde los componentes de la interfaz de usuario (front/src/app/admin/clientes y front/src/app/pos/clientes).",
+      "Verificación de compilación TypeScript limpia (0 errores) con npx tsc --noEmit --skipLibCheck."
+    ],
+    "out_of_scope": [
+      "Modificaciones físicas en esquemas DDL de PostgreSQL (se respetan estrictamente las columnas de los modelos Sequelize).",
+      "Refactorización completa de los módulos de Pedidos o Finanzas, salvo en sus puntos de integración contractual directa (ej: pagosService.procesarCobro)."
+    ]
+  },
+  "canonical_model_ssot": {
+    "Cliente": {
+      "table": "clientes",
+      "attributes": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true, "nullable": false },
+        "nombre": { "type": "STRING", "nullable": false, "description": "Nombre canónico del cliente (Requerido, no vacío)" },
+        "apellido": { "type": "STRING", "nullable": true, "defaultValue": "", "description": "Apellido del cliente" },
+        "telefono": { "type": "STRING", "nullable": true, "description": "Teléfono de contacto" },
+        "email": { "type": "STRING", "nullable": true, "description": "Correo electrónico de contacto" },
+        "direccion": { "type": "STRING", "nullable": true, "description": "Dirección física de entrega / mostrador" },
+        "fechaAlta": { "type": "DATE", "nullable": false, "defaultValue": "NOW", "description": "Fecha de registro del cliente" },
+        "activo": { "type": "BOOLEAN", "nullable": false, "defaultValue": true, "description": "Estado del cliente (true=activo, false=desactivado)" },
+        "negocioId": { "type": "INTEGER", "nullable": false, "description": "ID del negocio tenant propietario del registro" }
+      },
+      "associations": {
+        "negocio": { "type": "belongsTo", "target": "Negocio", "foreignKey": "negocioId" },
+        "cuentaCorriente": { "type": "hasOne", "target": "CuentaCorriente", "foreignKey": "clienteId" },
+        "pedidos": { "type": "hasMany", "target": "Pedido", "foreignKey": "clienteId" }
+      }
+    },
+    "CuentaCorriente": {
+      "table": "cuentas_corrientes",
+      "attributes": {
+        "id": { "type": "INTEGER", "primaryKey": true, "autoIncrement": true, "nullable": false },
+        "saldo": { "type": "DOUBLE", "nullable": false, "defaultValue": 0.0, "description": "Saldo a favor acumulado del cliente" },
+        "clienteId": { "type": "INTEGER", "nullable": false, "description": "ID del cliente asociado" },
+        "fechaCreacion": { "type": "DATE", "nullable": false, "defaultValue": "NOW" }
+      }
+    }
+  },
+  "anti_patterns_to_eradicate": [
+    {
+      "id": "AP-01",
+      "pattern": "Asignación de negocioId con fallbacks (req.user?.negocioId || 1)",
+      "fix": "Uso obligatorio del helper getTenantId(req) que extrae req.user.negocioId. Si falta o es nulo, arroja AppError con 401/400 y código MISSING_TENANT_ID."
+    },
+    {
+      "id": "AP-02",
+      "pattern": "Fallback encadenado de identidades de usuario (req.user?.empleadoId || req.user?.id)",
+      "fix": "Requerir req.user.id de forma explícita. Si el usuario no está autenticado, arrojar 401 UNAUTHORIZED."
+    },
+    {
+      "id": "AP-03",
+      "pattern": "Cadenas de alias de atributos en consultas o mapeos (p.fechaHoraPedido || p.fechaHoraCreacion || p.createdAt)",
+      "fix": "Usar la propiedad canónica del modelo Sequelize sin encadenamientos desordenados. Si un campo no está presente, arrojar error o mapear la propiedad canónica definida en el modelo."
+    },
+    {
+      "id": "AP-04",
+      "pattern": "Desalineación de nombres de propiedades DTO (motivo vs concepto)",
+      "fix": "Estandarizar el contrato en Front-End y Back-End a 'concepto' para ajustes de crédito a favor. El Front-End enviará { monto: number, concepto: string }."
+    },
+    {
+      "id": "AP-05",
+      "pattern": "Valores por defecto silenciosos en paginación o búsqueda",
+      "fix": "Validar y castear estrictamente los parámetros query query.page, query.limit, query.search, query.sortBy, query.sortOrder. Si un parámetro es inválido (ej: page=-1 o sortBy no existente en el modelo), retornar 400 BAD_REQUEST."
+    },
+    {
+      "id": "AP-06",
+      "pattern": "Falta de validación de params :id",
+      "fix": "Validar que req.params.id sea un número entero positivo mediante middleware/validador. Si es NaN o <= 0, responder 400 BAD_REQUEST: INVALID_CLIENT_ID."
+    }
+  ],
+  "user_journeys": [
+    {
+      "journey_id": "UJ-CLI-01",
+      "title": "Búsqueda y Paginación de Clientes con Filtros Estrictos",
+      "actor": "Administrador / Operador de Mostrador",
+      "description": "El usuario solicita el listado de clientes enviando términos de búsqueda, ordenamiento y número de página. El backend extrae el tenant de la sesión, valida los filtros y retorna los datos formateados con total acumulado de Deuda Exigible y Saldo a Favor.",
+      "flow": [
+        "1. El Front-End emite GET /api/clientes?search=Juan&page=1&limit=50&sortBy=nombre&sortOrder=ASC.",
+        "2. El controlador invoca getTenantId(req) exigiendo req.user.negocioId.",
+        "3. El validador procesa query params. Si son válidos, llama al servicio clientesService.listarClientes.",
+        "4. El servicio consulta el esquema tenant correspondiente, filtra por nombre/apellido/teléfono/email, computa el saldoDeuda (solo pedidos ENTREGADO impagos) y el saldoAFavor.",
+        "5. Se retorna respuesta 200 OK con estructura canónica { items: Cliente[], meta: { totalItems, totalPages, currentPage, itemsPerPage } }."
+      ]
+    },
+    {
+      "journey_id": "UJ-CLI-02",
+      "title": "Obtención de Detalle de Cliente y Posición Financiera",
+      "actor": "Administrador / Operador",
+      "description": "El usuario abre la ficha de un cliente mediante su ID. El sistema obtiene el perfil, pedidos asociados, cuenta corriente y movimientos.",
+      "flow": [
+        "1. El Front-End solicita GET /api/clientes/:id.",
+        "2. El controlador valida req.params.id como entero positivo.",
+        "3. El servicio busca el cliente en el tenant activo. Si no existe, arroja 404 CLIENT_NOT_FOUND.",
+        "4. Se desglosa la Deuda Exigible (pedidos entregados impagos) y el Monto en Taller (pedidos en proceso impagos).",
+        "5. Retorna respuesta 200 OK con el objeto cliente extendido."
+      ]
+    },
+    {
+      "journey_id": "UJ-CLI-03",
+      "title": "Creación Estricta de Nuevo Cliente",
+      "actor": "Operador de Mostrador",
+      "description": "El usuario registra un cliente. El servidor exige 'nombre' como string no vacío y valida opcionales (apellido, telefono, email, direccion).",
+      "flow": [
+        "1. El Front-End envía POST /api/clientes con { nombre, apellido, telefono, email, direccion }.",
+        "2. El middleware de validación express-validator intercepta la petición. Si nombre falta o no es string, retorna 400 MISSING_CLIENT_NAME.",
+        "3. El servicio crea el registro en la tabla 'clientes' del tenant activo y crea su 'cuentas_corrientes' inicial con saldo 0.",
+        "4. Retorna 201 Created con el objeto del cliente recién creado."
+      ]
+    },
+    {
+      "journey_id": "UJ-CLI-04",
+      "title": "Actualización Estricta de Datos de Cliente",
+      "actor": "Administrador / Operador",
+      "description": "El usuario modifica los datos de contacto de un cliente existente.",
+      "flow": [
+        "1. El Front-End envía PUT/PATCH /api/clientes/:id con los campos a modificar.",
+        "2. Se valida el ID y la presencia de al menos un campo válido para actualizar.",
+        "3. El servicio actualiza el registro en el tenant sin alterar el negocioId ni la cuenta corriente.",
+        "4. Retorna 200 OK con el cliente actualizado."
+      ]
+    },
+    {
+      "journey_id": "UJ-CLI-05",
+      "title": "Desactivación / Baja de Cliente",
+      "actor": "Administrador",
+      "description": "El usuario elimina o desactiva un cliente del sistema.",
+      "flow": [
+        "1. El Front-End envía DELETE /api/clientes/:id.",
+        "2. Se valida que el cliente pertenezca al tenant y no tenga deudas exigibles pendientes.",
+        "3. Se destruye o marca como inactivo el registro.",
+        "4. Retorna 200 OK informando la desactivación exitosa."
+      ]
+    },
+    {
+      "journey_id": "UJ-CLI-06",
+      "title": "Ajuste Manual de Crédito a Favor (CU-CLI-07)",
+      "actor": "Administrador",
+      "description": "El administrador bonifica o acredita saldo a favor manualmente en la cuenta corriente del cliente.",
+      "flow": [
+        "1. El Front-End envía POST /api/clientes/:id/cuenta-corriente/ajuste-credito con { monto: 2500, concepto: 'Compensación comercial' }.",
+        "2. El validador exige 'monto' > 0 y 'concepto' string no vacío.",
+        "3. El servicio incrementa atómicamente el saldo de la CuentaCorriente y registra el MovimientoCuentaCorriente.",
+        "4. Retorna 200 OK con el estado de cuenta actualizado."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-CLI-01",
+      "given": "Cualquier petición HTTP entrante al módulo de clientes",
+      "when": "No existe req.user o req.user.negocioId en la sesión autenticada",
+      "then": "El servidor rechaza la petición inmediatamente con HTTP 401 Unauthorized / 400 Bad Request y JSON { success: false, error: 'No se ha identificado el negocio activo en la sesión.', code: 'MISSING_TENANT_ID' }."
+    },
+    {
+      "id": "AC-CLI-02",
+      "given": "Una petición de creación de cliente (POST /api/clientes)",
+      "when": "El campo 'nombre' está ausente, es un string vacío, o es de un tipo no string",
+      "then": "El servidor retorna HTTP 400 Bad Request con JSON { success: false, error: 'El nombre del cliente es obligatorio.', code: 'MISSING_CLIENT_NAME' }."
+    },
+    {
+      "id": "AC-CLI-03",
+      "given": "Una petición de ajuste de crédito a favor (POST /api/clientes/:id/cuenta-corriente/ajuste-credito)",
+      "when": "Falta el campo 'monto' o es menor o igual a 0",
+      "then": "El servidor retorna HTTP 400 Bad Request con JSON { success: false, error: 'El monto del ajuste debe ser un valor numérico positivo.', code: 'INVALID_AMOUNT' }."
+    },
+    {
+      "id": "AC-CLI-04",
+      "given": "Una petición de ajuste de crédito a favor (POST /api/clientes/:id/cuenta-corriente/ajuste-credito)",
+      "when": "Falta el campo 'concepto' o es una cadena vacía",
+      "then": "El servidor retorna HTTP 400 Bad Request con JSON { success: false, error: 'El campo concepto es obligatorio.', code: 'MISSING_CONCEPT' }."
+    },
+    {
+      "id": "AC-CLI-05",
+      "given": "Una petición con req.params.id (GET/PUT/DELETE /api/clientes/:id)",
+      "when": "El id provisto no es un número entero positivo válido (ej: 'abc', '-5', 'null')",
+      "then": "El servidor retorna HTTP 400 Bad Request con JSON { success: false, error: 'ID de cliente inválido.', code: 'INVALID_CLIENT_ID' }."
+    },
+    {
+      "id": "AC-CLI-06",
+      "given": "Las definiciones de tipos TypeScript en front/src/domains/clientes/api.ts y cuenta-corriente.api.ts",
+      "when": "Se ejecuta npx tsc --noEmit --skipLibCheck en el Front-End",
+      "then": "No se produce ningún error de compilación TypeScript y los DTOs coinciden exactamente con la respuesta del Back-End."
+    }
+  ],
+  "fail_fast_error_matrix": [
+    {
+      "code": "MISSING_TENANT_ID",
+      "status": 401,
+      "scenario": "Sesión sin req.user.negocioId",
+      "user_message": "No se ha identificado el negocio activo en la sesión."
+    },
+    {
+      "code": "INVALID_CLIENT_ID",
+      "status": 400,
+      "scenario": "Parámetro :id en la URL no es entero positivo",
+      "user_message": "ID de cliente inválido."
+    },
+    {
+      "code": "MISSING_CLIENT_NAME",
+      "status": 400,
+      "scenario": "Creación o edición sin el campo 'nombre'",
+      "user_message": "El nombre del cliente es obligatorio."
+    },
+    {
+      "code": "CLIENT_NOT_FOUND",
+      "status": 404,
+      "scenario": "Búsqueda de cliente que no existe en el tenant activo",
+      "user_message": "Cliente no encontrado."
+    },
+    {
+      "code": "MISSING_AMOUNT",
+      "status": 400,
+      "scenario": "Ajuste de crédito sin el campo 'monto'",
+      "user_message": "El campo 'monto' es obligatorio."
+    },
+    {
+      "code": "INVALID_AMOUNT",
+      "status": 400,
+      "scenario": "Monto de ajuste es NaN o <= 0",
+      "user_message": "El monto del ajuste debe ser un valor numérico positivo."
+    },
+    {
+      "code": "MISSING_CONCEPT",
+      "status": 400,
+      "scenario": "Ajuste de crédito sin el campo 'concepto'",
+      "user_message": "El campo 'concepto' es obligatorio."
+    }
+  ],
+  "api_contracts": [
+    {
+      "endpoint": "GET /api/clientes",
+      "description": "Listar clientes paginados con filtros de búsqueda y orden",
+      "query_params": {
+        "search": { "type": "string", "required": false },
+        "page": { "type": "integer >= 1", "required": false, "default": 1 },
+        "limit": { "type": "integer (1..100)", "required": false, "default": 50 },
+        "sortBy": { "type": "enum(id, nombre, apellido, fechaAlta)", "required": false, "default": "id" },
+        "sortOrder": { "type": "enum(ASC, DESC)", "required": false, "default": "DESC" }
+      },
+      "response_success": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Clientes recuperados exitosamente",
+          "data": {
+            "items": [
+              {
+                "id": 1,
+                "nombre": "Juan",
+                "apellido": "Pérez",
+                "telefono": "1122334455",
+                "email": "juan@example.com",
+                "direccion": "Av. Corrientes 1234",
+                "activo": true,
+                "saldoDeuda": 1500.0,
+                "saldoAFavor": 500.0,
+                "pedidosImpagosCount": 1,
+                "cuentaCorriente": { "saldo": 500.0, "saldoDeuda": 1500.0 },
+                "createdAt": "2026-01-01T00:00:00.000Z",
+                "updatedAt": "2026-01-01T00:00:00.000Z"
+              }
+            ],
+            "meta": {
+              "totalItems": 1,
+              "total": 1,
+              "totalPages": 1,
+              "currentPage": 1,
+              "itemsPerPage": 50
+            }
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/clientes/:id",
+      "description": "Obtener la ficha completa de un cliente por su ID",
+      "response_success": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Cliente recuperado exitosamente",
+          "data": {
+            "id": 1,
+            "nombre": "Juan",
+            "apellido": "Pérez",
+            "telefono": "1122334455",
+            "email": "juan@example.com",
+            "direccion": "Av. Corrientes 1234",
+            "activo": true,
+            "saldoDeuda": 1500.0,
+            "saldoAFavor": 500.0,
+            "saldoCuentaCorriente": 500.0,
+            "montoEnTaller": 3000.0,
+            "pedidosImpagosCount": 1,
+            "pedidos": [],
+            "movimientos": [],
+            "cuentaCorriente": { "saldo": 500.0, "saldoDeuda": 1500.0, "movimientos": [] }
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/clientes",
+      "description": "Crear un nuevo cliente en el tenant activo",
+      "request_body": {
+        "nombre": { "type": "string", "required": true },
+        "apellido": { "type": "string", "required": false },
+        "telefono": { "type": "string", "required": false },
+        "email": { "type": "string", "required": false },
+        "direccion": { "type": "string", "required": false }
+      },
+      "response_success": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "message": "Cliente creado exitosamente",
+          "data": { "id": 2, "nombre": "María", "apellido": "Gómez", "activo": true }
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/clientes/:id/cuenta-corriente/ajuste-credito",
+      "description": "Acreditar saldo a favor manualmente en la cuenta corriente del cliente",
+      "request_body": {
+        "monto": { "type": "number > 0", "required": true },
+        "concepto": { "type": "string non-empty", "required": true }
+      },
+      "response_success": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Ajuste de crédito registrado exitosamente",
+          "data": {
+            "resumen": { "deudaTotal": 0, "deudaExigible": 0, "deudaNoExigible": 0, "saldoAFavor": 2500.0 },
+            "pedidosDeuda": [],
+            "creditosDisponibles": [{ "id": 1, "montoDisponible": 2500.0 }],
+            "movimientos": []
+          }
+        }
+      }
+    }
+  ],
+  "business_rules": [
+    "BR-01: Extractor de Tenant Aislado: getTenantId(req) lee exclusivamente req.user.negocioId. Prohibido usar fallbacks req.user?.negocioId || 1 o leer de req.body/req.query.",
+    "BR-02: Autenticación de Usuario Exigible: Prohibido req.user?.empleadoId || req.user?.id. Se requiere req.user.id validado por el token JWT.",
+    "BR-03: Deuda Única Exigible: Solamente los pedidos en estado ENTREGADO o COMPLETADO que tengan cobrado=false representan Deuda Exigible en la Cuenta Corriente.",
+    "BR-04: Monto en Taller: Los pedidos impagos en estado PENDIENTE, EN_LAVADO o EN_PROCESO computan como 'montoEnTaller' y NO como deuda exigible.",
+    "BR-05: Inmutabilidad de Nombres Canónicos: Prohibido usar alias o mutaciones (ej: name, first_name, customer_id). Todos los endpoints y DTOs deben usar los nombres de columnas de los modelos Sequelize.",
+    "BR-06: Formato de Respuesta Estándar: Toda respuesta exitosa utiliza successResponse(res, status, message, data). Todos los errores son manejados por el middleware global mediante AppError."
+  ]
+}

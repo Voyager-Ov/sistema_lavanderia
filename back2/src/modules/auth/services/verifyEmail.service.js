@@ -9,8 +9,9 @@ class VerifyEmailService {
      */
     async verifyEmail({ email, code, token, tokenConfirmacion }) {
         const { Usuario } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
-        const codigoIngresado = String(code || token || tokenConfirmacion || "").trim();
+        const userEmail = email ? String(email).trim().toLowerCase() : null;
+        const rawCode = tokenConfirmacion ? tokenConfirmacion : (code ? code : token);
+        const codigoIngresado = rawCode ? String(rawCode).trim() : null;
 
         if (!userEmail) {
             throw new AppError("Debes proporcionar tu correo electrónico.", 400, "MISSING_EMAIL");
@@ -34,7 +35,7 @@ class VerifyEmailService {
             return { message: "El correo electrónico ya fue verificado previamente." };
         }
 
-        const codigoGuardado = String(usuario.tokenConfirmacion || "").trim();
+        const codigoGuardado = String(usuario.tokenConfirmacion).trim();
         if (!codigoGuardado || codigoGuardado !== codigoIngresado) {
             throw new AppError("El código de verificación es incorrecto.", 400, "INVALID_CODE");
         }
@@ -57,7 +58,7 @@ class VerifyEmailService {
      */
     async resendVerification(email) {
         const { Usuario } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
+        const userEmail = email.trim().toLowerCase();
 
         if (!userEmail) {
             throw new AppError("Debes proporcionar tu correo electrónico.", 400, "MISSING_EMAIL");

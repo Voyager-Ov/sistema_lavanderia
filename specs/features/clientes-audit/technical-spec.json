@@ -1,0 +1,144 @@
+{
+  "feature_id": "clientes-audit",
+  "title": "Especificación Técnica Exhaustiva de Refactorización y Auditoría del Módulo de Clientes",
+  "version": "2.0.0",
+  "last_updated": "2026-08-24",
+  "author": "Senior Software Engineer & Tech Lead",
+  "refactoring_strategy": {
+    "approach": "In-place Code Refactoring & Contract Synchronization (Sin reescrituras desde cero)",
+    "primary_objective": "Eliminar todos los fallbacks silenciosos (||), tipar estrictamente los parámetros y retornos, incorporar validadores express-validator Fail-Fast en cada ruta, corregir la desalineación DTO de ajuste de crédito (motivo -> concepto), y garantizar 0 errores de compilación TypeScript en el Front-End."
+  },
+  "file_by_file_refactoring_blueprint": [
+    {
+      "file": "back2/src/modules/clientes/validators/clientes.validator.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Importar { param, query, body, validationResult } desde express-validator.",
+        "Implementar middleware 'validateIdParam': utiliza param('id').isInt({ min: 1 }).withMessage('ID de cliente inválido.'). Si la validación falla, arroja AppError con statusCode 400 y código 'INVALID_CLIENT_ID'.",
+        "Implementar middleware 'validateListarClientesQuery': valida query.page (opcional, isInt min 1), query.limit (opcional, isInt min 1 max 100), query.sortBy (opcional, isIn ['id', 'nombre', 'apellido', 'fechaAlta']), query.sortOrder (opcional, isIn ['asc', 'desc', 'ASC', 'DESC']). Si falla, arroja 400 INVALID_QUERY_PARAMS.",
+        "Refactorizar 'validateCrearCliente': body('nombre').trim().notEmpty().withMessage('El nombre del cliente es obligatorio.').isString().withMessage('El nombre debe ser una cadena de texto.'). Opcionales: body('email').optional({ nullable: true }).isEmail().withMessage('El correo electrónico no es válido.').",
+        "Implementar middleware 'validateActualizarCliente': verifica que req.body contenga al menos una de las propiedades válidas (nombre, apellido, telefono, email, direccion) y que 'nombre', si está presente, no sea vacío.",
+        "Implementar middleware 'validateAjusteCredito': body('monto').exists().withMessage('El campo monto es obligatorio.').isFloat({ gt: 0 }).withMessage('El monto del ajuste debe ser un valor numérico positivo.'). body('concepto').trim().notEmpty().withMessage('El campo concepto es obligatorio.').isString().withMessage('El concepto debe ser texto.')"
+      ]
+    },
+    {
+      "file": "back2/src/modules/clientes/controllers/clientes.controller.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Refactorizar helper 'getTenantId(req)': verificar estrictamente req.user?.negocioId. Si es nulo o indefinido, arrojar new AppError('No se ha identificado el negocio activo en la sesión.', 401, 'MISSING_TENANT_ID'). Eliminar cualquier intento de fallback silencioso (|| 1).",
+        "Refactorizar 'cobrarPedidosCliente': reemplazar 'const empleadoId = req.user?.empleadoId || req.user?.id;' por 'const userId = req.user?.id; if (!userId) throw new AppError('Usuario no autenticado', 401, 'UNAUTHORIZED');'. Pasar userId al servicio de forma explícita.",
+        "Refactorizar 'ajustarCreditoCliente': eliminar fallback encadenado de identidad y requerir req.user.id explícitamente.",
+        "Castear req.params.id a número entero explícito usando parseInt(req.params.id, 10) tras pasar por el middleware de validación idParam."
+      ]
+    },
+    {
+      "file": "back2/src/modules/clientes/services/clientes.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "En 'listarClientes': Sanitizar y asegurar tipos numéricos en page y limit. En el mapeo de registros, eliminar la propiedad redundante 'activo: plain.activo !== undefined && plain.activo !== null ? plain.activo : true' sustituyéndola por 'activo: Boolean(plain.activo)'. Eliminar fallback suelto 'saldoAFavor = parseFloat(...) || 0'.",
+        "En 'obtenerClientePorId': Validar id numérico. Retornar DTO canónico sin duplicaciones de propiedades de movimientos ni encadenamientos desordenados.",
+        "En 'obtenerPedidosImpagosCliente': Erradicar encadenamientos de alias 'fechaRecepcion: p.fechaHoraPedido || p.fechaHoraCreacion || p.createdAt'. Usar propiedad canónica Sequelize 'fechaRecepcion: p.fechaHoraPedido ? p.fechaHoraPedido : p.createdAt'. En createdAt usar 'createdAt: p.createdAt'.",
+        "En 'ajustarCreditoCliente': Requerir data.concepto de forma estricta (si data.concepto no está presente o es string vacío, lanzar AppError('El campo concepto es obligatorio.', 400, 'MISSING_CONCEPT')). Requerir data.monto > 0 (si no, lanzar AppError('El monto del ajuste debe ser un valor numérico positivo.', 400, 'INVALID_AMOUNT')). Actualizar la CuentaCorriente y crear el MovimientoCuenta dentro de una transacción atómica SQL (t) obtenida de connectionManager."
+      ]
+    },
+    {
+      "file": "back2/src/modules/clientes/clientes.routes.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Inyectar 'validateIdParam' en todas las rutas con parámetro ':id' (GET /:id, PUT /:id, PATCH /:id, DELETE /:id, GET /:id/cuenta-corriente/estado-cuenta, etc.).",
+        "Inyectar 'validateListarClientesQuery' en GET /.",
+        "Inyectar 'validateCrearCliente' en POST /.",
+        "Inyectar 'validateActualizarCliente' en PUT /:id y PATCH /:id.",
+        "Inyectar 'validateAjusteCredito' en POST /:id/cuenta-corriente/ajuste-credito."
+      ]
+    },
+    {
+      "file": "front/src/domains/clientes/cuenta-corriente.api.ts",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Actualizar la interfaz 'AjusteCreditoParams' reemplazando la propiedad 'motivo?: string' por 'concepto: string' (obligatoria).",
+        "Refactorizar la función 'ajusteManualCredito': asegurar que el payload enviado a POST /clientes/${clienteId}/cuenta-corriente/ajuste-credito contenga { monto: params.monto, concepto: params.concepto }."
+      ]
+    },
+    {
+      "file": "front/src/domains/clientes/api.ts",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Eliminar los tipos 'any' o imprecisos de las interfaces Cliente y ClientesResponse.",
+        "Garantizar coincidencia 1:1 de los campos del cliente con el modelo Sequelize y los retornos del controlador de back2."
+      ]
+    },
+    {
+      "file": "front/src/app/admin/clientes/components/ModalAjusteCredito.tsx",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Reemplazar el estado local 'motivo' y su label por 'concepto'.",
+        "En el handler handleSubmit: invocar onConfirmar({ monto: montoNum, concepto: concepto.trim() })."
+      ]
+    },
+    {
+      "file": "front/src/app/admin/clientes/hooks/useCuentaCorriente.ts",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "En 'fetchMovimientos': eliminar los fallbacks sueltos de metadatos (totalItems: data.meta?.totalItems ?? data.meta?.total ?? 0) sustituyéndolos por acceso directo y seguro a la estructura tipada data.meta.totalItems y data.meta.currentPage.",
+        "En 'ejecutarAjusteCredito': pasar el objeto AjusteCreditoParams ajustado con la propiedad 'concepto'."
+      ]
+    }
+  ],
+  "failure_modes_and_edge_cases": [
+    {
+      "code": "MISSING_TENANT_ID",
+      "http_status": 401,
+      "trigger": "req.user.negocioId es undefined o null.",
+      "response_json": { "success": false, "error": "No se ha identificado el negocio activo en la sesión.", "code": "MISSING_TENANT_ID" }
+    },
+    {
+      "code": "INVALID_CLIENT_ID",
+      "http_status": 400,
+      "trigger": "req.params.id no es un entero positivo.",
+      "response_json": { "success": false, "error": "ID de cliente inválido.", "code": "INVALID_CLIENT_ID" }
+    },
+    {
+      "code": "MISSING_CLIENT_NAME",
+      "http_status": 400,
+      "trigger": "req.body.nombre está ausente o es sólo espacios.",
+      "response_json": { "success": false, "error": "El nombre del cliente es obligatorio.", "code": "MISSING_CLIENT_NAME" }
+    },
+    {
+      "code": "MISSING_CONCEPT",
+      "http_status": 400,
+      "trigger": "req.body.concepto está ausente o es vacío en ajuste de crédito.",
+      "response_json": { "success": false, "error": "El campo concepto es obligatorio.", "code": "MISSING_CONCEPT" }
+    },
+    {
+      "code": "INVALID_AMOUNT",
+      "http_status": 400,
+      "trigger": "req.body.monto <= 0 o no es un número válido.",
+      "response_json": { "success": false, "error": "El monto del ajuste debe ser un valor numérico positivo.", "code": "INVALID_AMOUNT" }
+    },
+    {
+      "code": "CLIENT_NOT_FOUND",
+      "http_status": 404,
+      "trigger": "No existe un cliente con ese ID dentro del esquema del tenant activo.",
+      "response_json": { "success": false, "error": "Cliente no encontrado.", "code": "CLIENT_NOT_FOUND" }
+    }
+  ],
+  "testing_and_verification_plan": {
+    "typescript_compilation": {
+      "command": "npx tsc --noEmit --skipLibCheck",
+      "cwd": "front",
+      "target_result": "0 errors"
+    },
+    "integration_test_script": {
+      "script_path": "back2/src/tests/clientes/audit_clientes_module.js",
+      "verifications": [
+        "Verifica que peticiones sin token o sin negocioId devuelvan 401 MISSING_TENANT_ID.",
+        "Verifica que /api/clientes/abc devuelva 400 INVALID_CLIENT_ID.",
+        "Verifica que la creación sin nombre devuelva 400 MISSING_CLIENT_NAME.",
+        "Verifica la creación exitosa de un cliente de prueba en Negocio ID 13.",
+        "Verifica el ajuste de crédito con { monto: 1500, concepto: 'Prueba Auditoría' } y la existencia del movimiento.",
+        "Verifica la limpieza del cliente de prueba creado."
+      ]
+    }
+  }
+}

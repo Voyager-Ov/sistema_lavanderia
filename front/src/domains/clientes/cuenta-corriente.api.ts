@@ -1,43 +1,48 @@
 import { apiClient } from "@/shared/lib/api-client"
 
 export interface EstadoCuentaResumen {
+  deudaTotal?: number
   deudaExigible: number
   deudaNoExigible: number
-  totalCreditoDisponible: number
-  saldoNeto: number
-  pedidosDeudaCount: number
-  pedidosEnCursoCount: number
-  creditosCount: number
+  saldoAFavor: number
+  totalCreditoDisponible?: number
+  saldoNeto?: number
+  pedidosDeudaCount?: number
+  pedidosEnCursoCount?: number
+  creditosCount?: number
 }
 
 export interface PedidoDeudaItem {
   id: number
+  numeroPedido?: number
   codigoSeguimiento: string
   total: number
-  estado: string
-  cobrado: boolean
+  estado: string | { nombre: string }
+  esDeuda?: boolean
   fechaRecepcion?: string
   fechaEntregaEstimada?: string
   createdAt: string
+  detalles?: any[]
+  itemsCount?: number
 }
 
 export interface CreditoDisponibleItem {
   id: number
-  montoOriginal: number
   montoDisponible: number
-  origen: "SOBREPAGO" | "CANCELACION_PEDIDO" | "AJUSTE_MANUAL"
+  montoOriginal?: number
+  origen?: "SOBREPAGO" | "CANCELACION_PEDIDO" | "AJUSTE_MANUAL" | string
   motivo?: string
-  estado: "DISPONIBLE" | "CONSUMIDO_PARCIAL" | "CONSUMIDO_TOTAL" | "ANULADO"
-  createdAt: string
+  estado?: "DISPONIBLE" | "CONSUMIDO_PARCIAL" | "CONSUMIDO_TOTAL" | "ANULADO" | string
+  createdAt?: string
   pedidoOrigen?: {
-    id: number
+    id?: number
     codigoSeguimiento: string
-    total: number
+    total?: number
   }
 }
 
 export interface EstadoCuentaData {
-  cliente: {
+  cliente?: {
     id: number
     nombre: string
     telefono?: string
@@ -45,33 +50,38 @@ export interface EstadoCuentaData {
   }
   resumen: EstadoCuentaResumen
   pedidosDeuda: PedidoDeudaItem[]
-  pedidosEnCurso: PedidoDeudaItem[]
+  pedidosEnCurso?: PedidoDeudaItem[]
   creditosDisponibles: CreditoDisponibleItem[]
+  movimientos: MovimientoCuentaItem[]
 }
 
 export interface MovimientoCuentaItem {
-  id: string
-  tipo: "CARGO" | "ABONO" | "CREDITO" | "CARGO_PEDIDO" | "PAGO_RECIBIDO" | "CREDITO_GENERADO"
+  id?: number | string
+  fecha?: string
+  fechaHora?: string
+  monto: number
+  tipo?: "CARGO" | "ABONO" | "CREDITO" | "CARGO_PEDIDO" | "PAGO_RECIBIDO" | "CREDITO_GENERADO" | string
+  tipoMovimiento?: string
   concepto?: string
   descripcion?: string
-  monto: number
   montoEfectivo?: number
   montoCredito?: number
   montoDisponible?: number
-  fecha: string
   pedidoId?: number
   pagoId?: number
   creditoId?: number
   referenciaId?: number
   codigoSeguimiento?: string
   metodoPago?: string
-  impacto?: "DEBE" | "HABER"
+  impacto?: "DEBE" | "HABER" | string
   cobrado?: boolean
 }
 
 export interface MovimientosResponse {
-  items: MovimientoCuentaItem[]
-  meta: {
+  clienteId?: number
+  movimientos?: MovimientoCuentaItem[]
+  items?: MovimientoCuentaItem[]
+  meta?: {
     total?: number
     totalItems?: number
     totalPages: number
@@ -91,18 +101,19 @@ export interface CobrarDeudaParams {
 }
 
 export interface CobroDeudaResultado {
-  pedidosSaldadosCount: number
-  pedidosIds: number[]
-  totalLiquidado: number
-  montoCreditoConsumido: number
-  montoEfectivoTarjeta: number
-  vueltoEntregado: number
-  nuevoSaldoAFavorGenerado: number
+  clienteId?: number
+  pedidosCobradosCount: number
+  totalMontoCobrado: number
+  creditoConsumidoTotal: number
+  saldoRestanteDeuda: number
+  cobros?: any[]
+  pedidosSaldadosCount?: number
+  totalLiquidado?: number
 }
 
 export interface AjusteCreditoParams {
   monto: number
-  motivo: string
+  concepto: string
 }
 
 export const obtenerEstadoCuenta = async (clienteId: number): Promise<EstadoCuentaData> => {
@@ -129,13 +140,6 @@ export const obtenerMovimientosCuenta = async (
   return res.data
 }
 
-export const obtenerCreditosDisponibles = async (clienteId: number): Promise<CreditoDisponibleItem[]> => {
-  const res = await apiClient.get<{ success: boolean; data: CreditoDisponibleItem[] }>(
-    `/clientes/${clienteId}/cuenta-corriente/creditos`
-  )
-  return res.data
-}
-
 export const cobrarDeuda = async (
   clienteId: number,
   params: CobrarDeudaParams
@@ -150,10 +154,13 @@ export const cobrarDeuda = async (
 export const ajusteManualCredito = async (
   clienteId: number,
   params: AjusteCreditoParams
-): Promise<CreditoDisponibleItem> => {
-  const res = await apiClient.post<{ success: boolean; data: CreditoDisponibleItem }>(
+): Promise<EstadoCuentaData> => {
+  const res = await apiClient.post<{ success: boolean; data: EstadoCuentaData }>(
     `/clientes/${clienteId}/cuenta-corriente/ajuste-credito`,
-    params
+    {
+      monto: params.monto,
+      concepto: params.concepto
+    }
   )
   return res.data
 }

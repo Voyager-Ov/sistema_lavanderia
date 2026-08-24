@@ -66,7 +66,7 @@ class ProfileService {
      */
     async getProfile(email) {
         const { Usuario, Rol } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
+        const userEmail = email.trim().toLowerCase();
 
         const usuario = await Usuario.findOne({
             where: { email: userEmail },
@@ -86,11 +86,14 @@ class ProfileService {
             rolNombre = empleado.rol.toUpperCase();
         }
 
+        const apellidoStr = empleado.apellido ? empleado.apellido : "";
+        const nombreCompleto = apellidoStr ? `${empleado.nombre} ${apellidoStr}` : empleado.nombre;
+
         return {
             usuario: {
                 id: empleado.id,
                 email: usuario.email,
-                nombre: `${empleado.nombre} ${empleado.apellido || ''}`.trim(),
+                nombre: nombreCompleto,
                 rol: rolNombre,
                 negocioId: negocio.id,
                 googleLinked: Boolean(usuario.googleId)

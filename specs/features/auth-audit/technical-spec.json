@@ -1,0 +1,99 @@
+{
+  "feature_id": "auth-audit",
+  "title": "Especificación Técnica de Auditoría y Refactorización del Módulo de Auth",
+  "version": "2.0.0",
+  "last_updated": "2026-08-24",
+  "author": "Senior Software Engineer & Tech Lead",
+  "refactoring_strategy": {
+    "approach": "In-place Code Refactoring & Contract Synchronization",
+    "primary_objective": "Eliminar todas las cadenas de fallbacks de contraseñas (usuario.password || usuario.passwordHash), alias duplicados de Google (sub || id), combinaciones de token (code || token || tokenConfirmacion) y valores por defecto genéricos ('Admin', 'Solicitante') en los 5 servicios de auth, controladores y validadores."
+  },
+  "file_by_file_refactoring_blueprint": [
+    {
+      "file": "back2/src/modules/auth/validators/auth.validator.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Implementar 'validateLogin': body('email').trim().notEmpty().withMessage('El email es obligatorio.').isEmail().withMessage('Formato de email inválido.'). body('password').notEmpty().withMessage('La contraseña es obligatoria.').",
+        "Implementar 'validateRegister': body('email').trim().isEmail(), body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres.'). body('usuarioNombre').trim().notEmpty().withMessage('El nombre de usuario es obligatorio.'). body('negocioNombre').trim().notEmpty().withMessage('El nombre del negocio es obligatorio.').",
+        "Implementar 'validateVerifyEmail': body('email').trim().isEmail().withMessage('Email inválido.'). body('tokenConfirmacion').trim().notEmpty().withMessage('El token de confirmación es obligatorio.').",
+        "Implementar 'validateForgotPassword': body('email').trim().isEmail().withMessage('Email obligatorio.').",
+        "Implementar 'validateResetPassword': body('email').trim().isEmail(), body('tokenConfirmacion').trim().notEmpty().withMessage('El token de confirmación es obligatorio.'). body('newPassword').isLength({ min: 6 }).withMessage('La nueva contraseña debe tener al menos 6 caracteres.')."
+      ]
+    },
+    {
+      "file": "back2/src/modules/auth/services/login.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Line 26: Eliminar '(usuario.email || \"\").toLowerCase()' -> 'usuario.email.toLowerCase().trim()'.",
+        "Line 120: Eliminar fallback 'solicitud.motivoRechazo || 'Sin especificar'' -> usar propiedad canónica 'solicitud.motivoRechazo'.",
+        "Line 136: Eliminar fallback 'usuario.password || usuario.passwordHash' -> usar estrictamente la columna 'usuario.password'.",
+        "Line 238: Eliminar fallback 'payload.sub || payload.id' -> usar 'payload.sub'."
+      ]
+    },
+    {
+      "file": "back2/src/modules/auth/services/register.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Line 62: Eliminar 'usuarioNombre || \"Solicitante\"' -> exigir 'usuarioNombre' validado.",
+        "Line 110: Eliminar 'solicitud.razonSocial || solicitud.nombreNegocio' -> usar 'solicitud.razonSocial' si está presente o 'solicitud.nombreNegocio'.",
+        "Line 141-143: Eliminar autocompletado ficticio ('Admin', 'General') -> dividir el nombre provisto de forma limpia sin inyectar constantes ficticias.",
+        "Line 150: Eliminar 'solicitud.telefonoSolicitante || \"\"' -> usar 'solicitud.telefonoSolicitante' o null."
+      ]
+    },
+    {
+      "file": "back2/src/modules/auth/services/verifyEmail.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Line 12: Eliminar '(email || \"\").trim()' -> requerir 'email.trim()'.",
+        "Line 13: Eliminar 'String(code || token || tokenConfirmacion || \"\").trim()' -> requerir estrictamente 'String(tokenConfirmacion).trim()'.",
+        "Line 37: Eliminar 'String(usuario.tokenConfirmacion || \"\").trim()' -> requerir 'String(usuario.tokenConfirmacion).trim()'."
+      ]
+    },
+    {
+      "file": "back2/src/modules/auth/services/password.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Line 35: Requerir 'tokenConfirmacion.trim()'.",
+        "Line 37: Eliminar 'newPassword || password' -> exigir la propiedad DTO 'newPassword'.",
+        "Line 86: Eliminar 'usuario.password || usuario.passwordHash' -> usar exclusivamente 'usuario.password'."
+      ]
+    },
+    {
+      "file": "back2/src/modules/auth/services/profile.service.js",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Line 93: Eliminar 'empleado.apellido || \"\"' -> formatear con verificación explícita de presencia."
+      ]
+    },
+    {
+      "file": "front/src/domains/auth/api/auth.api.ts",
+      "action": "MODIFY",
+      "detailed_technical_changes": [
+        "Actualizar la función 'verifyEmail': cambiar payload a '{ email: string; tokenConfirmacion: string }'.",
+        "Actualizar la función 'resetPassword': cambiar payload DTO a '{ email: string; tokenConfirmacion: string; newPassword: string }'."
+      ]
+    }
+  ],
+  "failure_modes_and_edge_cases": [
+    {
+      "code": "MISSING_EMAIL",
+      "http_status": 400,
+      "trigger": "Falta el campo email en el payload del request."
+    },
+    {
+      "code": "MISSING_PASSWORD",
+      "http_status": 400,
+      "trigger": "Falta el campo password en el payload del request."
+    },
+    {
+      "code": "MISSING_VERIFICATION_TOKEN",
+      "http_status": 400,
+      "trigger": "Falta tokenConfirmacion en verificación de correo."
+    },
+    {
+      "code": "INVALID_CREDENTIALS",
+      "http_status": 401,
+      "trigger": "La contraseña ingresada no coincide con usuario.password."
+    }
+  ]
+}

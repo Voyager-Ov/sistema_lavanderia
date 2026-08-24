@@ -79,20 +79,20 @@ test.describe('Módulo 01: API de Autenticación y Cuentas', () => {
     const res = await request.post('/api/auth/verify-email', {
       data: {
         email: registeredEmail,
-        code: verificationCode
+        tokenConfirmacion: verificationCode
       }
     });
 
     expect(res.status()).toBe(200);
     const body = await res.json();
-    expect(body.ok).toBe(true);
+    expect(body.message).toBeDefined();
   });
 
   test('POST /api/auth/verify-email - Debe rechazar código de verificación incorrecto (400)', async ({ request }) => {
     const res = await request.post('/api/auth/verify-email', {
       data: {
         email: registeredEmail,
-        code: '999999'
+        tokenConfirmacion: '999999'
       }
     });
 

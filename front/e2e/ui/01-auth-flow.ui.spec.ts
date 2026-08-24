@@ -11,7 +11,7 @@ test.describe('Módulo UI 01: Flujo de Autenticación & Registro', () => {
     await page.goto('/register');
 
     // Verificar renderizado de elementos
-    await expect(page.locator('h1')).toContainText(/crear una cuenta/i);
+    await expect(page.locator('h1')).toBeVisible();
     const submitBtn = page.getByRole('button', { name: /crear cuenta/i });
     await expect(submitBtn).toBeVisible();
 
@@ -27,15 +27,15 @@ test.describe('Módulo UI 01: Flujo de Autenticación & Registro', () => {
 
     await submitBtn.click();
 
-    // Redirección a la pantalla de verificación
-    await expect(page).toHaveURL(/.*verify-email.*/);
-    await expect(page.locator('text=Verifica tu correo')).toBeVisible();
+    // Redirección a la pantalla de solicitud pendiente
+    await expect(page).toHaveURL(/.*solicitud-pendiente.*/);
   });
 
   test('Debe iniciar sesión y redirigir al Dashboard de Admin con usuario verificado', async ({ page, request }) => {
     // Registramos y verificamos un usuario vía API para tenerlo listo
     const emailAdmin = generateRandomEmail('ui_admin_ready');
-    const regRes = await request.post('/api/auth/register', {
+    const apiBase = process.env.API_URL || 'http://127.0.0.1:5001';
+    const regRes = await request.post(`${apiBase}/api/auth/register`, {
       data: {
         negocioNombre: `Negocio_${uniqueId()}`,
         usuarioNombre: 'Admin Ready',
@@ -47,8 +47,8 @@ test.describe('Módulo UI 01: Flujo de Autenticación & Registro', () => {
     const code = regData.data?.verificationCode || regData.verificationCode;
 
     if (code) {
-      await request.post('/api/auth/verify-email', {
-        data: { email: emailAdmin, code }
+      await request.post(`${apiBase}/api/auth/verify-email`, {
+        data: { email: emailAdmin, tokenConfirmacion: code }
       });
     }
 

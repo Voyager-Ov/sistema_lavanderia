@@ -23,9 +23,12 @@ export function useClientesData() {
     setIsTableFetching(true)
     try {
       const queryParams: Record<string, any> = {
-        search: searchTerm || undefined,
         limit: pagination.pageSize,
         page: pagination.pageIndex + 1
+      }
+
+      if (searchTerm.trim() !== "") {
+        queryParams.search = searchTerm.trim()
       }
       
       if (sorting.length > 0) {
@@ -33,11 +36,11 @@ export function useClientesData() {
         queryParams.sortOrder = sorting[0].desc ? "desc" : "asc"
       }
 
-      const res = await getClientes(queryParams).catch(e => { console.error("Error cargando clientes", e); return null; })
+      const res = await getClientes(queryParams)
 
       if (res && res.data) {
-        setClientes(res.data.items || [])
-        const { totalItems, totalPages, currentPage } = res.data.meta || { totalItems: 0, totalPages: 0, currentPage: 1 }
+        setClientes(res.data.items)
+        const { totalItems, totalPages, currentPage } = res.data.meta
         setTotalItems(totalItems)
         setTotalPages(totalPages)
         setPagination(prev => ({
@@ -97,11 +100,9 @@ export function useClientesData() {
   }, [searchTerm, pagination, sorting, isRestored])
 
   // Effect to load when pagination, sorting, or searching changes
-  // Debounce internally for searching
   useEffect(() => {
     if (!isRestored) return
 
-    // Solo buscar si está vacío o si tiene al menos 3 caracteres
     if (searchTerm.length > 0 && searchTerm.length < 3) {
       return
     }

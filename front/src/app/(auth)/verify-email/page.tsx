@@ -60,7 +60,7 @@ function VerifyEmailContent() {
       setIsLoading(true);
       await AuthApi.verifyEmail({ 
         email: data.email, 
-        code: data.token 
+        tokenConfirmacion: data.token 
       });
       toast.success("¡Email verificado!", { description: "Ya puedes iniciar sesión en tu cuenta." });
       router.push("/login");

@@ -45,6 +45,8 @@ export function CuentaCorrienteTab({ clienteId, clienteNombre }: CuentaCorriente
 
   const resumen = estadoCuenta?.resumen || {
     deudaExigible: 0,
+    deudaNoExigible: 0,
+    saldoAFavor: 0,
     totalCreditoDisponible: 0,
     saldoNeto: 0,
     pedidosDeudaCount: 0,
@@ -196,7 +198,7 @@ export function CuentaCorrienteTab({ clienteId, clienteNombre }: CuentaCorriente
                       )}
                     </div>
                     <p className="text-[11px] text-gray-400 dark:text-neutral-500 mt-1">
-                      {c.motivo || "Acreditación a favor"} · {format(parseISO(c.createdAt), "dd/MM/yyyy", { locale: es })}
+                      {c.motivo || "Acreditación a favor"} · {c.createdAt ? format(parseISO(c.createdAt), "dd/MM/yyyy", { locale: es }) : ""}
                     </p>
                   </div>
                   <div className="text-right">
@@ -259,7 +261,7 @@ export function CuentaCorrienteTab({ clienteId, clienteNombre }: CuentaCorriente
                   return (
                     <tr key={m.id || `mov-${idx}`} className="hover:bg-gray-50/50 dark:hover:bg-neutral-800/30 transition-colors">
                       <td className="py-3.5 px-4 text-gray-500 dark:text-neutral-400 whitespace-nowrap">
-                        {format(parseISO(m.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
+                        {(m.fecha || m.fechaHora) ? format(parseISO(m.fecha || m.fechaHora!), "dd/MM/yyyy HH:mm", { locale: es }) : "-"}
                       </td>
                       <td className="py-3.5 px-4">
                         {isCargo && (
@@ -343,7 +345,7 @@ export function CuentaCorrienteTab({ clienteId, clienteNombre }: CuentaCorriente
         onOpenChange={setModalCobroOpen}
         clienteNombre={clienteNombre}
         pedidosDeuda={pedidosDeuda}
-        creditoDisponibleTotal={resumen.totalCreditoDisponible}
+        creditoDisponibleTotal={resumen.totalCreditoDisponible ?? resumen.saldoAFavor ?? 0}
         onConfirmar={ejecutarCobroDeuda}
         isSubmitting={isSubmitting}
       />

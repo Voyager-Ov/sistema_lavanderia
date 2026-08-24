@@ -1,0 +1,121 @@
+{
+  "feature_id": "clientes-audit",
+  "title": "Tareas de Implementación para Auditoría y Refactorización del Módulo de Clientes",
+  "version": "1.0.0",
+  "batches": [
+    {
+      "batch_id": "BATCH-1",
+      "title": "Back-End: Validadores y Middleware de Ruta",
+      "sequential": false,
+      "tasks": [
+        {
+          "id": "TASK-01",
+          "title": "Refactorizar back2/src/modules/clientes/validators/clientes.validator.js con express-validator Fail-Fast",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": [],
+          "outputs": ["back2/src/modules/clientes/validators/clientes.validator.js"],
+          "exit_criteria": "Exporta validateIdParam, validateListarClientesQuery, validateCrearCliente, validateActualizarCliente, validateAjusteCredito arrojando AppError estructurados (400) si fallan."
+        },
+        {
+          "id": "TASK-02",
+          "title": "Inyectar validadores en back2/src/modules/clientes/clientes.routes.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": ["TASK-01"],
+          "outputs": ["back2/src/modules/clientes/clientes.routes.js"],
+          "exit_criteria": "Todas las rutas del módulo clientes tienen su respectivo validador antes de llamar al controlador."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-2",
+      "title": "Back-End: Controlador y Servicio",
+      "sequential": true,
+      "tasks": [
+        {
+          "id": "TASK-03",
+          "title": "Refactorizar back2/src/modules/clientes/controllers/clientes.controller.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-02"],
+          "outputs": ["back2/src/modules/clientes/controllers/clientes.controller.js"],
+          "exit_criteria": "getTenantId lanza AppError(401, MISSING_TENANT_ID). Se eliminan fallbacks de usuario (empleadoId || id) y se fuerza req.user.id."
+        },
+        {
+          "id": "TASK-04",
+          "title": "Refactorizar back2/src/modules/clientes/services/clientes.service.js",
+          "owner_role": "Backend Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-03"],
+          "outputs": ["back2/src/modules/clientes/services/clientes.service.js"],
+          "exit_criteria": "Se erradican todas las cadenas || en atributos. ajustarCreditoCliente exige concepto y realiza actualización dentro de transacción SQL."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-3",
+      "title": "Front-End: Contratos de Dominio y Componentes",
+      "sequential": false,
+      "tasks": [
+        {
+          "id": "TASK-05",
+          "title": "Sincronizar interfaces en front/src/domains/clientes/cuenta-corriente.api.ts y api.ts",
+          "owner_role": "Frontend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": ["TASK-04"],
+          "outputs": [
+            "front/src/domains/clientes/cuenta-corriente.api.ts",
+            "front/src/domains/clientes/api.ts"
+          ],
+          "exit_criteria": "AjusteCreditoParams requiere concepto: string (en lugar de motivo). Tipos canónicos 1:1 con Sequelize."
+        },
+        {
+          "id": "TASK-06",
+          "title": "Actualizar ModalAjusteCredito.tsx y useCuentaCorriente.ts",
+          "owner_role": "Frontend Engineer",
+          "status": "completed",
+          "parallelizable": true,
+          "depends_on": ["TASK-05"],
+          "outputs": [
+            "front/src/app/admin/clientes/components/ModalAjusteCredito.tsx",
+            "front/src/app/admin/clientes/hooks/useCuentaCorriente.ts"
+          ],
+          "exit_criteria": "Modal envía 'concepto' al API. Hook lee metadatos sin fallbacks imprecisos."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-4",
+      "title": "Verificación y Puertas de Calidad",
+      "sequential": true,
+      "tasks": [
+        {
+          "id": "TASK-07",
+          "title": "Ejecutar compilador TypeScript en Front-End",
+          "owner_role": "QA / Lead Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-06"],
+          "outputs": ["tsc_output.log"],
+          "exit_criteria": "npx tsc --noEmit --skipLibCheck finaliza con 0 errores de compilación."
+        },
+        {
+          "id": "TASK-08",
+          "title": "Ejecutar script de auditoría e integración contra Neon PostgreSQL",
+          "owner_role": "QA / Lead Engineer",
+          "status": "completed",
+          "parallelizable": false,
+          "depends_on": ["TASK-07"],
+          "outputs": ["back2/src/tests/clientes/audit_clientes_module.js"],
+          "exit_criteria": "Script ejecuta todos los casos de prueba (tenant isolation, 400/401/404, ajuste de crédito) con éxito."
+        }
+      ]
+    }
+  ]
+}

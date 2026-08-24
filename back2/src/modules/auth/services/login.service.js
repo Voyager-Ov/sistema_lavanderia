@@ -23,7 +23,7 @@ class LoginService {
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 
-        const emailLower = (usuario.email || "").toLowerCase().trim();
+        const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
 
         // 1. Buscar prioritariamente por email en los tenants para garantizar coincidencia exacta de cuenta
         if (emailLower) {
@@ -44,7 +44,7 @@ class LoginService {
                         break;
                     }
                 } catch (err) {
-                    // Continuar
+                    // Continuar inspección
                 }
             }
         }
@@ -61,7 +61,7 @@ class LoginService {
                         break;
                     }
                 } catch (err) {
-                    // Continuar
+                    // Continuar inspección
                 }
             }
         }
@@ -99,7 +99,6 @@ class LoginService {
         });
 
         if (!usuario) {
-            // Verificar si el usuario tiene una SolicitudNegocio en estado PENDIENTE o RECHAZADO
             const { SolicitudNegocio } = connectionManager.centralModels;
             if (SolicitudNegocio) {
                 const solicitud = await SolicitudNegocio.findOne({
@@ -116,8 +115,9 @@ class LoginService {
                                 { solicitud: { id: solicitud.id, nombreNegocio: solicitud.nombreNegocio, estado: solicitud.estado, createdAt: solicitud.createdAt } }
                             );
                         } else if (solicitud.estado === "RECHAZADO") {
+                            const motivoStr = solicitud.motivoRechazo ? solicitud.motivoRechazo : "No especificado";
                             throw new AppError(
-                                `Tu solicitud de apertura de negocio fue rechazada. Motivo: ${solicitud.motivoRechazo || 'Sin especificar'}`,
+                                `Tu solicitud de apertura de negocio fue rechazada. Motivo: ${motivoStr}`,
                                 403,
                                 "REGISTRATION_REJECTED",
                                 { solicitud: { id: solicitud.id, nombreNegocio: solicitud.nombreNegocio, estado: solicitud.estado, motivoRechazo: solicitud.motivoRechazo } }
@@ -133,7 +133,7 @@ class LoginService {
             throw new AppError("Tu cuenta de usuario se encuentra desactivada.", 403, "USER_DISABLED");
         }
 
-        const userPassword = usuario.password || usuario.passwordHash;
+        const userPassword = usuario.password;
         if (!userPassword) {
             throw new AppError("Esta cuenta fue registrada mediante Google OAuth. Inicia sesión con Google.", 400, "USE_GOOGLE_OAUTH");
         }
@@ -143,11 +143,10 @@ class LoginService {
             throw new AppError("Credenciales inválidas. Por favor, verifica tu correo y contraseña.", 401, "INVALID_CREDENTIALS");
         }
 
-        if (!usuario.emailConfirmado && !usuario.emailVerificado) {
+        if (!usuario.emailConfirmado) {
             throw new AppError("Debes verificar tu email antes de ingresar.", 403, "EMAIL_NOT_VERIFIED");
         }
 
-        // Caso especial para SUPER_ADMIN: No requiere Empleado ni Negocio
         if (usuario.Roles && usuario.Roles.length > 0 && usuario.Roles[0].nombre === "SUPER_ADMIN") {
             const secret = getJwtSecret();
             const token = jwt.sign(
@@ -167,7 +166,6 @@ class LoginService {
             };
         }
 
-        // Obtener Empleado y Negocio de forma estricta desde PostgreSQL para roles normales
         const { empleado, negocio } = await this._getEmpleadoYNegocioStrict(usuario);
 
         let rolNombre = "EMPLEADO";
@@ -177,7 +175,6 @@ class LoginService {
             rolNombre = empleado.rol.toUpperCase();
         }
 
-        // Registrar auditoría de sesión en el esquema tenant
         try {
             const tenantDb = await connectionManager.getTenantDb(negocio.id);
             await tenantDb.models.Sesion.create({
@@ -200,12 +197,15 @@ class LoginService {
             { expiresIn: "8h" }
         );
 
+        const apellidoStr = empleado.apellido ? empleado.apellido : "";
+        const nombreCompleto = apellidoStr ? `${empleado.nombre} ${apellidoStr}` : empleado.nombre;
+
         return {
             token,
             usuario: {
                 id: empleado.id,
                 email: usuario.email,
-                nombre: `${empleado.nombre} ${empleado.apellido}`.trim(),
+                nombre: nombreCompleto,
                 rol: rolNombre,
                 negocioId: negocio.id,
                 googleLinked: Boolean(usuario.googleId)
@@ -222,12 +222,11 @@ class LoginService {
             throw new AppError("El campo 'idToken' es obligatorio para la autenticación con Google.", 400, "MISSING_GOOGLE_ID_TOKEN");
         }
         const { Usuario, Rol } = connectionManager.centralModels;
-        const googleToken = idToken;
 
         let payload = null;
         try {
             const ticket = await googleClient.verifyIdToken({
-                idToken: googleToken,
+                idToken,
                 audience: process.env.GOOGLE_CLIENT_ID
             });
             payload = ticket.getPayload();
@@ -235,7 +234,7 @@ class LoginService {
             throw new AppError("Token de Google inválido o caducado.", 401, "INVALID_GOOGLE_TOKEN");
         }
 
-        const googleId = payload.sub || payload.id;
+        const googleId = payload.sub;
         const email = payload.email.toLowerCase();
 
         let usuario = await Usuario.findOne({
@@ -265,8 +264,8 @@ class LoginService {
         } else if (empleado && empleado.rol) {
             rolNombre = empleado.rol.toUpperCase();
         }
-        const secret = getJwtSecret();
 
+        const secret = getJwtSecret();
         const appToken = jwt.sign(
             {
                 email: usuario.email,
@@ -278,12 +277,15 @@ class LoginService {
             { expiresIn: "8h" }
         );
 
+        const apellidoStr = empleado.apellido ? empleado.apellido : "";
+        const nombreCompleto = apellidoStr ? `${empleado.nombre} ${apellidoStr}` : empleado.nombre;
+
         return {
             token: appToken,
             usuario: {
                 id: empleado.id,
                 email: usuario.email,
-                nombre: `${empleado.nombre} ${empleado.apellido}`.trim(),
+                nombre: nombreCompleto,
                 rol: rolNombre,
                 negocioId: negocio.id,
                 googleLinked: true

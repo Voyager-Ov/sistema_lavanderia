@@ -40,12 +40,14 @@ export function useCuentaCorriente(clienteId: number) {
     setIsLoadingMovimientos(true)
     try {
       const data = await obtenerMovimientosCuenta(clienteId, { page: targetPage, limit: 10 })
-      setMovimientos(data.items || [])
-      setMetaMovimientos({
-        totalItems: data.meta?.totalItems ?? data.meta?.total ?? 0,
-        totalPages: data.meta?.totalPages ?? 1,
-        currentPage: data.meta?.currentPage ?? data.meta?.page ?? targetPage
-      })
+      setMovimientos(data.movimientos ? data.movimientos : [])
+      if (data.meta) {
+        setMetaMovimientos({
+          totalItems: data.meta.totalItems ?? 0,
+          totalPages: data.meta.totalPages ?? 0,
+          currentPage: data.meta.currentPage ?? 1
+        })
+      }
     } catch (error: any) {
       toast.error("Error al cargar el libro mayor de movimientos")
       console.error(error)
@@ -66,15 +68,13 @@ export function useCuentaCorriente(clienteId: number) {
     setIsSubmitting(true)
     try {
       const resultado = await cobrarDeuda(clienteId, params)
-      toast.success(
-        `Cobro realizado con éxito. Se liquidaron ${resultado.pedidosSaldadosCount} pedido(s) por $${resultado.totalLiquidado.toLocaleString("es-AR")}`
-      )
-      // Refrescar datos
+      toast.success("Cobro realizado con éxito")
       await Promise.all([fetchEstado(), fetchMovimientos(1)])
       setPage(1)
       return resultado
     } catch (error: any) {
-      const msg = error?.response?.data?.error || error?.message || "Error al procesar el cobro"
+      const serverMessage = error?.response?.data?.error;
+      const msg = serverMessage ? serverMessage : error.message;
       toast.error(msg)
       throw error
     } finally {
@@ -86,12 +86,13 @@ export function useCuentaCorriente(clienteId: number) {
     setIsSubmitting(true)
     try {
       const res = await ajusteManualCredito(clienteId, params)
-      toast.success(`Crédito a favor de $${res.montoOriginal.toLocaleString("es-AR")} acreditado exitosamente`)
+      toast.success(`Crédito a favor de $${params.monto.toLocaleString("es-AR")} acreditado exitosamente`)
       await Promise.all([fetchEstado(), fetchMovimientos(1)])
       setPage(1)
       return res
     } catch (error: any) {
-      const msg = error?.response?.data?.error || error?.message || "Error al registrar el ajuste"
+      const serverMessage = error?.response?.data?.error;
+      const msg = serverMessage ? serverMessage : error.message;
       toast.error(msg)
       throw error
     } finally {

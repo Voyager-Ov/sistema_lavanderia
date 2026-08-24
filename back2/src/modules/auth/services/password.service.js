@@ -11,7 +11,7 @@ class PasswordService {
      */
     async forgotPassword(email) {
         const { Usuario } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
+        const userEmail = email.trim().toLowerCase();
 
         const usuario = await Usuario.findByPk(userEmail);
         if (usuario && usuario.activo) {
@@ -30,11 +30,12 @@ class PasswordService {
     /**
      * Restablecer Contraseña mediante Token de Enlace y Email
      */
-    async resetPassword({ token, email, newPassword, password }) {
+    async resetPassword({ tokenConfirmacion, token, email, newPassword, password }) {
         const { Usuario } = connectionManager.centralModels;
-        const resetToken = (token || "").trim();
+        const rawToken = tokenConfirmacion ? tokenConfirmacion : token;
+        const resetToken = rawToken ? String(rawToken).trim() : null;
         const userEmail = email ? String(email).trim().toLowerCase() : null;
-        const nuevaClave = newPassword || password;
+        const nuevaClave = newPassword ? newPassword : password;
 
         if (!resetToken) {
             throw new AppError("El token de restablecimiento es requerido.", 400, "MISSING_TOKEN");
@@ -76,14 +77,14 @@ class PasswordService {
      */
     async changePassword(email, oldPassword, newPassword) {
         const { Usuario } = connectionManager.centralModels;
-        const userEmail = (email || "").trim().toLowerCase();
+        const userEmail = email.trim().toLowerCase();
 
         const usuario = await Usuario.findByPk(userEmail);
         if (!usuario) {
             throw new AppError("Usuario no encontrado.", 404, "USER_NOT_FOUND");
         }
 
-        const userPassword = usuario.password || usuario.passwordHash;
+        const userPassword = usuario.password;
         if (!userPassword) {
             throw new AppError("Tu cuenta está vinculada únicamente con Google OAuth y no posee contraseña asignada.", 400, "GOOGLE_ONLY_ACCOUNT");
         }

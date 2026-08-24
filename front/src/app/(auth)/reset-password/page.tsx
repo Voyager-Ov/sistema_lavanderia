@@ -59,7 +59,7 @@ function ResetPasswordForm() {
     try {
       setIsLoading(true);
       setProcessing(true);
-      await AuthApi.resetPassword({ token, email, newPassword: data.password });
+      await AuthApi.resetPassword({ tokenConfirmacion: token, email: email || "", newPassword: data.password });
       setIsSuccess(true);
       toast.success("Contraseña actualizada exitosamente", { description: "Ya puedes iniciar sesión con tu nueva contraseña." });
       

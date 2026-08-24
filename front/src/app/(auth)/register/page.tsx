@@ -61,7 +61,7 @@ export default function RegisterPage() {
         rol: "ADMIN",
       });
       
-      if (res.data) {
+      if (res) {
         toast.success("Solicitud enviada", { description: "Tu solicitud de apertura de negocio fue enviada al Super Admin." });
         const emailEnc = encodeURIComponent(data.email);
         const negocioEnc = encodeURIComponent(data.negocioNombre);
