@@ -62,9 +62,9 @@ export const cambiarEstado = async (req, res, next) => {
         const { estado, motivoCancelacion, descripcionCancelacion, accionDinero } = req.body;
 
         if (estado === "CANCELADO") {
-            const empleadoId = req.user?.id;
+            const empleadoId = req.user?.empleadoId || req.user?.id;
             if (!empleadoId) {
-                throw new AppError("No se ha identificado el empleado activo.", 400, "MISSING_USER_ID");
+                throw new AppError("No se ha identificado el empleado activo en la sesión.", 401, "MISSING_USER_ID");
             }
             await cancelacionService.cancelarPedido(negocioId, req.params.id, {
                 motivoCancelacion,

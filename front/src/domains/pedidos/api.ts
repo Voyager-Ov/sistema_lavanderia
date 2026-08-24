@@ -128,49 +128,60 @@ export const getPedidoById = async (id: number): Promise<Pedido> => {
   return res.data
 }
 
+export interface CambiarEstadoPayload {
+  estado: string
+  comentario?: string
+  motivoCancelacion?: string
+  descripcionCancelacion?: string
+  accionDinero?: "SALDO_A_FAVOR" | "DEVOLVER"
+}
+
 export const cambiarEstadoPedido = async (
   pedidoId: number,
   nuevoEstado: string,
-  extraOrComentario?: any,
+  extraOrComentario?: string | Partial<CambiarEstadoPayload>,
   motivoCancelacion?: string,
   descripcionCancelacion?: string,
-  accionDinero?: string
-): Promise<any> => {
+  accionDinero?: "SALDO_A_FAVOR" | "DEVOLVER"
+): Promise<{ success: boolean; data: Pedido }> => {
   const extraObj = typeof extraOrComentario === "object" && extraOrComentario !== null
     ? extraOrComentario
     : {
-        comentario: extraOrComentario,
+        comentario: typeof extraOrComentario === "string" ? extraOrComentario : undefined,
         motivoCancelacion,
         descripcionCancelacion,
         accionDinero
       }
 
-  const res = await apiClient.patch(`/pedidos/${pedidoId}/estado`, {
+  const res = await apiClient.patch<{ success: boolean; data: Pedido }>(`/pedidos/${pedidoId}/estado`, {
     estado: nuevoEstado,
     ...extraObj
-  } as any)
+  })
   return res
 }
 
-export const getTicketHTML = async (pedidoId: number) => {
+export const getTicketHTML = async (pedidoId: number): Promise<string> => {
   const res = await apiClient.get<string>(`/pedidos/${pedidoId}/ticket`, {
     responseType: 'text' as const
   } as any)
   return res
 }
 
-export const generarFactura = async (pedidoId: number) => {
-  const res = await apiClient.post<{ data: { cae: string, nroComprobante: number } }>(`/pedidos/${pedidoId}/factura`, {})
+export const generarFactura = async (pedidoId: number): Promise<{ cae: string; nroComprobante: number }> => {
+  const res = await apiClient.post<{ data: { cae: string; nroComprobante: number } }>(`/pedidos/${pedidoId}/factura`, {})
   return res.data
 }
 
 export interface CrearPedidoPayload {
   clienteId: number
-  fechaHoraPedido?: string // ISO string o fecha seleccionada
-  fechaHoraEntregaEstimada?: string // ISO string or Date string
+  origen?: string
+  observaciones?: string
+  fechaHoraPedido?: string
+  fechaHoraEntregaEstimada?: string
   detalles: {
     servicioId: number
     cantidad: number
+    precioUnitario?: number
   }[]
 }
 

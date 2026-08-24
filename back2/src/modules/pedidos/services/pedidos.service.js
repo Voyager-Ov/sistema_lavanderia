@@ -322,7 +322,7 @@ class PedidosService {
         let clienteId = data.clienteId;
         if (!clienteId && data.clienteNombre) {
             const nuevoCliente = await Cliente.create({
-                nombre: data.clienteNombre,
+                nombre: data.clienteNombre.trim(),
                 telefono: data.clienteTelefono || null,
                 direccion: data.direccionEntrega || null,
                 negocioId
@@ -330,16 +330,17 @@ class PedidosService {
             clienteId = nuevoCliente.id;
         }
 
-        const fechaHoraPedido = data.fechaHoraPedido ? new Date(data.fechaHoraPedido) : new Date();
-
-        if (!data.origen) {
-            throw new AppError("El origen del pedido (origen) es obligatorio.", 400, "MISSING_ORIGIN");
+        if (!clienteId) {
+            throw new AppError("El cliente (clienteId o clienteNombre) es obligatorio para crear el pedido.", 400, "MISSING_CLIENT");
         }
+
+        const fechaHoraPedido = data.fechaHoraPedido ? new Date(data.fechaHoraPedido) : new Date();
+        const origen = data.origen || "MOSTRADOR";
 
         // Crear registro principal del pedido
         const nuevoPedido = await Pedido.create({
-            clienteId: clienteId || null,
-            origen: data.origen,
+            clienteId,
+            origen,
             observaciones: data.observaciones || null,
             direccionEntrega: data.direccionEntrega || null,
             costoEnvio: 0,

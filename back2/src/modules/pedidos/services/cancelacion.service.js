@@ -72,8 +72,8 @@ class CancelacionService {
                 });
             } else if (data.accionDinero === "DEVOLVER") {
                 const { Caja, MovimientoCaja } = await this._getModels(negocioId);
-                const empleadoId = data.usuarioId;
-                if (!empleadoId) throw new AppError("ID de usuario es requerido para la devolución.", 400, "MISSING_USER_ID");
+                const empleadoId = data.empleadoId || data.usuarioId;
+                if (!empleadoId) throw new AppError("ID de empleado es requerido para la devolución de dinero.", 400, "MISSING_USER_ID");
                 
                 let cajaAbierta = null;
                 if (empleadoId) {
