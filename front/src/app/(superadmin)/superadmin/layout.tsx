@@ -34,14 +34,14 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (isLoginPage) {
-      setIsAuthenticated(true);
+      router.replace("/login");
       return;
     }
 
     const token = localStorage.getItem("superadmin_token");
     if (!token || token === "null" || token === "undefined") {
       setIsAuthenticated(false);
-      router.push("/superadmin/login");
+      router.push("/login");
     } else {
       setIsAuthenticated(true);
     }
@@ -49,11 +49,11 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
   const handleLogout = () => {
     localStorage.removeItem("superadmin_token");
-    router.push("/superadmin/login");
+    router.push("/login");
   };
 
   if (isLoginPage) {
-    return <>{children}</>;
+    return null;
   }
 
   if (isAuthenticated === null) {

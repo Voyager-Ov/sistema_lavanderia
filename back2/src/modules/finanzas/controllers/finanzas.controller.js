@@ -2,6 +2,15 @@ import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { successResponse } from "../../../utils/response.util.js";
 import { parseDateRange } from "../../../utils/date.util.js";
+import { AppError } from "../../../utils/appError.js";
+
+const getTenantId = (req) => {
+	const negocioId = req.user?.negocioId;
+	if (!negocioId) {
+		throw new AppError("No se ha identificado el negocio activo en la sesión.", 401, "TENANT_REQUIRED");
+	}
+	return negocioId;
+};
 
 const getModels = async (negocioId) => {
 	const tenantDb = await connectionManager.getTenantDb(negocioId);
@@ -11,7 +20,7 @@ const getModels = async (negocioId) => {
 export const getKPIs = async (req, res, next) => {
 	try {
 		const { fechaDesde, fechaHasta } = req.query;
-		const negocioId = req.user.negocioId;
+		const negocioId = getTenantId(req);
 
 		const { Cobro, Gasto, Pedido } = await getModels(negocioId);
 
@@ -70,7 +79,7 @@ export const getKPIs = async (req, res, next) => {
 export const getMovimientos = async (req, res, next) => {
 	try {
 		const { fechaDesde, fechaHasta, page = 1, limit = 10, search } = req.query;
-		const negocioId = req.user.negocioId;
+		const negocioId = getTenantId(req);
 
 		const { Cobro, Gasto, Pedido, Empleado, MetodoPago, MovimientoCaja, Caja, CategoriaGasto } = await getModels(negocioId);
 

@@ -58,14 +58,14 @@ class CajasService {
                         id: mov.id,
                         monto: absMonto,
                         estado: "COMPLETADO",
-                        createdAt: mov.fechaHora || mov.createdAt,
+                        createdAt: mov.fechaHora ? mov.fechaHora : mov.createdAt,
                         metodoPago: { id: metodoId, nombre: metodoNombre, esFijo: isEfectivo },
                         pedido: {
                             id: mov.id,
-                            codigoSeguimiento: mov.observacion || `MOV-${mov.id}`,
+                            codigoSeguimiento: mov.observacion ? mov.observacion : null,
                             total: absMonto,
                             estado: "ENTREGADO",
-                            fechaRecepcion: mov.fechaHora || mov.createdAt
+                            fechaRecepcion: mov.fechaHora ? mov.fechaHora : mov.createdAt
                         }
                     });
                 } else {
@@ -82,8 +82,8 @@ class CajasService {
                         id: mov.id,
                         monto: absMonto,
                         categoria: "GASTO_GENERAL",
-                        descripcion: mov.observacion || "Gasto de caja",
-                        createdAt: mov.fechaHora || mov.createdAt,
+                        descripcion: mov.observacion ? mov.observacion : null,
+                        createdAt: mov.fechaHora ? mov.fechaHora : mov.createdAt,
                         metodoPago: { id: metodoId, nombre: metodoNombre, esFijo: isEfectivo }
                     });
                 }
@@ -334,39 +334,22 @@ class CajasService {
         let count = 0;
         let rows = [];
 
-        try {
-            const res = await Caja.findAndCountAll({
-                where,
-                include: [{
-                    model: MovimientoCaja,
-                    as: "movimientos",
-                    include: [{ model: MetodoPago, as: "metodoPago" }]
-                }],
-                limit,
-                offset,
-                order: [["idCaja", "DESC"]]
-            });
-            count = res.count;
-            rows = res.rows;
-        } catch (err) {
-            count = await Caja.count({ where });
-            rows = await Caja.findAll({
-                where,
-                include: [{
-                    model: MovimientoCaja,
-                    as: "movimientos",
-                    include: [{ model: MetodoPago, as: "metodoPago" }]
-                }],
-                limit,
-                offset,
-                order: [["idCaja", "DESC"]]
-            });
-        }
+        const res = await Caja.findAndCountAll({
+            where,
+            include: [{
+                model: MovimientoCaja,
+                as: "movimientos",
+                include: [{ model: MetodoPago, as: "metodoPago" }]
+            }],
+            limit,
+            offset,
+            order: [["idCaja", "DESC"]]
+        });
 
-        const items = rows.map(c => this._formatCaja(c));
+        const items = res.rows.map(c => this._formatCaja(c));
 
         return {
-            total: count,
+            total: res.count,
             items
         };
     }

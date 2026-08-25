@@ -17,7 +17,7 @@ function SeguridadContent() {
     try {
       const token = localStorage.getItem("superadmin_token");
       if (!token || token === "null" || token === "undefined") {
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
 
@@ -27,7 +27,7 @@ function SeguridadContent() {
       console.error("Error fetching security logs", error);
       if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
       toast.error("Error al cargar logs de seguridad", {

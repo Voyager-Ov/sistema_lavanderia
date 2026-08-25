@@ -75,7 +75,7 @@ export const apiClient = {
               const isSuperAdminPath = window.location.pathname.startsWith('/superadmin');
               if (isSuperAdminPath) {
                 localStorage.removeItem('superadmin_token');
-                window.location.href = '/superadmin/login?expired=true';
+                window.location.href = '/login?expired=true';
               } else {
                 localStorage.removeItem('auth-storage');
                 window.location.href = '/login?expired=true';

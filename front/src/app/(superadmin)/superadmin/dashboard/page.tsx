@@ -80,7 +80,7 @@ function UnifiedDashboardContent() {
     try {
       const token = localStorage.getItem("superadmin_token");
       if (!token || token === "null" || token === "undefined") {
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
 
@@ -106,7 +106,7 @@ function UnifiedDashboardContent() {
       console.error("Error fetching superadmin data", error);
       if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
       toast.error("Error al cargar datos del panel SuperAdmin");

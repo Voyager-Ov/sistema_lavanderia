@@ -24,7 +24,7 @@ function SolicitudesContent() {
     try {
       const token = localStorage.getItem("superadmin_token");
       if (!token || token === "null" || token === "undefined") {
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
 
@@ -34,7 +34,7 @@ function SolicitudesContent() {
       console.error("Error fetching solicitudes", error);
       if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
       toast.error("Error al cargar lista de solicitudes");

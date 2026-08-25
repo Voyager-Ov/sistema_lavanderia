@@ -108,7 +108,7 @@ class DashboardService {
         pedidosBase.forEach(p => {
             const est = String(p.estado).toUpperCase();
             if (est.includes("PENDIENTE")) pedidosActivos.PENDIENTE++;
-            else if (est.includes("EN_PROCESO") || est.includes("LAVADO")) pedidosActivos.EN_PROCESO++;
+            else if (est.includes("PROCESO") || est.includes("LAVADO")) pedidosActivos.EN_PROCESO++;
             else if (est.includes("LISTO")) pedidosActivos.LISTO_PARA_RETIRAR++;
             else if (est.includes("ENTREGADO")) pedidosActivos.ENTREGADO++;
             else if (est.includes("PAGADO")) pedidosActivos.PAGADO++;

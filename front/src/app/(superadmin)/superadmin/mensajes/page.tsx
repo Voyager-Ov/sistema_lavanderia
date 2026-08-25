@@ -27,7 +27,7 @@ function MensajesContent() {
     try {
       const token = localStorage.getItem("superadmin_token");
       if (!token || token === "null" || token === "undefined") {
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
 
@@ -37,7 +37,7 @@ function MensajesContent() {
       console.error("Error fetching mensajes", error);
       if (error?.status === 401) {
         localStorage.removeItem("superadmin_token");
-        router.push("/superadmin/login");
+        router.push("/login");
         return;
       }
       toast.error("Error al cargar mensajes broadcast");

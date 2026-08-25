@@ -1,0 +1,18 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluX2Rhc2hfMTc4NzY5NjUxNTYzN0BsYXZhbmRlcmlhLnRlc3QiLCJuZWdvY2lvSWQiOjc1LCJlbXBsZWFkb0lkIjoxLCJyb2wiOiJBRE1JTiIsImlhdCI6MTc4NzY5NjUzMCwiZXhwIjoxNzg3NzI1MzMwfQ.1U18LhcbDqYnxMdzhQoofX_xKJDeaQO6DTfxNS_swPc",
+  "usuario": {
+    "id": 1,
+    "email": "admin_dash_1787696515637@lavanderia.test",
+    "nombre": "Admin Dashboard Live",
+    "rol": "ADMIN",
+    "negocioId": 75,
+    "googleLinked": false
+  },
+  "negocio": {
+    "id": 75,
+    "nombre": "Lavanderia Dashboard 1787696515637",
+    "subdominio": "sub-1787696515637"
+  },
+  "adminEmail": "admin_dash_1787696515637@lavanderia.test",
+  "adminPassword": "Password123!"
+}

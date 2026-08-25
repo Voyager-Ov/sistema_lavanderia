@@ -63,10 +63,7 @@ function ResetPasswordForm() {
       setIsSuccess(true);
       toast.success("Contraseña actualizada exitosamente", { description: "Ya puedes iniciar sesión con tu nueva contraseña." });
       
-      const isSuperAdminEmail = email && (email.toLowerCase().includes("superadmin") || email.toLowerCase().includes("octavio.velo"));
-      const targetLogin = isSuperAdminEmail ? "/superadmin/login" : "/login";
-      
-      setTimeout(() => router.push(targetLogin), 2500);
+      setTimeout(() => router.push("/login"), 2500);
     } catch (error: any) {
       toast.error("Error al restablecer contraseña", {
         description: error.message || "El enlace pudo haber expirado o ser inválido.",
