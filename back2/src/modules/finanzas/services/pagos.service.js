@@ -174,8 +174,8 @@ class PagosService {
                 let subtotalItems = 0;
                 if (p.detalles && Array.isArray(p.detalles)) {
                     subtotalItems = p.detalles.reduce((acc, d) => {
-                        const precio = parseFloat(d.precioHistorico) || parseFloat(d.precioUnitario) || 0;
-                        const cant = parseInt(d.cantidad) || 1;
+                        const precio = parseFloat(d.precioHistorico ?? d.precioUnitario) || 0;
+                        const cant = parseInt(d.cantidad, 10) || 1;
                         return acc + (precio * cant);
                     }, 0);
                 }
@@ -185,7 +185,7 @@ class PagosService {
             const totalMontoPedidos = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
             
             // Cliente asociado (si viene o de los pedidos)
-            const clienteId = params.clienteId || pedidosTarget[0]?.clienteId;
+            const clienteId = params.clienteId ? params.clienteId : pedidosTarget[0]?.clienteId;
 
             // Obtener saldo a favor disponible si fue solicitado
             let saldoAFavorDisponible = 0;
@@ -209,7 +209,7 @@ class PagosService {
             }
 
             // Buscar caja abierta obligatoria para registrar el cobro (estrictamente del turno del empleado activo)
-            const empleadoId = params.empleadoId || params.usuarioId;
+            const empleadoId = params.empleadoId;
             let cajaAbierta = null;
             if (empleadoId) {
                 cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId }, transaction: t });
@@ -257,9 +257,9 @@ class PagosService {
                                 cuentaCorrienteId: cuenta.id,
                                 monto: creditoUsadoPedido,
                                 tipoMovimiento: "Débito",
-                                descripcion: `Aplicación de saldo a favor a pedido #${p.numeroPedido || p.id}`,
+                                descripcion: `Aplicación de saldo a favor a pedido #${p.numeroPedido}`,
                                 fechaHora: new Date()
-                            }, { transaction: t }).catch(() => {});
+                            }, { transaction: t });
                         }
                     }
                 }
@@ -282,7 +282,7 @@ class PagosService {
                 // Generar movimiento de caja solo por dinero en efectivo físico recibido hoy
                 let movimientoCajaId = null;
                 if (cajaAbierta && remanenteAbonarPedido > 0) {
-                    const numPed = p.numeroPedido || p.id;
+                    const numPed = p.numeroPedido;
                     const obsText = creditoUsadoPedido > 0
                         ? `Cobro Pedido #${numPed} (Crédito a favor aplicado: $${creditoUsadoPedido})`
                         : `Cobro Pedido #${numPed}`;
@@ -325,9 +325,9 @@ class PagosService {
                             cuentaCorrienteId: cuenta.id,
                             monto: saldoGeneradoPedido,
                             tipoMovimiento: "Crédito",
-                            descripcion: `Vuelto a favor generado por pedido #${p.numeroPedido || p.id}`,
+                            descripcion: `Vuelto a favor generado por pedido #${p.numeroPedido}`,
                             fechaHora: new Date()
-                        }, { transaction: t }).catch(() => {});
+                        }, { transaction: t });
                     }
                 }
 

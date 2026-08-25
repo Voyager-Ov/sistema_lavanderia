@@ -139,28 +139,20 @@ export class LiveDashboardHelper {
    * Inyecta la sesión persistida en el localStorage del navegador para que el usuario esté autenticado.
    */
   static async injectLiveSession(page: Page, session: LiveDashboardSession) {
-    await page.context().addCookies([
-      {
-        name: 'token',
-        value: session.token,
-        domain: 'localhost',
-        path: '/',
-        httpOnly: false,
-        secure: false,
-        sameSite: 'Lax'
-      }
-    ]);
-
-    await page.addInitScript((s) => {
-      const authState = {
-        token: s.token,
-        usuario: s.usuario,
-        negocio: s.negocio,
-        isAuthenticated: true
-      };
-      localStorage.setItem('auth-storage', JSON.stringify({ state: authState, version: 0 }));
-      localStorage.setItem('token', s.token);
-    }, session);
+    await page.addInitScript(({ token, usuario }) => {
+      window.localStorage.removeItem('superadmin_token');
+      window.localStorage.setItem(
+        'auth-storage',
+        JSON.stringify({
+          state: {
+            user: usuario,
+            token: token,
+            isAuthenticated: true
+          },
+          version: 0
+        })
+      );
+    }, { token: session.token, usuario: session.usuario });
   }
 
   /**

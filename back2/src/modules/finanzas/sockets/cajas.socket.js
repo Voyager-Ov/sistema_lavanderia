@@ -5,13 +5,11 @@ class CajasSocket {
     emitirCajaAbierta(negocioId, caja) {
         if (!negocioId || !caja) return;
         getIO().to(`tenant_${negocioId}`).emit("caja:apertura", {
-            idCaja: caja.idCaja || caja.id,
-            usuarioId: caja.usuarioId || caja.empleadoId,
-            empleadoId: caja.usuarioId || caja.empleadoId,
+            idCaja: caja.idCaja,
+            empleadoId: caja.usuarioId,
             abierta: true,
-            montoInicial: caja.montoInicial || caja.montoInicialEfectivo || 0,
-            fechaApertura: caja.fechaApertura || new Date().toISOString(),
-            usuarioCajero: caja.usuarioCajero || "Cajero",
+            montoInicial: caja.montoInicial,
+            fechaApertura: caja.fechaApertura,
             timestamp: new Date().toISOString()
         });
     }
@@ -20,12 +18,11 @@ class CajasSocket {
     emitirCajaCerrada(negocioId, caja) {
         if (!negocioId || !caja) return;
         getIO().to(`tenant_${negocioId}`).emit("caja:cierre", {
-            idCaja: caja.idCaja || caja.id,
-            usuarioId: caja.usuarioId || caja.empleadoId,
-            empleadoId: caja.usuarioId || caja.empleadoId,
+            idCaja: caja.idCaja,
+            empleadoId: caja.usuarioId,
             abierta: false,
-            efectivoReal: caja.efectivoReal || caja.montoFinalEfectivoReal || 0,
-            fechaCierre: caja.fechaCierre || new Date().toISOString(),
+            efectivoReal: caja.efectivoReal,
+            fechaCierre: caja.fechaCierre,
             timestamp: new Date().toISOString()
         });
     }
@@ -35,9 +32,9 @@ class CajasSocket {
         if (!negocioId || !gasto) return;
         getIO().to(`tenant_${negocioId}`).emit("gasto:registrado", {
             id: gasto.id,
-            montoTotal: gasto.montoTotal || gasto.monto,
-            categoria: gasto.categoria?.nombre || gasto.categoriaId || "General",
-            descripcion: gasto.descripcion || "Egreso de caja",
+            montoTotal: gasto.montoTotal ? parseFloat(gasto.montoTotal) : parseFloat(gasto.monto),
+            categoria: gasto.categoria?.nombre ? gasto.categoria.nombre : null,
+            descripcion: gasto.descripcion ? gasto.descripcion : null,
             timestamp: new Date().toISOString()
         });
     }

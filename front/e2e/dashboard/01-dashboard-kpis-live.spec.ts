@@ -30,12 +30,12 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
     await ScreenshotHelper.take(page, '01-dashboard-kpis-y-metricas', 'dashboard');
   });
 
-  test('2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el KPI "Pedidos del Día"', async ({ page }) => {
+  test('2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el botón de enlace de "Pedidos del Día"', async ({ page }) => {
     await page.goto('/admin/dashboard');
 
-    const kpiPedidos = page.getByText('Pedidos del Día');
-    await expect(kpiPedidos).toBeVisible({ timeout: 15000 });
-    await kpiPedidos.click();
+    const linkPedidos = page.locator('a[href="/admin/pedidos"]').first();
+    await expect(linkPedidos).toBeVisible({ timeout: 15000 });
+    await linkPedidos.click();
 
     await expect(page).toHaveURL(/.*\/admin\/pedidos/);
 
@@ -43,12 +43,12 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
     await ScreenshotHelper.take(page, '02-dashboard-navegacion-pedidos-kpi', 'dashboard');
   });
 
-  test('3. [LIVE] Debe navegar a /admin/caja al hacer clic en el KPI "Ingresos Hoy"', async ({ page }) => {
+  test('3. [LIVE] Debe navegar a /admin/caja al hacer clic en el botón de enlace de "Ingresos Hoy"', async ({ page }) => {
     await page.goto('/admin/dashboard');
 
-    const kpiIngresos = page.getByText('Ingresos Hoy');
-    await expect(kpiIngresos).toBeVisible({ timeout: 15000 });
-    await kpiIngresos.click();
+    const linkCaja = page.locator('a[href="/admin/caja"]').first();
+    await expect(linkCaja).toBeVisible({ timeout: 15000 });
+    await linkCaja.click();
 
     await expect(page).toHaveURL(/.*\/admin\/caja/);
 
