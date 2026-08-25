@@ -21,36 +21,16 @@ import { autorizarRoles } from "../../middlewares/role.middleware.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Directorios de carga
-const certsDir = process.env.VERCEL ? "/tmp/uploads/certs" : path.join(__dirname, "../../../public/uploads/certs");
-const logosDir = process.env.VERCEL ? "/tmp/uploads/logos" : path.join(__dirname, "../../../public/uploads/logos");
-
-try {
-    if (!fs.existsSync(certsDir)) fs.mkdirSync(certsDir, { recursive: true });
-    if (!fs.existsSync(logosDir)) fs.mkdirSync(logosDir, { recursive: true });
-} catch (err) {
-    console.warn("⚠️ [Upload Warning] No se pudo crear directorios de certs/logos:", err.message);
-}
-
-// Configuración Multer Certificados
-const certsStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, certsDir),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
-    }
+// Configuración Multer en Memoria (evita EROFS en Vercel/Serverless)
+const uploadCerts = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
-const uploadCerts = multer({ storage: certsStorage });
 
-// Configuración Multer Logo
-const logoStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, logosDir),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, `logo-${uniqueSuffix}${path.extname(file.originalname)}`);
-    }
+const uploadLogo = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 }
 });
-const uploadLogo = multer({ storage: logoStorage });
 
 const router = Router();
 

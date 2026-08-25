@@ -135,16 +135,22 @@ class StorageService {
             return `${baseUrl}/${key}`;
         }
 
-        // 4. Si es local: guardar el archivo optimizado WebP en disco
-        const targetDir = path.join(UPLOADS_DIR, folder);
+        // 4. Si es local/fallback (cuando R2 no está activo):
+        const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION);
+        const baseUploadsDir = isServerless ? "/tmp/uploads" : UPLOADS_DIR;
+        const targetDir = path.join(baseUploadsDir, folder);
         if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
+            try { fs.mkdirSync(targetDir, { recursive: true }); } catch (e) {}
         }
 
         const targetFilePath = path.join(targetDir, fileName);
-        fs.writeFileSync(targetFilePath, webpBuffer);
+        try {
+            fs.writeFileSync(targetFilePath, webpBuffer);
+        } catch (err) {
+            console.warn("⚠️ [StorageService] No se pudo escribir en disco local:", err.message);
+        }
 
-        // Eliminar el archivo original no-optimizado de Multer
+        // Eliminar el archivo original no-optimizado de Multer si existía en disco
         if (file.path && fs.existsSync(file.path) && file.path !== targetFilePath) {
             try { fs.unlinkSync(file.path); } catch (e) {}
         }

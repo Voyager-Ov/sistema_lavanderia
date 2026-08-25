@@ -28,24 +28,9 @@ import { verificarToken } from "../../middlewares/auth.middleware.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Directorio para imágenes de productos/servicios
-const productosDir = process.env.VERCEL ? "/tmp/uploads/productos" : path.join(__dirname, "../../../public/uploads/productos");
-try {
-    if (!fs.existsSync(productosDir)) fs.mkdirSync(productosDir, { recursive: true });
-} catch (err) {
-    console.warn("⚠️ [Upload Warning] No se pudo crear directorio de productos:", err.message);
-}
-
-const productosStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, productosDir),
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, `prod-${uniqueSuffix}${path.extname(file.originalname)}`);
-    }
-});
-
+// Configuración Multer en Memoria (evita EROFS en Vercel/Serverless)
 const uploadProducto = multer({
-    storage: productosStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 2 * 1024 * 1024 } // 2MB máximo por archivo original
 });
 
