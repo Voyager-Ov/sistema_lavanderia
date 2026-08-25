@@ -24,7 +24,8 @@ export const createTestUser = async ({
     activo = true,
     emailConfirmado = true,
     rol = "ADMIN",
-    googleId = null
+    googleId = null,
+    negocioId = 1
 }) => {
     const { Usuario, Rol } = connectionManager.centralModels;
     const salt = await bcrypt.genSalt(10);
@@ -37,7 +38,8 @@ export const createTestUser = async ({
             password: passwordHash,
             activo,
             emailConfirmado,
-            googleId
+            googleId,
+            negocioId
         }
     });
 
@@ -96,7 +98,8 @@ export const createTestTenantWithAdmin = async ({
         password: passwordHash,
         activo: true,
         emailConfirmado: true,
-        empleadoId: empleado.id
+        empleadoId: empleado.id,
+        negocioId: negocio.id
     });
 
     const [rolRecord] = await Rol.findOrCreate({

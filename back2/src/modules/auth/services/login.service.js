@@ -19,70 +19,32 @@ class LoginService {
             throw new AppError("Usuario no especificado.", 400, "MISSING_USER");
         }
 
-        const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
-        let empleadoEncontrado = null;
-        let negocioEncontrado = null;
-
-        // 1. Vía Rápida: Si el usuario ya tiene su negocioId asignado directamente en DB Central
-        if (usuario.negocioId) {
-            negocioEncontrado = await Negocio.findByPk(usuario.negocioId);
-            if (negocioEncontrado) {
-                try {
-                    const tenantDb = await connectionManager.getTenantDb(negocioEncontrado.id);
-                    if (usuario.empleadoId) {
-                        empleadoEncontrado = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
-                    }
-                    if (!empleadoEncontrado && emailLower) {
-                        empleadoEncontrado = await tenantDb.models.Empleado.findOne({ where: { email: emailLower } });
-                    }
-                } catch (err) {}
-            }
+        if (!usuario.negocioId) {
+            throw new AppError("El usuario no tiene un negocio asignado.", 404, "EMPLOYEE_NOT_LINKED");
         }
 
-        // 2. Vía Fallback (Búsqueda Inicial): Si negocioId aún no estaba asignado
-        if (!empleadoEncontrado || !negocioEncontrado) {
-            const negocios = await Negocio.findAll({ order: [["id", "ASC"]] });
-
-            if (emailLower) {
-                for (const neg of negocios) {
-                    try {
-                        const tenantDb = await connectionManager.getTenantDb(neg.id);
-                        const emp = await tenantDb.models.Empleado.findOne({ where: { email: emailLower } });
-                        if (emp) {
-                            empleadoEncontrado = emp;
-                            negocioEncontrado = neg;
-                            usuario.empleadoId = emp.id;
-                            usuario.negocioId = neg.id;
-                            await usuario.save().catch(() => {});
-                            break;
-                        }
-                    } catch (err) {}
-                }
-            }
-
-            if (!empleadoEncontrado && usuario.empleadoId) {
-                for (const neg of negocios) {
-                    try {
-                        const tenantDb = await connectionManager.getTenantDb(neg.id);
-                        const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
-                        if (emp) {
-                            empleadoEncontrado = emp;
-                            negocioEncontrado = neg;
-                            usuario.negocioId = neg.id;
-                            await usuario.save().catch(() => {});
-                            break;
-                        }
-                    } catch (err) {}
-                }
-            }
-        }
-
-        if (!empleadoEncontrado || !negocioEncontrado) {
-            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
+        const negocioEncontrado = await Negocio.findByPk(usuario.negocioId);
+        if (!negocioEncontrado) {
+            throw new AppError("El negocio asignado no existe.", 404, "BUSINESS_NOT_FOUND");
         }
 
         if (negocioEncontrado.activo === false) {
             throw new AppError("El negocio asociado se encuentra suspendido.", 403, "BUSINESS_SUSPENDED");
+        }
+
+        const tenantDb = await connectionManager.getTenantDb(negocioEncontrado.id);
+        const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
+        
+        let empleadoEncontrado = null;
+        if (usuario.empleadoId) {
+            empleadoEncontrado = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
+        }
+        if (!empleadoEncontrado && emailLower) {
+            empleadoEncontrado = await tenantDb.models.Empleado.findOne({ where: { email: emailLower } });
+        }
+
+        if (!empleadoEncontrado) {
+            throw new AppError("El usuario no tiene un empleado vinculado en la base de datos.", 404, "EMPLOYEE_NOT_LINKED");
         }
 
         return { empleado: empleadoEncontrado, negocio: negocioEncontrado };
