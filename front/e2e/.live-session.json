@@ -1,0 +1,18 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluX2xpdmVfMTc4NzY5NDExODMxN0BsYXZhbmRlcmlhLnRlc3QiLCJuZWdvY2lvSWQiOjc0LCJlbXBsZWFkb0lkIjoxLCJyb2wiOiJBRE1JTiIsImlhdCI6MTc4NzY5NDEzNSwiZXhwIjoxNzg3NzIyOTM1fQ.TTeiNDv4yWkP8CGVRkI-n9CMtL1HYSfDUwEgW-iOqUc",
+  "usuario": {
+    "id": 1,
+    "email": "admin_live_1787694118317@lavanderia.test",
+    "nombre": "Admin Live E2E",
+    "rol": "ADMIN",
+    "negocioId": 74,
+    "googleLinked": false
+  },
+  "negocio": {
+    "id": 74,
+    "nombre": "Lavanderia Live 1787694118317",
+    "subdominio": "sub-1787694118317"
+  },
+  "adminEmail": "admin_live_1787694118317@lavanderia.test",
+  "adminPassword": "Password123!"
+}

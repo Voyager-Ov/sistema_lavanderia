@@ -1,6 +1,9 @@
-import { Page, request, APIRequestContext } from '@playwright/test';
+import { Page, request } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 const BACKEND_URL = process.env.API_URL || 'http://localhost:5001';
+const SESSION_FILE = path.join(process.cwd(), 'e2e', '.live-session.json');
 
 export interface LiveTenantSession {
   token: string;
@@ -30,6 +33,25 @@ export class LiveClientesHelper {
   static async setupLiveTenantAndAdmin(): Promise<LiveTenantSession> {
     if (this.cachedSession) {
       return this.cachedSession;
+    }
+
+    if (fs.existsSync(SESSION_FILE)) {
+      try {
+        const saved = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf-8'));
+        if (saved && saved.token) {
+          // Validar que el token siga activo
+          const apiContext = await request.newContext({ baseURL: BACKEND_URL });
+          const testRes = await apiContext.get('/api/auth/perfil', {
+            headers: { Authorization: `Bearer ${saved.token}` }
+          });
+          if (testRes.ok()) {
+            this.cachedSession = saved;
+            return saved;
+          }
+        }
+      } catch (e) {
+        // regenerate
+      }
     }
 
     const apiContext = await request.newContext({ baseURL: BACKEND_URL });
@@ -107,6 +129,10 @@ export class LiveClientesHelper {
       adminPassword
     };
 
+    try {
+      fs.writeFileSync(SESSION_FILE, JSON.stringify(this.cachedSession, null, 2));
+    } catch (e) {}
+
     return this.cachedSession;
   }
 
@@ -115,6 +141,7 @@ export class LiveClientesHelper {
    */
   static async injectLiveSession(page: Page, session: LiveTenantSession) {
     await page.addInitScript(({ token, usuario }) => {
+      window.localStorage.removeItem('superadmin_token');
       window.localStorage.setItem(
         'auth-storage',
         JSON.stringify({

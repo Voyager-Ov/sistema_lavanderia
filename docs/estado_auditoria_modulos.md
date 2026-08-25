@@ -17,7 +17,7 @@ Este documento registra el estado de avance de la auditoría, limpieza de anti-p
 | 🧼 **`servicios`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
 | 👔 **`rrhh/empleados`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
 | 📊 **`reportes`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
-| 📈 **`dashboard`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
+| 📈 **`dashboard`** | ✅ **Auditado & Validado** | Reemplazo de multiplicadores ficticios (`* 0.8`, `* 1000`) por agregaciones SQL reales por rangos locales de fecha (`00:00:00` a `23:59:59.999`). | DTO 1:1 sincronizado con `DashboardStatsResponse`. | `back2/src/tests/dashboard/audit_dashboard_module.js` |
 
 ---
 

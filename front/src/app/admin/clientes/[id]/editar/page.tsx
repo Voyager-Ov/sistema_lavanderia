@@ -63,6 +63,7 @@ export default function EditarClientePage() {
       })
       toast.success("Cliente actualizado correctamente")
       router.push(`/admin/clientes/${clienteId}`)
+      router.refresh()
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Error al actualizar el cliente"
       toast.error(msg)

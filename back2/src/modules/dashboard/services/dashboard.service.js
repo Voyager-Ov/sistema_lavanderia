@@ -1,73 +1,100 @@
+import { Op } from "sequelize";
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+
+function getLocalDayRange(d = new Date()) {
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    return { start, end };
+}
+
+function getLocalMonthRange(year, month) {
+    const start = new Date(year, month, 1, 0, 0, 0, 0);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+}
 
 class DashboardService {
 
     async _getModels(negocioId) {
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
-        return tenantDb.models;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        return tenantContext;
     }
 
     async obtenerEstadisticasDashboard(negocioId) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo en la sesión.", 400, "MISSING_TENANT_ID");
         }
-        const { Pedido, Cliente, Servicio, DetallePedido, CambioEstadoPedido, Estado, Cobro, MovimientoCaja } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Pedido, Cliente, DetallePedido, Servicio, Cobro, MovimientoCaja } = models;
 
-        const pedidos = await Pedido.findAll({
-            include: [
-                { model: Cliente, as: "cliente" },
-                {
-                    model: DetallePedido,
-                    as: "detalles",
-                    include: [{ model: Servicio, as: "servicio" }]
-                },
-                {
-                    model: CambioEstadoPedido,
-                    as: "cambiosEstado",
-                    include: [{ model: Estado, as: "estado" }]
-                },
-                { model: Cobro, as: "cobros" }
-            ],
-            order: [["numeroPedido", "DESC"]]
+        const now = new Date();
+
+        // 1. Rangos de Fecha Locales
+        const hoyRange = getLocalDayRange(now);
+        
+        const ayerDate = new Date(now);
+        ayerDate.setDate(ayerDate.getDate() - 1);
+        const ayerRange = getLocalDayRange(ayerDate);
+
+        const mesActualRange = getLocalMonthRange(now.getFullYear(), now.getMonth());
+
+        const mesAnteriorDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const mesAnteriorRange = getLocalMonthRange(mesAnteriorDate.getFullYear(), mesAnteriorDate.getMonth());
+
+        // 2. Ingresos acumulados (de Hoy, Ayer, Mes Actual, Mes Anterior)
+        const calcularIngresosRango = async (range) => {
+            let total = 0;
+            // Suma desde MovimientoCaja (si aplica) o Cobro
+            if (MovimientoCaja) {
+                const totalMov = await MovimientoCaja.sum("monto", {
+                    where: {
+                        fechaHora: { [Op.between]: [range.start, range.end] },
+                        tipoMovimiento: "Ingreso por Venta"
+                    }
+                });
+                if (totalMov && !isNaN(parseFloat(totalMov))) {
+                    total = Math.abs(parseFloat(totalMov));
+                }
+            }
+            if (total === 0 && Cobro) {
+                const totalCobro = await Cobro.sum("montoAbonado", {
+                    where: {
+                        fechaHora: { [Op.between]: [range.start, range.end] }
+                    }
+                });
+                if (totalCobro && !isNaN(parseFloat(totalCobro))) {
+                    total = parseFloat(totalCobro);
+                }
+            }
+            return total;
+        };
+
+        const hoyCobrado = await calcularIngresosRango(hoyRange);
+        const ayerCobrado = await calcularIngresosRango(ayerRange);
+        const mesActual = await calcularIngresosRango(mesActualRange);
+        const mesAnterior = await calcularIngresosRango(mesAnteriorRange);
+
+        // 3. Cantidad de Pedidos (Hoy y Ayer)
+        const hoyTotalPedidos = await Pedido.count({
+            where: {
+                fechaHoraCreacion: { [Op.between]: [hoyRange.start, hoyRange.end] }
+            }
         });
 
-        let totalHoy = 0;
-        let totalAyer = 0;
-        let hoyCobrado = 0;
-
-        const hoyStr = new Date().toISOString().split("T")[0];
-
-        // 1. Calcular Ingresos de Hoy desde los Movimientos de Caja
-        try {
-            const movimientos = await MovimientoCaja.findAll();
-            for (const mov of movimientos) {
-                const fechaM = new Date(mov.fechaHora || mov.createdAt).toISOString().split("T")[0];
-                const montoM = Math.abs(parseFloat(mov.monto) || 0);
-                if (mov.tipoMovimiento === "Ingreso por Venta" || montoM > 0) {
-                    if (fechaM === hoyStr) {
-                        hoyCobrado += montoM;
-                    }
-                }
+        const ayerTotalPedidos = await Pedido.count({
+            where: {
+                fechaHoraCreacion: { [Op.between]: [ayerRange.start, ayerRange.end] }
             }
-        } catch (err) {
-            // fallback a cobros de pedidos
-        }
+        });
 
-        // 2. Si hoyCobrado es 0, intentar sumar desde los cobros directos de los pedidos
-        if (hoyCobrado === 0) {
-            for (const p of pedidos) {
-                if (p.cobros && Array.isArray(p.cobros)) {
-                    for (const c of p.cobros) {
-                        const montoC = parseFloat(c.montoAbonado || c.monto || 0);
-                        const fechaCobroStr = new Date(c.fechaHora || c.createdAt).toISOString().split("T")[0];
-                        if (fechaCobroStr === hoyStr) {
-                            hoyCobrado += montoC;
-                        }
-                    }
-                }
+        // 4. Conteo de Pedidos Activos por Estado
+        const pedidosBase = await Pedido.findAll({
+            attributes: ["numeroPedido", "estado", "fechaHoraCreacion"],
+            where: {
+                estado: { [Op.notLike]: "%CANCELAD%" }
             }
-        }
+        });
 
         const pedidosActivos = {
             PENDIENTE: 0,
@@ -78,91 +105,104 @@ class DashboardService {
             CANCELADO: 0
         };
 
-        const ultimosPedidos = [];
+        pedidosBase.forEach(p => {
+            const est = String(p.estado).toUpperCase();
+            if (est.includes("PENDIENTE")) pedidosActivos.PENDIENTE++;
+            else if (est.includes("EN_PROCESO") || est.includes("LAVADO")) pedidosActivos.EN_PROCESO++;
+            else if (est.includes("LISTO")) pedidosActivos.LISTO_PARA_RETIRAR++;
+            else if (est.includes("ENTREGADO")) pedidosActivos.ENTREGADO++;
+            else if (est.includes("PAGADO")) pedidosActivos.PAGADO++;
+            else if (est.includes("CANCELAD")) pedidosActivos.CANCELADO++;
+        });
 
-        for (const p of pedidos) {
-            const fechaP = new Date(p.fechaHoraCreacion).toISOString().split("T")[0];
-            if (fechaP === hoyStr) {
-                totalHoy++;
-            }
+        // Conteo específico de cancelados
+        pedidosActivos.CANCELADO = await Pedido.count({
+            where: { estado: { [Op.like]: "%CANCELAD%" } }
+        });
 
-            let estadoActual = "PENDIENTE";
-            if (p.cambiosEstado && p.cambiosEstado.length > 0) {
-                const u = p.cambiosEstado[p.cambiosEstado.length - 1];
-                if (u.estado) estadoActual = u.estado.nombre;
-            }
+        // 5. Últimos 5 Pedidos Recientes
+        const pedidosRecientes = await Pedido.findAll({
+            limit: 5,
+            order: [["numeroPedido", "DESC"]],
+            include: [
+                { model: Cliente, as: "cliente", attributes: ["id", "nombre", "apellido"] }
+            ]
+        });
 
-            if (estadoActual === "PENDIENTE") pedidosActivos.PENDIENTE++;
-            if (estadoActual === "EN_PROCESO") pedidosActivos.EN_PROCESO++;
-            if (estadoActual === "LISTO" || estadoActual === "LISTO_PARA_RETIRAR") pedidosActivos.LISTO_PARA_RETIRAR++;
-            if (estadoActual === "ENTREGADO") pedidosActivos.ENTREGADO++;
-            if (estadoActual === "CANCELADO") pedidosActivos.CANCELADO++;
+        const ultimosPedidos = pedidosRecientes.map(p => {
+            const estUpper = String(p.estado).toUpperCase();
+            let badgeColor = "yellow";
+            if (estUpper.includes("ENTREGADO")) badgeColor = "green";
+            else if (estUpper.includes("EN_PROCESO") || estUpper.includes("LAVADO")) badgeColor = "blue";
+            else if (estUpper.includes("CANCELAD")) badgeColor = "red";
 
-            if (ultimosPedidos.length < 5) {
-                let badgeColor = "yellow";
-                if (estadoActual === "ENTREGADO") badgeColor = "green";
-                if (estadoActual === "EN_PROCESO") badgeColor = "blue";
-                if (estadoActual === "CANCELADO") badgeColor = "red";
+            const clienteNombre = p.cliente
+                ? (p.cliente.apellido ? `${p.cliente.nombre} ${p.cliente.apellido}` : p.cliente.nombre)
+                : "Cliente Mostrador";
 
-                ultimosPedidos.push({
-                    id: p.numeroPedido,
-                    title: `Pedido #${p.numeroPedido} - ${p.cliente ? p.cliente.nombre : "Cliente Mostrador"}`,
-                    subtitle: `Creado el ${new Date(p.fechaHoraCreacion).toLocaleDateString("es-AR")}`,
-                    badgeText: estadoActual,
-                    badgeColor
-                });
-            }
-        }
+            return {
+                id: p.numeroPedido,
+                title: `Pedido #${p.numeroPedido} - ${clienteNombre}`,
+                subtitle: `Creado el ${new Date(p.fechaHoraCreacion).toLocaleDateString("es-AR")}`,
+                badgeText: p.estado,
+                badgeColor
+            };
+        });
 
-        // Ventas por día de la semana (últimos 7 días)
+        // 6. Ventas por Día de la Semana (Últimos 7 Días)
         const diasSemana = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
         const ventasPorDiaList = [];
-        const hoy = new Date();
 
         for (let i = 6; i >= 0; i--) {
-            const date = new Date(hoy);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split("T")[0];
-            const name = diasSemana[date.getDay()];
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            const dRange = getLocalDayRange(d);
+            const name = diasSemana[d.getDay()];
 
-            let ventasDia = 0;
-            for (const p of pedidos) {
-                if (p.cobros && Array.isArray(p.cobros)) {
-                    for (const c of p.cobros) {
-                        const fechaCobroStr = new Date(c.fechaHora || c.createdAt).toISOString().split("T")[0];
-                        if (fechaCobroStr === dateStr) {
-                            ventasDia += parseFloat(c.montoAbonado || c.monto || 0);
-                        }
-                    }
-                }
-            }
-
+            const ventasDia = await calcularIngresosRango(dRange);
             ventasPorDiaList.push({ name, ventas: ventasDia });
         }
 
-        // Top Clientes por recurrencia
-        const clienteCount = {};
-        for (const p of pedidos) {
-            if (p.clienteId && p.cliente) {
-                if (!clienteCount[p.clienteId]) {
-                    clienteCount[p.clienteId] = { id: p.clienteId, nombre: p.cliente.nombre, pedidos: 0 };
-                }
-                clienteCount[p.clienteId].pedidos++;
-            }
-        }
-        const topClientes = Object.values(clienteCount).sort((a, b) => b.pedidos - a.pedidos).slice(0, 5);
+        // 7. Top Clientes Recurrentes
+        const topClientesRaw = await Pedido.findAll({
+            attributes: [
+                "clienteId",
+                [sequelize.fn("COUNT", sequelize.col("numeroPedido")), "pedidosCount"]
+            ],
+            where: {
+                clienteId: { [Op.ne]: null }
+            },
+            group: ["clienteId", "cliente.id", "cliente.nombre", "cliente.apellido"],
+            include: [
+                { model: Cliente, as: "cliente", attributes: ["id", "nombre", "apellido"] }
+            ],
+            order: [[sequelize.fn("COUNT", sequelize.col("numeroPedido")), "DESC"]],
+            limit: 5
+        });
+
+        const topClientes = topClientesRaw.map(tc => {
+            const cl = tc.cliente;
+            const nombreCompleto = cl
+                ? (cl.apellido ? `${cl.nombre} ${cl.apellido}` : cl.nombre)
+                : "Cliente";
+            return {
+                id: tc.clienteId,
+                nombre: nombreCompleto,
+                pedidos: parseInt(tc.get("pedidosCount"), 10) || 0
+            };
+        });
 
         return {
             ingresos: {
-                mesActual: hoyCobrado,
-                mesAnterior: Math.round(hoyCobrado * 0.8),
+                mesActual,
+                mesAnterior,
                 hoyCobrado,
-                ayerCobrado: totalAyer * 1000,
-                hoyTotalPedidos: totalHoy
+                ayerCobrado,
+                hoyTotalPedidos
             },
             pedidosDelDia: {
-                hoy: totalHoy,
-                ayer: totalAyer
+                hoy: hoyTotalPedidos,
+                ayer: ayerTotalPedidos
             },
             pedidosActivos,
             topProductos: [],

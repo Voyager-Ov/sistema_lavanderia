@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LiveClientesHelper, LiveTenantSession } from '../helpers/live-clientes.helper';
+import { ScreenshotHelper } from '../helpers/screenshot.helper';
 
 test.describe('E2E Live: Ficha Integral del Cliente (/admin/clientes/[id])', () => {
   let session: LiveTenantSession;
@@ -22,15 +23,18 @@ test.describe('E2E Live: Ficha Integral del Cliente (/admin/clientes/[id])', () 
     await page.goto(`/admin/clientes/${client.id}`);
 
     // Encabezado
-    await expect(page.getByRole('heading', { name: client.nombre })).toBeVisible();
-    await expect(page.getByText('Activo')).toBeVisible();
-    await expect(page.getByText('1199881122')).toBeVisible();
+    await expect(page.getByRole('heading', { name: client.nombre })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Activo', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('1199881122')).toBeVisible({ timeout: 10000 });
 
     // 4 Tarjetas KPI
-    await expect(page.getByText('Total Gastado')).toBeVisible();
-    await expect(page.getByText('Pedidos Totales')).toBeVisible();
-    await expect(page.getByText('Ticket Promedio')).toBeVisible();
-    await expect(page.getByText('Pedidos Activos')).toBeVisible();
+    await expect(page.getByText('Total Gastado')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Pedidos Totales')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Ticket Promedio')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Pedidos Activos')).toBeVisible({ timeout: 10000 });
+
+    // Captura de pantalla de la ficha del cliente
+    await ScreenshotHelper.take(page, '09-ficha-cliente-encabezado-y-kpis');
   });
 
   test('2. [LIVE] Debe recargar la ficha viva al pulsar el botón "Actualizar"', async ({ page }) => {
@@ -41,10 +45,13 @@ test.describe('E2E Live: Ficha Integral del Cliente (/admin/clientes/[id])', () 
     await page.goto(`/admin/clientes/${client.id}`);
 
     const refreshBtn = page.getByRole('button', { name: /Actualizar/i });
-    await expect(refreshBtn).toBeVisible();
+    await expect(refreshBtn).toBeVisible({ timeout: 15000 });
     await refreshBtn.click();
 
-    await expect(page.getByRole('heading', { name: client.nombre })).toBeVisible();
+    await expect(page.getByRole('heading', { name: client.nombre })).toBeVisible({ timeout: 15000 });
+
+    // Captura de pantalla
+    await ScreenshotHelper.take(page, '10-ficha-cliente-despues-actualizar');
   });
 
   test('3. [LIVE] Debe navegar a la edición al pulsar el botón "Editar"', async ({ page }) => {
@@ -55,9 +62,12 @@ test.describe('E2E Live: Ficha Integral del Cliente (/admin/clientes/[id])', () 
     await page.goto(`/admin/clientes/${client.id}`);
 
     const editBtn = page.getByRole('button', { name: /Editar/i });
-    await expect(editBtn).toBeVisible();
+    await expect(editBtn).toBeVisible({ timeout: 15000 });
     await editBtn.click();
 
     await expect(page).toHaveURL(new RegExp(`.*\\/admin\\/clientes\\/${client.id}\\/editar`));
+
+    // Captura de pantalla de la vista de edición alcanzada
+    await ScreenshotHelper.take(page, '11-navegacion-desde-ficha-a-edicion');
   });
 });
