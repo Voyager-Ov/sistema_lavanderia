@@ -128,14 +128,11 @@ export const getMovimientos = async (req, res, next) => {
 			include: [{ model: Empleado, as: "empleado", attributes: ["nombre", "apellido"] }]
 		});
 
-		// Fetch first active Empleado as fallback if historic caja records lacked an explicit empleadoId
-		let primerEmpleado = await Empleado.findOne({ where: { negocioId }, order: [["id", "ASC"]] });
-		if (!primerEmpleado) {
-			primerEmpleado = await Empleado.findOne({ order: [["id", "ASC"]] });
-		}
+		// Fetch first active Empleado of current tenant as fallback if historic caja records lacked an explicit link
+		const primerEmpleado = await Empleado.findOne({ where: { negocioId }, order: [["id", "ASC"]] });
 		const defaultNombreEmpleado = primerEmpleado 
-			? `${primerEmpleado.nombre || ''} ${primerEmpleado.apellido || ''}`.trim() 
-			: (req.user?.nombre || "Empleado de Mostrador");
+			? `${primerEmpleado.nombre} ${primerEmpleado.apellido || ''}`.trim() 
+			: "Sistema / Mostrador";
 
 		// Helper to resolve real Empleado name for a transaction based on its specific Caja turn
 		const resolveRegistradoPor = (movimientoCajaObj, fechaHoraMov) => {

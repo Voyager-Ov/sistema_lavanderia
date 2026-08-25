@@ -1,0 +1,452 @@
+{
+  "feature": "Dashboard Principal y Métricas Operativas - Full-Stack Live Integration Suite (100% Real Backend & Database)",
+  "version": "2.0.0",
+  "domain": "Métricas Operativas, Ingresos Diarios/Mensuales, Estados de Pedidos, Alertas de Entrega, Estado de Turno de Caja, Top Clientes y Progreso Diario",
+  "testing_paradigm": "LIVE_FULLSTACK_INTEGRATION_ZERO_MOCKS",
+  "architecture_context": {
+    "backend_stack": "Node.js + Express + Sequelize ORM sobre esquemas aislados por tenant (tenant_<id>) en Neon PostgreSQL",
+    "frontend_stack": "Next.js 16 App Router + React 19 + Tailwind CSS + GSAP 3 (useGSAP) + Date-fns + Sonner + Lucide Icons",
+    "backend_port": 5001,
+    "frontend_port": 3000,
+    "security_context": "JWT Bearer Tokens con verificación multi-tenant estricta (req.user.negocioId) y control de roles (EMPLEADO, CAJERO, ADMIN, SUPERADMIN)",
+    "isolation_rule": "Cada tenant opera en su propio esquema de PostgreSQL. Cero filtrado cruzado de ingresos, pedidos, clientes o cajas."
+  },
+  "scope": {
+    "in": [
+      "Pruebas de integración HTTP reales (Supertest + Jest) ejecutadas contra los endpoints del backend Express (/api/dashboard y /api/dashboard/stats) y modelos Sequelize conectados a PostgreSQL.",
+      "Pruebas End-to-End en navegador Chromium real (Playwright) interactuando con la interfaz de usuario en http://localhost:3000 y comunicándose directamente con el backend Express en http://localhost:5001 sin interceptores de red ficticios (cero page.route() mockeados).",
+      "Validación matemática de persistencia en base de datos para todas las métricas: ingresos diarios y mensuales (hoy vs ayer, mes actual vs anterior), conteo de pedidos activos por estado, serie temporal de 7 días y ranking de clientes recurrentes.",
+      "Aislamiento multi-tenant estricto verificado contra la base de datos viva (las métricas del tenant A no reflejan ventas, pedidos ni clientes del tenant B).",
+      "Interacción reactiva con el turno de caja chica: actualización dinámica de la tarjeta 'Estado de Caja' en la UI al abrir o cerrar turnos en back2.",
+      "Alertas operativas de pedidos pendientes calculadas en vivo en base a fechaHoraEntregaEstimada (VENCIDO, HOY, NORMAL) y estado vacío 'Todo al día'.",
+      "Indicador de progreso del día (DashboardGauge) comparando pedidos completados/entregados vs meta diaria recibida.",
+      "Comportamiento ante estados vacíos (negocio nuevo recién registrado con 0 ventas y 0 pedidos).",
+      "Navegación reactiva desde botones de acción, tarjetas KPI, feed de pedidos y alertas hacia los módulos operativos (/admin/pedidos, /admin/pedidos/nuevo, /admin/caja, /admin/servicios).",
+      "Captura automatizada de evidencias visuales (screenshots completos fullPage) en front/e2e/dashboard/screenshots/ con limpieza automática previa a cada ejecución."
+    ],
+    "out": [
+      "Pruebas con datos mockeados o simuladores sintéticos (estrictamente prohibidos)",
+      "Procesamiento de pasarelas de pago de terceros en vivo (Stripe / MercadoPago real)",
+      "Métricas contables anuales consolidadas con balances impositivos (cubierto en módulo Finanzas/Reportes)"
+    ]
+  },
+  "use_cases": [
+    {
+      "id": "CU-DASH-01",
+      "name": "Cálculo de Ingresos Diarios, Mensuales y Comparativa de Tendencias",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Consultar la base de datos viva del tenant activo y calcular con precisión matemática los ingresos de hoy vs ayer, mes actual vs mes anterior y pedidos recibidos.",
+      "criticality": "CRÍTICA",
+      "business_rules": [
+        "Los ingresos del día se calculan en el rango horario local de 00:00:00.000 a 23:59:59.999.",
+        "Se prioriza la sumatoria de MovimientoCaja con tipoMovimiento = 'Ingreso por Venta'. Si es 0 o no existe, se calcula la sumatoria de Cobro.montoAbonado.",
+        "Los pedidos del día se contabilizan según fechaHoraCreacion en el día local actual.",
+        "Si no existen ventas en el día de ayer, ayerCobrado es 0 y la tendencia refleja la totalidad del ingreso de hoy como incremento positivo."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_DATABASE_PERSISTED",
+          "description": "Cálculo en vivo de ingresos y pedidos del día con movimientos reales en PostgreSQL",
+          "given": "Base de datos con 2 pedidos creados hoy ($2500 cobrado con MovimientoCaja, $1200 impago) y 1 pedido creado ayer ($1800 cobrado).",
+          "when": "Se ejecuta una petición HTTP GET /api/dashboard/stats con token JWT de administrador legítimo.",
+          "then": "El servidor consulta Sequelize, calcula ingresos.hoyCobrado = 2500, ingresos.ayerCobrado = 1800, pedidosDelDia.hoy = 2, pedidosDelDia.ayer = 1 y responde 200 OK."
+        },
+        {
+          "type": "ALTERNATIVE_ZERO_SALES_TODAY",
+          "description": "Cálculo cuando el negocio aún no registra cobros hoy pero sí tuvo ventas ayer",
+          "given": "Tenant con 0 ventas registradas hoy y $3000 cobrados ayer.",
+          "when": "Se consulta GET /api/dashboard/stats.",
+          "then": "El servidor responde ingresos.hoyCobrado = 0, ingresos.ayerCobrado = 3000 y el front-end muestra incremento negativo (-$3.000)."
+        },
+        {
+          "type": "ALTERNATIVE_BRAND_NEW_TENANT_EMPTY_STATE",
+          "description": "Cálculo en un tenant recién registrado sin datos históricos",
+          "given": "Tenant recién creado mediante provisión de SuperAdmin con 0 clientes, 0 pedidos y 0 cobros.",
+          "when": "Se consulta GET /api/dashboard/stats.",
+          "then": "El servidor responde 200 OK con todos los montos en 0 sin arrojar excepciones de división por cero ni errores nulos."
+        },
+        {
+          "type": "NEGATIVE_TENANT_ISOLATION",
+          "description": "Aislamiento estricto de estadísticas entre diferentes lavanderías",
+          "given": "Tenant 1 con $80.000 en ventas y Tenant 2 con $0.",
+          "when": "El administrador de Tenant 2 solicita GET /api/dashboard/stats.",
+          "then": "El backend ejecuta la consulta exclusivamente en el esquema de Tenant 2 y reporta ingresos.mesActual = 0 y pedidosDelDia.hoy = 0."
+        },
+        {
+          "type": "NEGATIVE_UNAUTHORIZED_NO_JWT",
+          "description": "Rechazo de acceso sin autenticación válida",
+          "given": "Petición HTTP sin cabecera Authorization o con token expirado/falso.",
+          "when": "Se consulta GET /api/dashboard/stats.",
+          "then": "El middleware de seguridad responde 401 UNAUTHORIZED."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-02",
+      "name": "Serie Temporal de Ventas de los Últimos 7 Días (ventasPorDia)",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Generar la distribución de ingresos diarios para los últimos 7 días correlativos para alimentar el gráfico de barras en la UI.",
+      "criticality": "ALTA",
+      "business_rules": [
+        "La lista ventasPorDia debe contener exactamente 7 elementos ordenados cronológicamente desde hace 6 días hasta hoy.",
+        "Cada elemento contiene { name: 'Dom' | 'Lun' | 'Mar' | 'Mie' | 'Jue' | 'Vie' | 'Sab', ventas: number }.",
+        "Los días sin ventas registradas deben figurar con ventas = 0."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_SERIES_COMPLETA",
+          "description": "Generación de serie de 7 días con cobros distribuidos",
+          "given": "Cobros registrados hace 3 días ($4000), hace 1 día ($2000) y hoy ($3500).",
+          "when": "Se solicita GET /api/dashboard/stats.",
+          "then": "El array ventasPorDia contiene 7 objetos con los montos exactos asignados al día de la semana correspondiente y 0 en los días restantes."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-03",
+      "name": "Ranking de Clientes Recurrentes (topClientes)",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Identificar los 5 clientes con mayor cantidad de pedidos históricos en el tenant.",
+      "criticality": "ALTA",
+      "business_rules": [
+        "Se agrupan los pedidos por clienteId excluyendo pedidos anónimos (clienteId = null).",
+        "Se ordenan de forma descendente por conteo de pedidos (COUNT(numeroPedido) DESC) con un límite máximo de 5 clientes.",
+        "El primer cliente del ranking recibe la etiqueta VIP en el Front-End y los subsiguientes la etiqueta Frecuente."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_RANKING_ORDERED",
+          "description": "Ordenamiento decreciente correcto por volumen de pedidos",
+          "given": "Cliente A con 5 pedidos, Cliente B con 3 pedidos y Cliente C con 1 pedido.",
+          "when": "Se consulta GET /api/dashboard/stats.",
+          "then": "Responde topClientes con Cliente A en posición 0 (pedidos: 5), Cliente B en posición 1 (pedidos: 3) y Cliente C en posición 2 (pedidos: 1)."
+        },
+        {
+          "type": "ALTERNATIVE_NO_CLIENTS_WITH_ORDERS",
+          "description": "Comportamiento cuando no hay pedidos asociados a clientes",
+          "given": "Tenant sin pedidos registrados.",
+          "when": "Se consulta GET /api/dashboard/stats.",
+          "then": "Responde topClientes como array vacío [] sin romper la estructura JSON."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-04",
+      "name": "Clasificación de Pedidos Activos por Estado y Exclusión de Cancelados",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Desglosar la carga operativa del taller agrupando pedidos por estado operativo.",
+      "criticality": "CRÍTICA",
+      "business_rules": [
+        "Los pedidos en estado PENDIENTE, EN_PROCESO (o EN_LAVADO), LISTO_PARA_RETIRAR, ENTREGADO y PAGADO se contabilizan en pedidosActivos.",
+        "Los pedidos con estado CANCELADO se excluyen de los totales de producción activa y se contabilizan por separado en pedidosActivos.CANCELADO."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_ESTADOS_DISTRIBUIDOS",
+          "description": "Conteo fiel de pedidos en cada etapa operativa",
+          "given": "1 pedido PENDIENTE, 2 pedidos EN_PROCESO, 1 pedido LISTO_PARA_RETIRAR, 2 pedidos ENTREGADOS y 1 CANCELADO.",
+          "when": "Se solicita GET /api/dashboard/stats.",
+          "then": "El objeto pedidosActivos devuelve { PENDIENTE: 1, EN_PROCESO: 2, LISTO_PARA_RETIRAR: 1, ENTREGADO: 2, CANCELADO: 1 }."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-05",
+      "name": "Feed de Últimos Pedidos Recientes",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Recuperar los 5 pedidos más recientes con el nombre del cliente, número de ticket, fecha y badge semántico.",
+      "criticality": "MEDIA",
+      "business_rules": [
+        "Se ordenan por numeroPedido DESC con límite de 5 registros.",
+        "Se incluye la asociación con el modelo Cliente para mostrar 'Nombre Apellido' o 'Cliente Mostrador' si fue anónimo.",
+        "El badgeColor asignado es 'green' si ENTREGADO, 'blue' si EN_PROCESO / EN_LAVADO, 'red' si CANCELADO y 'yellow' para otros estados."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_FEED_ULTIMOS_PEDIDOS",
+          "description": "Feed con los últimos 5 tickets y colores semánticos",
+          "given": "7 pedidos registrados en la base de datos con numeración correlativa del #1 al #7.",
+          "when": "Se solicita GET /api/dashboard/stats.",
+          "then": "ultimosPedidos contiene exactamente los pedidos #7, #6, #5, #4 y #3 con sus datos de cliente y badges asignados."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-06",
+      "name": "Alertas de Pedidos Pendientes y Prioridad de Entrega",
+      "endpoint": "GET /api/pedidos?estado=PENDIENTE&limit=5&sortBy=fechaHoraEntregaEstimada&sortOrder=asc",
+      "objective": "Alertar al personal operativo sobre pedidos pendientes según su urgencia de entrega.",
+      "criticality": "ALTA",
+      "business_rules": [
+        "Si fechaHoraEntregaEstimada es anterior al momento actual (isBefore(fechaEst, now)), el badge es 'VENCIDO' con color rojo.",
+        "Si fechaHoraEntregaEstimada es dentro de las próximas 24 horas, el badge es 'HOY' con color amarillo.",
+        "Si la fecha de entrega es posterior a 24 horas, el badge es 'NORMAL' con color azul.",
+        "Si no existen pedidos pendientes, se muestra una tarjeta con título 'Todo al día', subtítulo 'No hay pedidos pendientes urgentes' y badge verde 'OK'."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_ALERTAS_URGENCIA",
+          "description": "Visualización de pedidos vencidos y para entregar hoy",
+          "given": "1 pedido pendiente con fecha estimada de ayer y 1 pedido pendiente con fecha estimada para dentro de 2 horas.",
+          "when": "El usuario visualiza la tarjeta de Alertas en el Dashboard.",
+          "then": "El primer pedido muestra badge 'VENCIDO' en rojo y el segundo muestra badge 'HOY' en amarillo."
+        },
+        {
+          "type": "ALTERNATIVE_EMPTY_ALERTS",
+          "description": "Estado vacío en alertas cuando no hay pedidos pendientes",
+          "given": "Tenant con todos los pedidos entregados o sin pedidos.",
+          "when": "Se carga el Dashboard.",
+          "then": "La tarjeta de Alertas muestra el estado vacío 'Todo al día' con badge verde 'OK'."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-07",
+      "name": "Sincronización Reactiva con el Estado de Caja Chica",
+      "endpoint": "GET /api/cajas/actual",
+      "objective": "Reflejar en tiempo real si existe un turno de caja abierto o cerrado y permitir la navegación al módulo de caja.",
+      "criticality": "CRÍTICA",
+      "business_rules": [
+        "Si /cajas/actual retorna 200 OK con una caja abierta, la tarjeta DashboardActionCard muestra 'Turno en Curso', el total en efectivo cobrado hoy y el botón 'Ver Caja'.",
+        "Si /cajas/actual retorna 404 o caja cerrada, la tarjeta muestra 'Caja Cerrada', 'Abre un turno para operar' y el botón 'Abrir Caja'.",
+        "Al hacer clic en el botón de acción, se redirige inmediatamente a /admin/caja."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_CAJA_ABIERTA",
+          "description": "Visualización con turno de caja activo",
+          "given": "Caja abierta en el tenant con saldo inicial y cobros en efectivo.",
+          "when": "Se abre el Dashboard.",
+          "then": "La tarjeta muestra 'Turno en Curso', el monto de efectivo y el botón 'Ver Caja'."
+        },
+        {
+          "type": "HAPPY_PATH_CAJA_CERRADA",
+          "description": "Visualización con caja cerrada",
+          "given": "Caja cerrada (o sin cajas registradas).",
+          "when": "Se abre el Dashboard.",
+          "then": "La tarjeta muestra 'Caja Cerrada' y el botón 'Abrir Caja'."
+        }
+      ]
+    },
+    {
+      "id": "CU-DASH-08",
+      "name": "Indicador de Progreso del Día (DashboardGauge)",
+      "endpoint": "GET /api/dashboard/stats",
+      "objective": "Comparar visualmente la cantidad de pedidos entregados/pagados vs la meta diaria de pedidos recibidos hoy.",
+      "criticality": "MEDIA",
+      "business_rules": [
+        "currentValue = pedidosActivos.ENTREGADO + pedidosActivos.PAGADO.",
+        "targetValue = max(pedidosDelDia.hoy, 1) para prevenir división por cero si hoy = 0.",
+        "El gauge renderiza el arco porcentual correspondiente y el texto 'Pedidos entregados vs recibidos hoy'."
+      ],
+      "scenarios": [
+        {
+          "type": "HAPPY_PATH_GAUGE_CALCULATED",
+          "description": "Cálculo del arco de progreso diario",
+          "given": "2 pedidos entregados hoy de un total de 4 pedidos recibidos.",
+          "when": "Se visualiza el Dashboard.",
+          "then": "El componente DashboardGauge muestra 2 / 4 con subtítulo 'Pedidos entregados vs recibidos hoy'."
+        }
+      ]
+    }
+  ],
+  "playwright_live_e2e_specifications": [
+    {
+      "suite_id": "SPEC-DASH-01",
+      "file": "front/e2e/dashboard/01-dashboard-kpis-live.spec.ts",
+      "description": "Prueba E2E Live de la carga principal del dashboard, animación GSAP, los 4 KPIs superiores y navegación hacia módulos vinculados.",
+      "setup_steps": [
+        "1. Autenticar administrador legítimo en vivo mediante LiveDashboardHelper.setupLiveTenantAndAdmin().",
+        "2. Sembrar en PostgreSQL 2 pedidos creados hoy ($3000 cobrado, $1500 impago) y 1 pedido creado ayer ($2000 cobrado).",
+        "3. Inyectar sesión de autenticación en localStorage/cookies y navegar a /admin/dashboard."
+      ],
+      "test_cases": [
+        {
+          "name": "1. [LIVE] Debe renderizar el encabezado y las 4 tarjetas KPI con datos reales de PostgreSQL",
+          "assertions": [
+            "Espera que el loader desaparezca y aparezca el título 'Dashboard'.",
+            "Verifica que 'Pedidos del Día' muestre '2'.",
+            "Verifica que 'Ingresos Hoy' muestre el formato de moneda '$ 3.000'.",
+            "Verifica que 'Servicios Activos' y 'Entregas Pend.' reflejen los conteos de la DB.",
+            "Toma captura de pantalla a pantalla completa: 01-dashboard-kpis-y-metricas.png."
+          ]
+        },
+        {
+          "name": "2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el KPI 'Pedidos del Día'",
+          "assertions": [
+            "Hace clic en el enlace/tarjeta 'Pedidos del Día'.",
+            "Verifica que la URL cambie a /admin/pedidos.",
+            "Toma captura: 02-dashboard-navegacion-pedidos-kpi.png."
+          ]
+        },
+        {
+          "name": "3. [LIVE] Debe navegar a /admin/caja al hacer clic en el KPI 'Ingresos Hoy'",
+          "assertions": [
+            "Hace clic en el enlace/tarjeta 'Ingresos Hoy'.",
+            "Verifica que la URL cambie a /admin/caja.",
+            "Toma captura: 03-dashboard-navegacion-caja-kpi.png."
+          ]
+        }
+      ]
+    },
+    {
+      "suite_id": "SPEC-DASH-02",
+      "file": "front/e2e/dashboard/02-dashboard-analytics-charts-live.spec.ts",
+      "description": "Prueba E2E Live del gráfico de barras de ingresos semanales (DashboardBarChart) y lista de últimos pedidos.",
+      "setup_steps": [
+        "1. Sembrar cobros en PostgreSQL distribuidos en los últimos 7 días.",
+        "2. Navegar a /admin/dashboard con sesión inyectada."
+      ],
+      "test_cases": [
+        {
+          "name": "1. [LIVE] Debe renderizar el gráfico 'Ingresos por Día ($)' con los 7 días de la semana",
+          "assertions": [
+            "Verifica visibilidad del encabezado 'Ingresos por Día ($)'.",
+            "Verifica la presencia de las barras de los días correspondientes (Dom, Lun, Mar, Mie, Jue, Vie, Sab).",
+            "Toma captura: 04-dashboard-grafico-barras-semanal.png."
+          ]
+        },
+        {
+          "name": "2. [LIVE] Debe mostrar la lista de 'Últimos Pedidos' con tickets reales y badges semánticos",
+          "assertions": [
+            "Verifica visibilidad de la tarjeta 'Últimos Pedidos'.",
+            "Verifica que los pedidos creados figuren con 'Pedido #X - NombreCliente'.",
+            "Toma captura: 05-dashboard-ultimos-pedidos-lista.png."
+          ]
+        },
+        {
+          "name": "3. [LIVE] Debe navegar a /admin/pedidos/nuevo al pulsar '+ Nuevo' en Últimos Pedidos",
+          "assertions": [
+            "Hace clic en '+ Nuevo'.",
+            "Verifica redirección a /admin/pedidos/nuevo.",
+            "Toma captura: 06-dashboard-navegacion-nuevo-pedido-desde-lista.png."
+          ]
+        }
+      ]
+    },
+    {
+      "suite_id": "SPEC-DASH-03",
+      "file": "front/e2e/dashboard/03-dashboard-caja-integration-live.spec.ts",
+      "description": "Prueba E2E Live de la integración reactiva con el estado de la caja chica.",
+      "setup_steps": [
+        "1. Crear tenant nuevo con caja cerrada.",
+        "2. Navegar a /admin/dashboard.",
+        "3. Abrir caja mediante API real y recargar para verificar la transición."
+      ],
+      "test_cases": [
+        {
+          "name": "1. [LIVE] Debe mostrar 'Caja Cerrada' y botón 'Abrir Caja' cuando no hay turno activo",
+          "assertions": [
+            "Verifica texto 'Caja Cerrada' y 'Abre un turno para operar'.",
+            "Verifica botón 'Abrir Caja'.",
+            "Toma captura: 07-dashboard-caja-cerrada.png."
+          ]
+        },
+        {
+          "name": "2. [LIVE] Debe navegar a /admin/caja al pulsar 'Abrir Caja' o 'Ver Caja'",
+          "assertions": [
+            "Hace clic en el botón de acción de caja.",
+            "Verifica redirección a /admin/caja.",
+            "Toma captura: 08-dashboard-navegacion-caja.png."
+          ]
+        },
+        {
+          "name": "3. [LIVE] Debe actualizar a 'Turno en Curso' tras la apertura real de una caja en PostgreSQL",
+          "assertions": [
+            "Ejecuta apertura de caja vía API en PostgreSQL.",
+            "Recarga /admin/dashboard.",
+            "Verifica que la tarjeta muestre 'Turno en Curso' y botón 'Ver Caja'.",
+            "Toma captura: 09-dashboard-caja-abierta-en-curso.png."
+          ]
+        }
+      ]
+    },
+    {
+      "suite_id": "SPEC-DASH-04",
+      "file": "front/e2e/dashboard/04-dashboard-alerts-and-gauge-live.spec.ts",
+      "description": "Prueba E2E Live de las alertas de pedidos pendientes y el medidor de progreso diario.",
+      "setup_steps": [
+        "1. Sembrar pedidos con fechas estimadas de entrega pasadas (vencidas) y futuras.",
+        "2. Navegar a /admin/dashboard."
+      ],
+      "test_cases": [
+        {
+          "name": "1. [LIVE] Debe mostrar alertas con badges VENCIDO y HOY según la fecha estimada",
+          "assertions": [
+            "Verifica visibilidad de la sección 'Alertas (Pendientes)'.",
+            "Verifica que los pedidos vencidos presenten el badge 'VENCIDO' o 'HOY'.",
+            "Toma captura: 10-dashboard-alertas-urgencia.png."
+          ]
+        },
+        {
+          "name": "2. [LIVE] Debe navegar a /admin/pedidos?estado=PENDIENTE al pulsar 'Ir a Pedidos'",
+          "assertions": [
+            "Hace clic en 'Ir a Pedidos'.",
+            "Verifica redirección a /admin/pedidos con filtro PENDIENTE.",
+            "Toma captura: 11-dashboard-navegacion-pedidos-pendientes.png."
+          ]
+        },
+        {
+          "name": "3. [LIVE] Debe renderizar el indicador circular 'Progreso del Día' (DashboardGauge)",
+          "assertions": [
+            "Verifica visibilidad de 'Progreso del Día'.",
+            "Verifica que muestre el conteo de pedidos entregados vs meta del día.",
+            "Toma captura: 12-dashboard-progreso-gauge.png."
+          ]
+        }
+      ]
+    },
+    {
+      "suite_id": "SPEC-DASH-05",
+      "file": "front/e2e/dashboard/05-dashboard-global-actions-live.spec.ts",
+      "description": "Prueba E2E Live de los botones globales del encabezado y compatibilidad responsiva.",
+      "setup_steps": [
+        "1. Navegar a /admin/dashboard con sesión activa."
+      ],
+      "test_cases": [
+        {
+          "name": "1. [LIVE] Debe navegar a /admin/pedidos/nuevo al pulsar el botón principal 'Crear Pedido'",
+          "assertions": [
+            "Hace clic en 'Crear Pedido' en el header superior.",
+            "Verifica redirección inmediata a /admin/pedidos/nuevo.",
+            "Toma captura: 13-dashboard-header-crear-pedido.png."
+          ]
+        },
+        {
+          "name": "2. [LIVE] Debe renderizar correctamente todos los componentes tras recarga en vivo",
+          "assertions": [
+            "Ejecuta page.reload().",
+            "Verifica que la animación GSAP complete y todos los bloques .fade-up estén visibles con opacidad 1.",
+            "Toma captura completa: 14-dashboard-vista-completa-final.png."
+          ]
+        }
+      ]
+    }
+  ],
+  "screenshot_strategy": {
+    "directory": "front/e2e/dashboard/screenshots",
+    "cleaning_rule": "Borrado automático de todas las capturas previas (.png) al inicio de la suite (en ScreenshotHelper.cleanScreenshotsDir())",
+    "captures_planned": [
+      "01-dashboard-kpis-y-metricas.png",
+      "02-dashboard-navegacion-pedidos-kpi.png",
+      "03-dashboard-navegacion-caja-kpi.png",
+      "04-dashboard-grafico-barras-semanal.png",
+      "05-dashboard-ultimos-pedidos-lista.png",
+      "06-dashboard-navegacion-nuevo-pedido-desde-lista.png",
+      "07-dashboard-caja-cerrada.png",
+      "08-dashboard-navegacion-caja.png",
+      "09-dashboard-caja-abierta-en-curso.png",
+      "10-dashboard-alertas-urgencia.png",
+      "11-dashboard-navegacion-pedidos-pendientes.png",
+      "12-dashboard-progreso-gauge.png",
+      "13-dashboard-header-crear-pedido.png",
+      "14-dashboard-vista-completa-final.png"
+    ]
+  },
+  "quality_and_resilience_rules": [
+    "ZERO MOCKS ABSOLUTO: Prohibido interceptar peticiones con page.route() simulando respuestas fijas. Las aserciones validan respuestas reales de http://localhost:5001 y PostgreSQL.",
+    "FAIL-FAST Y MULTI-TENANT: Todo acceso sin tenant o con datos cruzados debe ser rechazado inmediatamente por el backend.",
+    "ASINCRONÍA Y ANIMACIONES: Se contemplan los tiempos de animación de GSAP (fade-up duration 0.8s) y peticiones a PostgreSQL utilizando aserciones con { timeout: 15000 }.",
+    "EVIDENCIA VISUAL 100%: Cada prueba ejecutará ScreenshotHelper.take(page, name) guardando imágenes fullPage: true en front/e2e/dashboard/screenshots/."
+  ]
+}

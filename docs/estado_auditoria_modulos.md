@@ -12,7 +12,7 @@ Este documento registra el estado de avance de la auditoría, limpieza de anti-p
 | 👥 **`clientes`** | ✅ **Auditado & Validado** | Extractor `getTenantId` estricto (401), eliminación de `{ id: 1 }` hardcodeado y legacy `typeof p.estado === 'object'`. | Manejo limpio de `ApiError` en `useCuentaCorriente.ts`, tipado `DetallePedidoItem[]` en `cuenta-corriente.api.ts`. | `back2/src/tests/clientes/audit_clientes_module.js` |
 | ⚙️ **`configuracion`** | ✅ **Auditado & Validado** | Reemplazo de creación silenciosa de `"Mi Lavandería"` por `AppError` 404 (`BUSINESS_NOT_FOUND`), Fail-Fast en subida de archivos. | Uso de `apiClient.postForm` para Multipart `FormData` sin headers incompatibles. | `back2/src/tests/configuracion/audit_configuracion_module.js` |
 | 🧺 **`pedidos`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
-| 💵 **`finanzas/cajas/pagos`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
+| 💵 **`finanzas/cajas/pagos`** | ✅ **Auditado & Validado** | Validadores Fail-Fast (`finanzas.validator.js`), eliminación de `{ id: 1 }` y correos ficticios (`mostrador@lavanderia.com`). | Tipado 1:1 sincronizado en `caja.api.ts`. | `back2/src/tests/finanzas/audit_finanzas_module.js` |
 | 💸 **`gastos`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
 | 🧼 **`servicios`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |
 | 👔 **`rrhh/empleados`** | ⏳ **Pendiente** | Por auditar en siguiente sesión. | Por auditar. | - |

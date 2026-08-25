@@ -1,0 +1,383 @@
+{
+  "feature": "Dashboard Principal y Métricas Operativas - Technical Specification & Test Architecture (Deep Dive)",
+  "version": "2.0.0",
+  "system_architecture": {
+    "architecture_pattern": "Multi-Tenant Schema-Per-Tenant SaaS (Neon PostgreSQL) + Feature-First Modular Backend (Express.js) + React 19 / Next.js 16 App Router",
+    "backend_layer": {
+      "runtime": "Node.js v20+ con soporte nativo de ES Modules",
+      "framework": "Express.js v4.19+",
+      "orm": "Sequelize ORM v6 con esquemas dinámicos postgres por tenant (tenant_<id>)",
+      "connection_pool": "back2/src/models/connectionManager.js (gestión de conexiones en caché con esquemas dinámicos)",
+      "module_path": "back2/src/modules/dashboard",
+      "files": {
+        "routes": "back2/src/modules/dashboard/dashboard.routes.js",
+        "controller": "back2/src/modules/dashboard/controllers/dashboard.controller.js",
+        "service": "back2/src/modules/dashboard/services/dashboard.service.js"
+      },
+      "middlewares": [
+        {
+          "name": "verificarToken",
+          "file": "back2/src/middlewares/auth.middleware.js",
+          "purpose": "Decodifica el JWT de la cabecera Authorization o cookies, extrae req.user.empleadoId y req.user.negocioId. Rechaza con 401 si es inválido o no existe."
+        },
+        {
+          "name": "autorizarRoles",
+          "file": "back2/src/middlewares/role.middleware.js",
+          "purpose": "Verifica que req.user.rol pertenezca a ['EMPLEADO', 'CAJERO', 'ADMIN', 'SUPERADMIN']. Rechaza con 403 si el rol es insuficiente."
+        },
+        {
+          "name": "dynamicCors",
+          "file": "back2/src/middlewares/cors.middleware.js",
+          "purpose": "Permite comunicación cross-origin con http://localhost:3000 y cabeceras x-test-suite, Accept, Authorization, Content-Type."
+        }
+      ],
+      "database_models_involved": [
+        {
+          "name": "Pedido",
+          "schema": "tenant_<id>.Pedidos",
+          "key_fields": ["numeroPedido", "clienteId", "estado", "cobrado", "total", "subtotal", "fechaHoraCreacion", "fechaHoraEntregaEstimada"]
+        },
+        {
+          "name": "MovimientoCaja",
+          "schema": "tenant_<id>.MovimientoCajas",
+          "key_fields": ["id", "idCaja", "monto", "tipoMovimiento", "concepto", "metodoPago", "fechaHora"]
+        },
+        {
+          "name": "Cobro",
+          "schema": "tenant_<id>.Cobros",
+          "key_fields": ["id", "idPedido", "montoAbonado", "metodoPago", "fechaHora"]
+        },
+        {
+          "name": "Cliente",
+          "schema": "tenant_<id>.Clientes",
+          "key_fields": ["id", "nombre", "apellido", "telefono", "email", "activo"]
+        },
+        {
+          "name": "Caja",
+          "schema": "tenant_<id>.Cajas",
+          "key_fields": ["id", "estadoCaja", "montoApertura", "montoCierre", "fechaApertura", "fechaCierre"]
+        }
+      ]
+    },
+    "frontend_layer": {
+      "framework": "Next.js 16.0.0 App Router con React 19",
+      "routing_entrypoint": "front/src/app/admin/dashboard/page.tsx",
+      "api_client_domain": "front/src/domains/dashboard/api.ts",
+      "animation_engine": "GSAP 3 con plugin @gsap/react useGSAP sobre selector CSS .fade-up",
+      "date_library": "date-fns (con locale en español es)",
+      "ui_components": [
+        {
+          "name": "DashboardKpi",
+          "file": "front/src/shared/ui/dashboard/dashboard-kpi.tsx",
+          "role": "Muestra tarjetas métricas con valor, badge de tendencia +/- vs ayer, subtítulo explicativo y redirección por clic"
+        },
+        {
+          "name": "DashboardBarChart",
+          "file": "front/src/shared/ui/dashboard/dashboard-bar-chart.tsx",
+          "role": "Renderiza gráfico de barras de ventas en los últimos 7 días con alternancia de patrones y tooltips"
+        },
+        {
+          "name": "DashboardActionCard",
+          "file": "front/src/shared/ui/dashboard/dashboard-action-card.tsx",
+          "role": "Tarjeta interactiva de turno de caja con estado ('Turno en Curso' vs 'Caja Cerrada') y botón de acción"
+        },
+        {
+          "name": "DashboardListCard",
+          "file": "front/src/shared/ui/dashboard/dashboard-list-card.tsx",
+          "role": "Listado estilizado para 'Últimos Pedidos' y 'Alertas (Pendientes)' con badges semánticos"
+        },
+        {
+          "name": "DashboardGauge",
+          "file": "front/src/shared/ui/dashboard/dashboard-gauge.tsx",
+          "role": "Medidor circular SVG que visualiza el ratio de pedidos completados respecto al objetivo diario"
+        }
+      ]
+    }
+  },
+  "data_and_api_contracts": {
+    "dashboard_stats_endpoint": {
+      "route": "GET /api/dashboard/stats",
+      "headers": {
+        "Authorization": "Bearer <JWT_TOKEN>",
+        "x-test-suite": "true",
+        "Accept": "application/json"
+      },
+      "response_schema": {
+        "status": "success",
+        "code": 200,
+        "message": "Estadísticas del dashboard recuperadas exitosamente",
+        "data": {
+          "ingresos": {
+            "mesActual": "number (monto acumulado en el mes calendario corriente)",
+            "mesAnterior": "number (monto acumulado en el mes calendario anterior)",
+            "hoyCobrado": "number (monto cobrado entre 00:00:00 y 23:59:59 de hoy)",
+            "ayerCobrado": "number (monto cobrado entre 00:00:00 y 23:59:59 de ayer)",
+            "hoyTotalPedidos": "number (cantidad de pedidos creados hoy)"
+          },
+          "pedidosDelDia": {
+            "hoy": "number (pedidos con fechaHoraCreacion hoy)",
+            "ayer": "number (pedidos con fechaHoraCreacion ayer)"
+          },
+          "pedidosActivos": {
+            "PENDIENTE": "number (pedidos en estado PENDIENTE)",
+            "EN_PROCESO": "number (pedidos en estado EN_PROCESO o EN_LAVADO)",
+            "LISTO_PARA_RETIRAR": "number (pedidos en estado LISTO_PARA_RETIRAR o LISTO)",
+            "ENTREGADO": "number (pedidos en estado ENTREGADO)",
+            "PAGADO": "number (pedidos con cobrado = true)",
+            "CANCELADO": "number (pedidos en estado CANCELADO)"
+          },
+          "topProductos": "Array<{ id: number, nombre: string, vendidos: number }>",
+          "topClientes": "Array<{ id: number, nombre: string, pedidos: number }>",
+          "ultimosPedidos": "Array<{ id: number, title: string, subtitle: string, badgeText: string, badgeColor: 'green' | 'yellow' | 'red' | 'blue' }>",
+          "ventasPorDia": "Array<{ name: 'Dom' | 'Lun' | 'Mar' | 'Mie' | 'Jue' | 'Vie' | 'Sab', ventas: number }>"
+        }
+      }
+    },
+    "caja_actual_endpoint": {
+      "route": "GET /api/cajas/actual",
+      "response_on_open": {
+        "status": "success",
+        "code": 200,
+        "data": {
+          "id": "number",
+          "estadoCaja": "Abierta",
+          "montoApertura": "number",
+          "fechaApertura": "string (ISO)"
+        }
+      },
+      "response_on_closed": {
+        "status": "fail",
+        "code": 404,
+        "message": "No hay una caja abierta actualmente."
+      }
+    },
+    "pedidos_pendientes_alertas_endpoint": {
+      "route": "GET /api/pedidos?estado=PENDIENTE&limit=5&sortBy=fechaHoraEntregaEstimada&sortOrder=asc",
+      "response_schema": {
+        "status": "success",
+        "code": 200,
+        "data": {
+          "items": "Array<{ id: number, estado: string, fechaHoraEntregaEstimada: string, cliente: { id: number, nombre: string }, detalles: Array<any> }>",
+          "total": "number"
+        }
+      }
+    }
+  },
+  "backend_test_architecture": {
+    "runner": "Jest v29+",
+    "environment": "Node.js con Sequelize SQLite / PostgreSQL en memoria/neon",
+    "helper_file": "back2/src/tests/helpers/dashboard.helper.js",
+    "helper_capabilities": [
+      "setupTenantForDashboardTest(): aprovisiona tenant limpio con admin JWT",
+      "createDashboardOrderFixture(tenantDb, data): crea pedido con cliente, estado y fechaHoraCreacion específica",
+      "createDashboardPaymentFixture(tenantDb, data): registra MovimientoCaja y Cobro con montos y fechas específicas",
+      "openCashRegisterFixture(tenantDb, data): abre turno de caja con saldo inicial",
+      "closeCashRegisterFixture(tenantDb, idCaja): cierra turno de caja"
+    ],
+    "suites": [
+      {
+        "file": "back2/src/tests/dashboard/dashboard.stats.test.js",
+        "description": "Validación matemática de ingresos (hoy vs ayer, mes actual vs mes anterior), serie temporal de 7 días y ranking topClientes.",
+        "test_cases": [
+          "1. Debe calcular ingresos.hoyCobrado e ingresos.ayerCobrado con base en MovimientoCaja con tipo 'Ingreso por Venta'",
+          "2. Debe retornar 0 en ayerCobrado cuando no hay ventas ayer y reflejar tendencia positiva en hoy",
+          "3. Debe generar exactamente 7 elementos en ventasPorDia ordenados cronológicamente",
+          "4. Debe agrupar y ordenar topClientes por cantidad de pedidos de forma descendente",
+          "5. Debe responder con estructura limpia de ceros para un tenant nuevo sin datos"
+        ]
+      },
+      {
+        "file": "back2/src/tests/dashboard/dashboard.estados.test.js",
+        "description": "Clasificación de pedidos activos por estado y exclusión de cancelados en métricas de producción.",
+        "test_cases": [
+          "1. Debe contabilizar correctamente PENDIENTE, EN_PROCESO, LISTO_PARA_RETIRAR y ENTREGADO en pedidosActivos",
+          "2. Debe excluir pedidos CANCELADOS de los conteos de producción activa y agruparlos en pedidosActivos.CANCELADO",
+          "3. Debe retornar ultimosPedidos con los 5 pedidos más recientes y sus badges semánticos correspondientes"
+        ]
+      },
+      {
+        "file": "back2/src/tests/dashboard/dashboard.isolation.test.js",
+        "description": "Aislamiento multi-tenant estricto y compuertas de autenticación/autorización.",
+        "test_cases": [
+          "1. Debe garantizar que las ventas del Tenant A no aparezcan en el dashboard del Tenant B",
+          "2. Debe rechazar la petición con 401 UNAUTHORIZED si no se provee token JWT",
+          "3. Debe arrojar 401 TENANT_REQUIRED si el token no contiene negocioId"
+        ]
+      }
+    ]
+  },
+  "frontend_playwright_e2e_architecture": {
+    "runner": "Playwright Test v1.49+ sobre Chromium Desktop",
+    "viewport": { "width": 1280, "height": 720 },
+    "target_frontend": "http://localhost:3000/admin/dashboard",
+    "target_backend": "http://localhost:5001/api",
+    "helper_file": "front/e2e/helpers/live-dashboard.helper.ts",
+    "screenshot_helper_file": "front/e2e/helpers/screenshot.helper.ts",
+    "session_persistence": "front/e2e/.live-dashboard-session.json",
+    "superadmin_credentials": {
+      "email": "octavio.velo2022@gmail.com",
+      "password_env": "SUPERADMIN_PASSWORD"
+    },
+    "suites": [
+      {
+        "file": "front/e2e/dashboard/01-dashboard-kpis-live.spec.ts",
+        "tests_count": 3,
+        "description": "Carga inicial, animación GSAP, 4 KPIs superiores con datos de Postgres y navegación hacia /admin/pedidos y /admin/caja.",
+        "selectors": {
+          "heading": "page.getByRole('heading', { name: 'Dashboard' })",
+          "kpi_pedidos": "page.getByText('Pedidos del Día')",
+          "kpi_ingresos": "page.getByText('Ingresos Hoy')",
+          "kpi_servicios": "page.getByText('Servicios Activos')",
+          "kpi_entregas": "page.getByText('Entregas Pend.')"
+        },
+        "test_details": [
+          {
+            "name": "1. [LIVE] Debe renderizar el encabezado y las 4 tarjetas KPI con datos reales de PostgreSQL",
+            "flow": "Inyecta sesión, navega a /admin/dashboard, espera carga de estadísticas y valida los 4 KPIs con datos de la DB viva.",
+            "screenshot": "01-dashboard-kpis-y-metricas.png"
+          },
+          {
+            "name": "2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el KPI 'Pedidos del Día'",
+            "flow": "Hace clic en la tarjeta de Pedidos del Día y espera redirección a /admin/pedidos.",
+            "screenshot": "02-dashboard-navegacion-pedidos-kpi.png"
+          },
+          {
+            "name": "3. [LIVE] Debe navegar a /admin/caja al hacer clic en el KPI 'Ingresos Hoy'",
+            "flow": "Hace clic en la tarjeta de Ingresos Hoy y espera redirección a /admin/caja.",
+            "screenshot": "03-dashboard-navegacion-caja-kpi.png"
+          }
+        ]
+      },
+      {
+        "file": "front/e2e/dashboard/02-dashboard-analytics-charts-live.spec.ts",
+        "tests_count": 3,
+        "description": "Gráfico de barras de 7 días (DashboardBarChart), feed de Últimos Pedidos y navegación a /admin/pedidos/nuevo.",
+        "selectors": {
+          "chart_title": "page.getByText('Ingresos por Día ($)')",
+          "recent_orders_title": "page.getByText('Últimos Pedidos')",
+          "btn_nuevo": "page.getByRole('button', { name: /\\+ Nuevo/i })"
+        },
+        "test_details": [
+          {
+            "name": "1. [LIVE] Debe renderizar el gráfico 'Ingresos por Día ($)' con los 7 días de la semana",
+            "flow": "Verifica presencia de barras para los días de la semana en base a datos reales.",
+            "screenshot": "04-dashboard-grafico-barras-semanal.png"
+          },
+          {
+            "name": "2. [LIVE] Debe mostrar la lista de 'Últimos Pedidos' con tickets reales y badges semánticos",
+            "flow": "Verifica la renderización de los pedidos creados en Postgres con su badge de estado.",
+            "screenshot": "05-dashboard-ultimos-pedidos-lista.png"
+          },
+          {
+            "name": "3. [LIVE] Debe navegar a /admin/pedidos/nuevo al pulsar '+ Nuevo' en Últimos Pedidos",
+            "flow": "Hace clic en el botón de acción rápida y valida la llegada al formulario de nuevo pedido.",
+            "screenshot": "06-dashboard-navegacion-nuevo-pedido-desde-lista.png"
+          }
+        ]
+      },
+      {
+        "file": "front/e2e/dashboard/03-dashboard-caja-integration-live.spec.ts",
+        "tests_count": 3,
+        "description": "Visualización con caja cerrada, navegación a /admin/caja, apertura real de caja y transición a 'Turno en Curso'.",
+        "selectors": {
+          "caja_card_title": "page.getByText('Estado de Caja')",
+          "caja_cerrada_text": "page.getByText('Caja Cerrada')",
+          "turno_en_curso_text": "page.getByText('Turno en Curso')",
+          "btn_abrir_caja": "page.getByRole('button', { name: /Abrir Caja/i })",
+          "btn_ver_caja": "page.getByRole('button', { name: /Ver Caja/i })"
+        },
+        "test_details": [
+          {
+            "name": "1. [LIVE] Debe mostrar 'Caja Cerrada' y botón 'Abrir Caja' cuando no hay turno activo",
+            "flow": "Carga dashboard con caja cerrada y verifica textos de advertencia.",
+            "screenshot": "07-dashboard-caja-cerrada.png"
+          },
+          {
+            "name": "2. [LIVE] Debe navegar a /admin/caja al pulsar 'Abrir Caja' o 'Ver Caja'",
+            "flow": "Hace clic en el botón y verifica redirección a /admin/caja.",
+            "screenshot": "08-dashboard-navegacion-caja.png"
+          },
+          {
+            "name": "3. [LIVE] Debe actualizar a 'Turno en Curso' tras la apertura real de una caja en PostgreSQL",
+            "flow": "Abre turno vía API en Postgres, recarga la página y confirma cambio a 'Turno en Curso'.",
+            "screenshot": "09-dashboard-caja-abierta-en-curso.png"
+          }
+        ]
+      },
+      {
+        "file": "front/e2e/dashboard/04-dashboard-alerts-and-gauge-live.spec.ts",
+        "tests_count": 3,
+        "description": "Alertas operativas con badges VENCIDO / HOY, botón 'Ir a Pedidos' e indicador circular DashboardGauge.",
+        "selectors": {
+          "alerts_title": "page.getByText('Alertas (Pendientes)')",
+          "btn_ir_pedidos": "page.getByRole('button', { name: /Ir a Pedidos/i })",
+          "gauge_title": "page.getByText('Progreso del Día')"
+        },
+        "test_details": [
+          {
+            "name": "1. [LIVE] Debe mostrar alertas con badges VENCIDO y HOY según la fecha estimada",
+            "flow": "Verifica badges de urgencia en los pedidos pendientes sembrados.",
+            "screenshot": "10-dashboard-alertas-urgencia.png"
+          },
+          {
+            "name": "2. [LIVE] Debe navegar a /admin/pedidos?estado=PENDIENTE al pulsar 'Ir a Pedidos'",
+            "flow": "Hace clic en 'Ir a Pedidos' y verifica la URL con query param de filtro.",
+            "screenshot": "11-dashboard-navegacion-pedidos-pendientes.png"
+          },
+          {
+            "name": "3. [LIVE] Debe renderizar el indicador circular 'Progreso del Día' (DashboardGauge)",
+            "flow": "Valida que el medidor visual refleje la relación de pedidos entregados vs meta del día.",
+            "screenshot": "12-dashboard-progreso-gauge.png"
+          }
+        ]
+      },
+      {
+        "file": "front/e2e/dashboard/05-dashboard-global-actions-live.spec.ts",
+        "tests_count": 2,
+        "description": "Botón superior 'Crear Pedido', botón 'Exportar Info' y recarga viva del dashboard sin pérdida de consistencia.",
+        "selectors": {
+          "btn_crear_pedido_header": "page.getByRole('button', { name: /Crear Pedido/i })",
+          "btn_exportar_info": "page.getByRole('button', { name: /Exportar Info/i })"
+        },
+        "test_details": [
+          {
+            "name": "1. [LIVE] Debe navegar a /admin/pedidos/nuevo al pulsar el botón principal 'Crear Pedido'",
+            "flow": "Hace clic en el botón del encabezado y verifica navegación a /admin/pedidos/nuevo.",
+            "screenshot": "13-dashboard-header-crear-pedido.png"
+          },
+          {
+            "name": "2. [LIVE] Debe renderizar correctamente todos los componentes tras recarga en vivo",
+            "flow": "Ejecuta page.reload(), espera fin de animación GSAP y valida consistencia de todos los bloques.",
+            "screenshot": "14-dashboard-vista-completa-final.png"
+          }
+        ]
+      }
+    ]
+  },
+  "visual_evidence_strategy": {
+    "output_directory": "front/e2e/dashboard/screenshots",
+    "lifecycle": "Al inicio de test.beforeAll(), ScreenshotHelper.cleanScreenshotsDir() purga todos los .png antiguos.",
+    "screenshot_catalog": [
+      { "id": 1, "name": "01-dashboard-kpis-y-metricas.png", "context": "Vista principal con los 4 KPIs calculados desde PostgreSQL" },
+      { "id": 2, "name": "02-dashboard-navegacion-pedidos-kpi.png", "context": "Redirección a /admin/pedidos desde tarjeta de Pedidos del Día" },
+      { "id": 3, "name": "03-dashboard-navegacion-caja-kpi.png", "context": "Redirección a /admin/caja desde tarjeta de Ingresos Hoy" },
+      { "id": 4, "name": "04-dashboard-grafico-barras-semanal.png", "context": "Gráfico de barras de 7 días con volumen de ventas por día" },
+      { "id": 5, "name": "05-dashboard-ultimos-pedidos-lista.png", "context": "Lista de últimos 5 pedidos con nombres y badges semánticos" },
+      { "id": 6, "name": "06-dashboard-navegacion-nuevo-pedido-desde-lista.png", "context": "Navegación al formulario de alta desde '+ Nuevo' en últimos pedidos" },
+      { "id": 7, "name": "07-dashboard-caja-cerrada.png", "context": "Tarjeta de caja en estado 'Caja Cerrada' con botón 'Abrir Caja'" },
+      { "id": 8, "name": "08-dashboard-navegacion-caja.png", "context": "Navegación al módulo de caja desde la tarjeta interactiva" },
+      { "id": 9, "name": "09-dashboard-caja-abierta-en-curso.png", "context": "Tarjeta de caja en estado 'Turno en Curso' con botón 'Ver Caja'" },
+      { "id": 10, "name": "10-dashboard-alertas-urgencia.png", "context": "Lista de alertas con badges VENCIDO y HOY calculados con date-fns" },
+      { "id": 11, "name": "11-dashboard-navegacion-pedidos-pendientes.png", "context": "Redirección al listado filtrado de pedidos pendientes" },
+      { "id": 12, "name": "12-dashboard-progreso-gauge.png", "context": "Medidor circular DashboardGauge con porcentaje de cumplimiento diario" },
+      { "id": 13, "name": "13-dashboard-header-crear-pedido.png", "context": "Acceso directo a nuevo pedido desde el botón superior" },
+      { "id": 14, "name": "14-dashboard-vista-completa-final.png", "context": "Vista panorámica full-page del Dashboard tras recarga en caliente" }
+    ]
+  },
+  "resilience_and_fail_fast_rules": [
+    "ZERO MOCKS: Queda estrictamente prohibido usar page.route() para simular respuestas estáticas. Todo se conecta por HTTP real a Express y PostgreSQL.",
+    "DEBOUNCE Y ANIMACIONES: Las aserciones esperan la finalización de la animación GSAP (.fade-up) y la resolución de la promesa Promise.all([getDashboardStats(), obtenerCajaActual(), getPedidos()]) usando timeouts de 15s.",
+    "PROTECCIÓN DIVISIÓN POR CERO: Se valida que Math.max(hoyPedidos, 1) en DashboardGauge evite errores ante 0 pedidos.",
+    "ATRAPE SEGURO DE CAJA CERRADA: Si /cajas/actual responde 404, el frontend lo transforma en null sin romper la UI."
+  ]
+}

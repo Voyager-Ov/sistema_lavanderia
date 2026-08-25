@@ -30,13 +30,14 @@ class CajasService {
                 const isIngreso = mov.tipoMovimiento?.toLowerCase().includes("ingreso") || mov.tipoMovimiento?.toLowerCase().includes("venta") || montoVal > 0;
                 const absMonto = Math.abs(montoVal);
 
-                const metodoObj = mov.metodoPago || { id: 1, nombre: "Efectivo", esFijo: true };
-                const metodoNombre = metodoObj.nombre || "Efectivo";
+                const metodoObj = mov.metodoPago ? mov.metodoPago : { nombre: "Efectivo", esFijo: true };
+                const metodoNombre = metodoObj.nombre ? metodoObj.nombre : "Efectivo";
+                const metodoId = metodoObj.id ? metodoObj.id : null;
                 const isEfectivo = metodoObj.esFijo !== false && !metodoNombre.toLowerCase().includes("transferencia") && !metodoNombre.toLowerCase().includes("mercadopago") && !metodoNombre.toLowerCase().includes("tarjeta");
 
                 if (!metodoMap[metodoNombre]) {
                     metodoMap[metodoNombre] = {
-                        metodoPagoId: metodoObj.id || 1,
+                        metodoPagoId: metodoId,
                         nombre: metodoNombre,
                         ingresos: 0,
                         egresos: 0
@@ -58,7 +59,7 @@ class CajasService {
                         monto: absMonto,
                         estado: "COMPLETADO",
                         createdAt: mov.fechaHora || mov.createdAt,
-                        metodoPago: { id: metodoObj.id || 1, nombre: metodoNombre, esFijo: isEfectivo },
+                        metodoPago: { id: metodoId, nombre: metodoNombre, esFijo: isEfectivo },
                         pedido: {
                             id: mov.id,
                             codigoSeguimiento: mov.observacion || `MOV-${mov.id}`,
@@ -83,7 +84,7 @@ class CajasService {
                         categoria: "GASTO_GENERAL",
                         descripcion: mov.observacion || "Gasto de caja",
                         createdAt: mov.fechaHora || mov.createdAt,
-                        metodoPago: { id: metodoObj.id || 1, nombre: metodoNombre, esFijo: isEfectivo }
+                        metodoPago: { id: metodoId, nombre: metodoNombre, esFijo: isEfectivo }
                     });
                 }
             }
@@ -95,11 +96,14 @@ class CajasService {
 
         const isAbierta = plain.abierta === true || plain.estadoCaja === "Abierta" || plain.estado === "ABIERTA";
 
+        const emp = plain.empleado;
+        const empNombre = emp ? (emp.apellido ? `${emp.nombre} ${emp.apellido}` : emp.nombre) : "Empleado de Mostrador";
+
         return {
             id: plain.idCaja,
             idCaja: plain.idCaja,
             negocioId: plain.negocioId,
-            usuarioId: plain.empleadoId || 1,
+            usuarioId: plain.empleadoId,
             abierta: isAbierta,
             estado: isAbierta ? "ABIERTA" : "CERRADA",
             estadoCaja: isAbierta ? "Abierta" : "Cerrada",
@@ -117,10 +121,14 @@ class CajasService {
             efectivoReal: plain.montoFinalEfectivoReal,
             totalesPorMetodo,
             actividadTurno: [],
-            usuario: {
-                id: plain.empleadoId || 1,
-                nombre: plain.empleado ? `${plain.empleado.nombre || ''} ${plain.empleado.apellido || ''}`.trim() : "Empleado de Mostrador",
-                email: plain.empleado?.email || "mostrador@lavanderia.com"
+            usuario: emp ? {
+                id: emp.id,
+                nombre: empNombre,
+                email: emp.email || null
+            } : {
+                id: plain.empleadoId,
+                nombre: "Empleado de Mostrador",
+                email: null
             },
             pagos,
             gastos
