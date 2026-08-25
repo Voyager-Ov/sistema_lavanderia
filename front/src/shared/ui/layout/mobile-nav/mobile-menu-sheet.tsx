@@ -52,6 +52,7 @@ export function MobileMenuSheet({ isOpen, onClose, mainMenu, accountMenu, onLogo
                         {item.children.map(sub => (
                           <Link 
                             key={sub.title}
+                            prefetch={false}
                             href={sub.href}
                             className="text-gray-600 dark:text-neutral-400 font-medium active:text-blue-600"
                             onClick={onClose}
@@ -68,6 +69,7 @@ export function MobileMenuSheet({ isOpen, onClose, mainMenu, accountMenu, onLogo
               return (
                 <Link
                   key={item.title}
+                  prefetch={false}
                   href={item.href}
                   onClick={onClose}
                   className={`flex items-center gap-3 p-4 rounded-2xl transition-all active:scale-[0.98]

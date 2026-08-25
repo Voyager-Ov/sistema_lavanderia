@@ -194,7 +194,7 @@ export function AppSidebar({
                               {item.children.map(sub => (
                                 <SidebarMenuSubItem key={sub.title}>
                                   <SidebarMenuSubButton asChild onClick={handleNavClick} className="h-9 rounded-lg text-gray-600 dark:text-neutral-400 font-medium hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
-                                    <Link href={sub.href}>{sub.title}</Link>
+                                    <Link prefetch={false} href={sub.href}>{sub.title}</Link>
                                   </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                               ))}
@@ -218,7 +218,7 @@ export function AppSidebar({
                           : `text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 ${color.hover}`
                       } ${isCollapsed ? 'justify-center' : 'gap-3'}`}
                     >
-                      <Link href={item.href}>
+                      <Link prefetch={false} href={item.href}>
                         {isCollapsed ? (
                            <item.icon className={`h-5 w-5 flex-shrink-0 ${isActive ? color.icon : "text-gray-400 dark:text-neutral-500"}`} />
                         ) : (
@@ -291,7 +291,7 @@ export function AppSidebar({
               {accountMenu.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title} onClick={handleNavClick} className={`h-11 rounded-xl flex items-center px-3 text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-100 hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-                    <Link href={item.href}>
+                    <Link prefetch={false} href={item.href}>
                       {isCollapsed ? (
                         <item.icon className="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-neutral-500" />
                       ) : (

@@ -19,46 +19,61 @@ class LoginService {
             throw new AppError("Usuario no especificado.", 400, "MISSING_USER");
         }
 
-        const negocios = await Negocio.findAll({ order: [["id", "ASC"]] });
+        const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
         let empleadoEncontrado = null;
         let negocioEncontrado = null;
 
-        const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
-
-        // 1. Buscar prioritariamente por email en los tenants
-        if (emailLower) {
-            for (const neg of negocios) {
+        // 1. Vía Rápida: Si el usuario ya tiene su negocioId asignado directamente en DB Central
+        if (usuario.negocioId) {
+            negocioEncontrado = await Negocio.findByPk(usuario.negocioId);
+            if (negocioEncontrado) {
                 try {
-                    const tenantDb = await connectionManager.getTenantDb(neg.id);
-                    const emp = await tenantDb.models.Empleado.findOne({
-                        where: { email: emailLower }
-                    });
-
-                    if (emp) {
-                        empleadoEncontrado = emp;
-                        negocioEncontrado = neg;
-                        if (usuario.empleadoId !== emp.id) {
-                            usuario.empleadoId = emp.id;
-                            await usuario.save().catch(() => {});
-                        }
-                        break;
+                    const tenantDb = await connectionManager.getTenantDb(negocioEncontrado.id);
+                    if (usuario.empleadoId) {
+                        empleadoEncontrado = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
+                    }
+                    if (!empleadoEncontrado && emailLower) {
+                        empleadoEncontrado = await tenantDb.models.Empleado.findOne({ where: { email: emailLower } });
                     }
                 } catch (err) {}
             }
         }
 
-        // 2. Si no se encontró por email, intentar por clave primaria usuario.empleadoId
-        if (!empleadoEncontrado && usuario.empleadoId) {
-            for (const neg of negocios) {
-                try {
-                    const tenantDb = await connectionManager.getTenantDb(neg.id);
-                    const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
-                    if (emp) {
-                        empleadoEncontrado = emp;
-                        negocioEncontrado = neg;
-                        break;
-                    }
-                } catch (err) {}
+        // 2. Vía Fallback (Búsqueda Inicial): Si negocioId aún no estaba asignado
+        if (!empleadoEncontrado || !negocioEncontrado) {
+            const negocios = await Negocio.findAll({ order: [["id", "ASC"]] });
+
+            if (emailLower) {
+                for (const neg of negocios) {
+                    try {
+                        const tenantDb = await connectionManager.getTenantDb(neg.id);
+                        const emp = await tenantDb.models.Empleado.findOne({ where: { email: emailLower } });
+                        if (emp) {
+                            empleadoEncontrado = emp;
+                            negocioEncontrado = neg;
+                            usuario.empleadoId = emp.id;
+                            usuario.negocioId = neg.id;
+                            await usuario.save().catch(() => {});
+                            break;
+                        }
+                    } catch (err) {}
+                }
+            }
+
+            if (!empleadoEncontrado && usuario.empleadoId) {
+                for (const neg of negocios) {
+                    try {
+                        const tenantDb = await connectionManager.getTenantDb(neg.id);
+                        const emp = await tenantDb.models.Empleado.findByPk(usuario.empleadoId);
+                        if (emp) {
+                            empleadoEncontrado = emp;
+                            negocioEncontrado = neg;
+                            usuario.negocioId = neg.id;
+                            await usuario.save().catch(() => {});
+                            break;
+                        }
+                    } catch (err) {}
+                }
             }
         }
 

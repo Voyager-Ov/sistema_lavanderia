@@ -41,18 +41,24 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.INTEGER,
 				allowNull: true,
 			},
+			negocioId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "usuarios",
 			timestamps: true,
 			indexes: [
 				{ fields: ["email"], unique: true },
-				{ fields: ["activo"] }
+				{ fields: ["activo"] },
+				{ fields: ["negocioId"] }
 			]
 		}
 	);
 
 	Usuario.associate = (models) => {
+		if (models.Negocio) Usuario.belongsTo(models.Negocio, { foreignKey: "negocioId", as: "negocio", constraints: false });
 		if (models.Empleado) Usuario.belongsTo(models.Empleado, { foreignKey: "empleadoId", as: "personaFisica", constraints: false });
 		if (models.Rol) Usuario.belongsToMany(models.Rol, { through: "UsuarioRoles", foreignKey: "usuarioEmail", otherKey: "rolId", as: "Roles", constraints: false });
 		if (models.Sesion) Usuario.hasMany(models.Sesion, { foreignKey: "usuarioEmail", as: "sesiones", constraints: false });

@@ -4,13 +4,14 @@ import { connectionManager } from "../../models/connectionManager.js";
 import { authService, registerService } from "../../modules/auth/services/auth.service.js";
 import { setupGoogleOAuthMock } from "../helpers/auth.helper.js";
 
+jest.setTimeout(30000);
+
 describe("Módulo de Autenticación (Auth)", () => {
     const testEmail = "admin.unit@lavanderia.com";
     const testPassword = "PasswordSegura123";
     let solicitudId = null;
 
     beforeAll(async () => {
-        jest.setTimeout(30000);
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
     });

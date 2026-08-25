@@ -112,6 +112,7 @@ class RegisterService {
         const nuevoUsuario = await Usuario.create({
             email: solicitud.emailSolicitante,
             password: solicitud.passwordHash,
+            negocioId: nuevoNegocio.id,
             tokenConfirmacion,
             emailConfirmado: true,
             activo: true

@@ -84,6 +84,7 @@ class ConnectionManager {
             ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "estadoSuscripcion" varchar(50) DEFAULT 'ACTIVA';
             ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "maxImagenes" integer DEFAULT 50;
             ALTER TABLE IF EXISTS public.negocios ADD COLUMN IF NOT EXISTS "maxStorageGB" double precision DEFAULT 1.0;
+            ALTER TABLE IF EXISTS public.usuarios ADD COLUMN IF NOT EXISTS "negocioId" integer;
         `).catch(() => {});
         await this.centralDb.sync();
         console.log("🟢 Base de Datos Central conectada y sincronizada.");
