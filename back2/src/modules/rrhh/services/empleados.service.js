@@ -57,18 +57,19 @@ class EmpleadosService {
         const nuevoUsuario = await centralModels.Usuario.create({
             email: emailLower,
             password: passwordHash,
-            emailVerificado: true,
-            negocioIdActual: negocioId
+            emailConfirmado: true,
+            activo: true,
+            negocioId: negocioId
         });
 
         // Vincular rol central
-        const rolNombre = (data.rol || "empleado").toLowerCase() === "admin" ? "admin" : "empleado";
-        const rol = await centralModels.Rol.findOne({ where: { nombre: rolNombre } });
+        const rolNombreUpper = (data.rol || "EMPLEADO").toUpperCase();
+        const [rol] = await centralModels.Rol.findOrCreate({
+            where: { nombre: rolNombreUpper },
+            defaults: { nombre: rolNombreUpper, descripcion: `Rol ${rolNombreUpper}` }
+        });
         if (rol) {
-            await centralModels.UsuarioRoles.create({
-                usuarioId: nuevoUsuario.id,
-                rolId: rol.id
-            });
+            await nuevoUsuario.addRole(rol);
         }
 
         // Crear legajo local de empleado en base de datos del tenant
