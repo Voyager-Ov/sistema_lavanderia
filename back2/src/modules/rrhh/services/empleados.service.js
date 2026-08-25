@@ -63,7 +63,8 @@ class EmpleadosService {
         });
 
         // Vincular rol central
-        const rolNombreUpper = (data.rol || "EMPLEADO").toUpperCase();
+        const rolNombre = (data.rol || "empleado").toLowerCase();
+        const rolNombreUpper = rolNombre.toUpperCase();
         const [rol] = await centralModels.Rol.findOrCreate({
             where: { nombre: rolNombreUpper },
             defaults: { nombre: rolNombreUpper, descripcion: `Rol ${rolNombreUpper}` }
