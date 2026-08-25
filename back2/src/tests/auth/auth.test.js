@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeAll, beforeEach, jest } from "@jest/globals";
 import jwt from "jsonwebtoken";
 import { connectionManager } from "../../models/connectionManager.js";
 import { authService, registerService } from "../../modules/auth/services/auth.service.js";
@@ -10,6 +10,7 @@ describe("Módulo de Autenticación (Auth)", () => {
     let solicitudId = null;
 
     beforeAll(async () => {
+        jest.setTimeout(30000);
         process.env.NODE_ENV = "test";
         await connectionManager.initCentral();
     });

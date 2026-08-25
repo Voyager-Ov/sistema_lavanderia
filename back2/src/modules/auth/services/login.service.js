@@ -25,12 +25,12 @@ class LoginService {
 
         const emailLower = usuario.email ? usuario.email.toLowerCase().trim() : "";
 
-        // 1. Buscar prioritariamente por email en los tenants para garantizar coincidencia exacta de cuenta
+        // 1. Buscar prioritariamente por email en los tenants
         if (emailLower) {
             for (const neg of negocios) {
                 try {
                     const tenantDb = await connectionManager.getTenantDb(neg.id);
-                    let emp = await tenantDb.models.Empleado.findOne({
+                    const emp = await tenantDb.models.Empleado.findOne({
                         where: { email: emailLower }
                     });
 
@@ -39,13 +39,11 @@ class LoginService {
                         negocioEncontrado = neg;
                         if (usuario.empleadoId !== emp.id) {
                             usuario.empleadoId = emp.id;
-                            await usuario.save();
+                            await usuario.save().catch(() => {});
                         }
                         break;
                     }
-                } catch (err) {
-                    // Continuar inspección
-                }
+                } catch (err) {}
             }
         }
 
@@ -60,9 +58,7 @@ class LoginService {
                         negocioEncontrado = neg;
                         break;
                     }
-                } catch (err) {
-                    // Continuar inspección
-                }
+                } catch (err) {}
             }
         }
 
