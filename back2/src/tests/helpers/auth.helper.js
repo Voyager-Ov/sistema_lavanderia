@@ -27,6 +27,9 @@ export const createTestUser = async ({
     googleId = null,
     negocioId = 1
 }) => {
+    if (!connectionManager.centralDb) {
+        await connectionManager.initCentral();
+    }
     const { Usuario, Rol } = connectionManager.centralModels;
     const salt = await bcrypt.genSalt(10);
     const passwordHash = password ? await bcrypt.hash(password, salt) : null;
@@ -62,6 +65,9 @@ export const createTestTenantWithAdmin = async ({
     rol = "ADMIN",
     activo = true
 }) => {
+    if (!connectionManager.centralDb) {
+        await connectionManager.initCentral();
+    }
     const { Negocio, Usuario, Rol } = connectionManager.centralModels;
 
     const userEmail = email || generateUniqueEmail("admin");

@@ -1,321 +1,392 @@
 {
-  "feature": "Clientes y Cuentas Corrientes Testing Suite (Backend + Frontend E2E)",
-  "version": "1.0.0",
-  "domain": "Clientes, Posición Financiera, Deuda Exigible vs Monto en Taller, Crédito y Cuentas Corrientes",
+  "feature": "Clientes y Cuentas Corrientes - Full-Stack Live Integration Suite (100% Real Backend & Database)",
+  "version": "2.1.0",
+  "domain": "Clientes, Posición Financiera, Deuda Exigible vs Monto en Taller, Crédito, Cajas y Cuentas Corrientes",
+  "testing_paradigm": "LIVE_FULLSTACK_INTEGRATION_ZERO_MOCKS",
   "scope": {
     "in": [
-      "Backend unit/integration test coverage for all Clientes endpoints (CU-CLI-01 through CU-CLI-08)",
-      "Strict Multi-Tenant isolation assertions (Tenant ID resolution, cross-tenant data leakage prevention)",
-      "Single Debt Rule verification (Deuda Exigible ONLY on ENTREGADO + cobrado=false vs Monto en Taller)",
-      "Atomic Credit & Balance Adjustments (saldo a favor, vuelto a favor, consumo atómico de créditos)",
-      "Strict Fail-Fast validation on customer creation and credit adjustments (no alias fallbacks)",
-      "Enforcement of Open Cash Register requirement for collection operations",
-      "Playwright E2E UI test suite covering all client admin pages, side sheets, and modal workflows"
+      "Pruebas de integración HTTP reales (Supertest + Jest) ejecutadas contra la aplicación Express viva y modelos Sequelize conectados a base de datos.",
+      "Pruebas End-to-End en navegador real (Playwright Chromium) comunicándose directamente con el backend Express (http://localhost:5000) sin interceptores de red ficticios (cero page.route() mockeados).",
+      "Validación de persistencia real en PostgreSQL/Sequelize para cada operación: creación de clientes, aprovisionamiento de cuenta corriente, pedidos impagos, cobros y ajustes manuales.",
+      "Garantía estricta de aislamiento multi-tenant verificada contra la base de datos (ningún cliente de tenant A es visible ni modificable por tenant B).",
+      "Aplicación innegociable de la Regla de Deuda Única: solo pedidos con estado ENTREGADO y cobrado = false constituyen deuda exigible.",
+      "Compuertas de Caja Chica reales: validación de caja abierta obligatoria para cobros y bloqueo visual/HTTP cuando la caja está cerrada.",
+      "Consumo atómico de crédito y saldo a favor en cuenta corriente con verificación de asientos contables en MovimientoCuenta y MovimientoCaja."
     ],
     "out": [
-      "Stress testing of high-frequency concurrent balance adjustments",
-      "External fiscal invoicing integration (AFIP) during billing (tested in Finanzas module)"
+      "Pruebas con datos mockeados o simuladores sintéticos (estrictamente prohibidos)",
+      "Emisión de comprobantes fiscales AFIP reales (cubierto en módulo Finanzas/Facturación)"
     ]
   },
   "use_cases": [
     {
       "id": "CU-CLI-01",
-      "name": "Listar Clientes con Paginación, Búsqueda y Cálculo Financiero",
+      "name": "Listar Clientes con Paginación, Búsqueda Real y Métricas Financieras",
       "endpoint": "GET /api/clientes",
-      "objective": "Retornar el listado paginado de clientes del tenant activo, permitiendo búsqueda por nombre, apellido, teléfono y email, e incluyendo el cálculo dinámico de Deuda Exigible y Saldo a Favor.",
+      "objective": "Consultar la base de datos real del tenant activo y retornar el listado paginado de clientes con cálculo dinámico en tiempo real de Deuda Exigible y Saldo a Favor.",
       "criticality": "ALTA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Listado paginado exitoso con cálculos financieros",
-          "given": "Tenant activo con clientes registrados que poseen pedidos entregados impagos y saldo en cuenta corriente",
-          "when": "Se envía GET /api/clientes?page=1&limit=10",
-          "then": "Responde 200 OK con items y meta de paginación. Cada cliente incluye saldoDeuda (solo pedidos entregados e impagos) y saldoAFavor."
+          "type": "HAPPY_PATH_DATABASE_PERSISTED",
+          "description": "Listado de clientes persistidos con cálculo dinámico de deuda y crédito",
+          "given": "Base de datos con clientes reales en el tenant activo, incluyendo clientes con pedidos entregados impagos y saldo en CuentaCorriente.",
+          "when": "Se ejecuta una petición HTTP real GET /api/clientes?page=1&limit=10 con token JWT legítimo.",
+          "then": "El servidor consulta Sequelize, calcula saldoDeuda sumando exclusivamente pedidos entregados e impagos, calcula saldoAFavor desde CuentaCorriente y responde 200 OK con items y metadata de paginación real."
         },
         {
-          "type": "HAPPY_PATH_SEARCH",
-          "description": "Búsqueda por texto (nombre, teléfono o email)",
-          "given": "Clientes con nombres 'Juan Perez' y 'Maria Gomez'",
-          "when": "Se envía GET /api/clientes?search=Juan",
-          "then": "Responde 200 OK conteniendo únicamente coincidencias de 'Juan'."
+          "type": "HAPPY_PATH_SQL_SEARCH",
+          "description": "Búsqueda real por SQL (Op.iLike / Op.like)",
+          "given": "Clientes en base de datos con nombres 'Carlos Gardel' y 'Anibal Troilo'.",
+          "when": "Se envía GET /api/clientes?search=Gardel al backend real.",
+          "then": "El query SQL filtra por coincidencia parcial y responde 200 OK conteniendo únicamente a 'Carlos Gardel'."
         },
         {
-          "type": "NEGATIVE_TENANT_ISOLATION",
-          "description": "Aislamiento estricto de clientes entre tenants",
-          "given": "Cliente registrado en Tenant ID 1 y petición autenticada con Tenant ID 2",
-          "when": "Se envía GET /api/clientes desde Tenant ID 2",
-          "then": "El cliente de Tenant ID 1 NUNCA aparece en el listado de Tenant ID 2."
+          "type": "NEGATIVE_TENANT_ISOLATION_DB",
+          "description": "Aislamiento estricto de clientes entre esquemas de base de datos",
+          "given": "Cliente persistido en Tenant 1 y administrador autenticado perteneciente a Tenant 2.",
+          "when": "El admin de Tenant 2 solicita GET /api/clientes.",
+          "then": "El backend ejecuta la consulta en el esquema de Tenant 2 y el cliente de Tenant 1 JAMÁS aparece en el resultado."
         },
         {
-          "type": "NEGATIVE_AUTH",
-          "description": "Petición no autenticada o sin tenant en sesión",
-          "given": "Petición sin cabecera Authorization o sin negocioId en el token",
-          "when": "Se envía GET /api/clientes",
-          "then": "Responde 401 UNAUTHORIZED o 400 MISSING_TENANT_ID."
+          "type": "NEGATIVE_UNAUTHORIZED_JWT",
+          "description": "Rechazo de acceso sin autenticación válida",
+          "given": "Petición HTTP sin cabecera Authorization o con token expirado/falso.",
+          "when": "Se consulta GET /api/clientes.",
+          "then": "El middleware de seguridad responde 401 UNAUTHORIZED."
         }
       ]
     },
     {
       "id": "CU-CLI-02",
-      "name": "Obtener Detalle de Cliente y Posición Financiera por ID",
+      "name": "Ficha de Cliente y Desglose Financiero (Deuda Exigible vs Monto en Taller)",
       "endpoint": "GET /api/clientes/:id",
-      "objective": "Retornar la ficha completa del cliente, sus pedidos clasificados (Deuda Exigible vs Monto en Taller), su saldo a favor y movimientos de cuenta corriente.",
+      "objective": "Recuperar desde la base de datos la ficha integral del cliente, aplicando estrictamente la Regla de Deuda Única para separar deuda vencida de pedidos en proceso.",
       "criticality": "CRÍTICA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Recuperación de cliente con separación estricta de deuda vs taller",
-          "given": "Cliente con un pedido ENTREGADO impago de $1000 y un pedido EN_LAVADO impago de $500",
-          "when": "Se envía GET /api/clientes/:id",
-          "then": "Responde 200 OK con saldoDeuda = 1000 (Deuda Exigible) y montoEnTaller = 500 (Sin deuda exigible)."
+          "type": "HAPPY_PATH_FINANCIAL_SEPARATION",
+          "description": "Separación contable estricta entre Deuda Exigible y Monto en Taller",
+          "given": "Cliente en DB con 1 pedido ENTREGADO impago de $1200 y 1 pedido EN_PROCESO impago de $800.",
+          "when": "Se envía GET /api/clientes/:id al backend.",
+          "then": "El backend responde 200 OK con saldoDeuda = 1200 (exigible) y montoEnTaller = 800 (en curso, no exigible)."
         },
         {
-          "type": "NEGATIVE_NOT_FOUND",
-          "description": "Cliente inexistente o de otro tenant",
-          "given": "ID inexistente o perteneciente a otro negocio",
-          "when": "Se consulta GET /api/clientes/:id",
-          "then": "Responde 404 NOT_FOUND con código CLIENT_NOT_FOUND."
+          "type": "NEGATIVE_NOT_FOUND_OR_CROSS_TENANT",
+          "description": "Intento de consultar cliente inexistente o de otro tenant",
+          "given": "ID que no existe en el esquema del tenant autenticado.",
+          "when": "Se consulta GET /api/clientes/999999.",
+          "then": "El backend responde 404 NOT_FOUND con código CLIENT_NOT_FOUND."
         }
       ]
     },
     {
       "id": "CU-CLI-03",
-      "name": "Crear Nuevo Cliente con Cuenta Corriente Automática",
+      "name": "Crear Cliente con Aprovisionamiento Atómico de Cuenta Corriente",
       "endpoint": "POST /api/clientes",
-      "objective": "Registrar un cliente en el esquema tenant y aprovisionar atómicamente su Cuenta Corriente con saldo inicial 0.",
+      "objective": "Insertar un nuevo registro en la tabla Cliente del tenant y crear atómicamente su registro asociado en CuentaCorriente con saldo inicial $0.",
       "criticality": "ALTA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Creación exitosa de cliente con datos canónicos",
-          "given": "Payload con nombre, apellido, teléfono, email y dirección válidos",
-          "when": "Se envía POST /api/clientes",
-          "then": "Responde 201 CREATED con el cliente creado, activo = true y CuentaCorriente con saldo = 0 vinculada."
+          "type": "HAPPY_PATH_INSERT_DB",
+          "description": "Creación e inserción real en base de datos",
+          "given": "Payload con { nombre: 'Roberto', apellido: 'Gomez', telefono: '1133445566', email: 'roberto@test.com' }.",
+          "when": "Se envía POST /api/clientes al backend.",
+          "then": "El backend inserta el registro en Cliente, crea la CuentaCorriente con saldo 0 en la misma transacción y responde 201 CREATED con el cliente persistido y activo = true."
         },
         {
-          "type": "NEGATIVE_FAIL_FAST",
-          "description": "Falta de nombre obligatorio",
-          "given": "Payload sin campo 'nombre' o con string vacío",
-          "when": "Se envía POST /api/clientes",
-          "then": "Falla rápido respondiendo 400 BAD_REQUEST con código MISSING_CLIENT_NAME o VALIDATION_ERROR."
+          "type": "NEGATIVE_FAIL_FAST_NAME",
+          "description": "Falta de nombre obligatorio (Fail-Fast inmediato)",
+          "given": "Payload sin campo 'nombre' o con string en blanco { nombre: '   ', telefono: '123' }.",
+          "when": "Se envía POST /api/clientes.",
+          "then": "El backend rechaza inmediatamente con 400 BAD_REQUEST y código MISSING_CLIENT_NAME sin escribir en la base de datos."
         }
       ]
     },
     {
       "id": "CU-CLI-04",
-      "name": "Actualizar Datos del Cliente",
+      "name": "Actualizar Datos del Cliente en Base de Datos",
       "endpoint": "PUT /api/clientes/:id y PATCH /api/clientes/:id",
-      "objective": "Permitir la modificación de datos de contacto y domicilio del cliente en su tenant.",
+      "objective": "Modificar los datos de contacto y domicilio de un cliente persistido en el tenant.",
       "criticality": "MEDIA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Actualización parcial o total de datos",
-          "given": "Cliente existente en el tenant activo y payload con nuevo teléfono y dirección",
-          "when": "Se envía PUT /api/clientes/:id",
-          "then": "Actualiza los campos en base de datos y responde 200 OK con el cliente actualizado."
+          "type": "HAPPY_PATH_UPDATE_DB",
+          "description": "Actualización real de columnas",
+          "given": "Cliente existente en base de datos y payload con nuevo teléfono '1199887766' y dirección 'Av. Corrientes 1234'.",
+          "when": "Se envía PUT /api/clientes/:id.",
+          "then": "El backend ejecuta UPDATE en Sequelize, persiste los cambios y responde 200 OK con los datos actualizados."
         },
         {
           "type": "NEGATIVE_NOT_FOUND",
-          "description": "Intento de actualizar cliente inexistente",
-          "given": "ID que no existe en el tenant",
-          "when": "Se envía la petición de actualización",
-          "then": "Responde 404 NOT_FOUND con código CLIENT_NOT_FOUND."
+          "description": "Intento de actualizar un cliente inexistente",
+          "given": "ID inexistente en el tenant.",
+          "when": "Se envía PUT /api/clientes/:id.",
+          "then": "Responde 404 NOT_FOUND con CLIENT_NOT_FOUND."
         }
       ]
     },
     {
       "id": "CU-CLI-05",
-      "name": "Desactivar / Eliminar Cliente",
+      "name": "Eliminar / Desactivar Cliente",
       "endpoint": "DELETE /api/clientes/:id",
-      "objective": "Eliminar o dar de baja a un cliente del tenant.",
+      "objective": "Eliminar o desactivar el registro del cliente en el tenant activo.",
       "criticality": "MEDIA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Baja exitosa de cliente",
-          "given": "Cliente existente en el tenant",
-          "when": "Se envía DELETE /api/clientes/:id",
-          "then": "Elimina el registro y responde 200 OK con mensaje de confirmación."
+          "type": "HAPPY_PATH_DELETE_DB",
+          "description": "Eliminación real del registro",
+          "given": "Cliente existente en DB.",
+          "when": "Se envía DELETE /api/clientes/:id.",
+          "then": "El backend elimina el registro y responde 200 OK con mensaje de confirmación."
         },
         {
           "type": "NEGATIVE_NOT_FOUND",
-          "description": "Cliente no encontrado para eliminar",
-          "given": "ID inexistente",
-          "when": "Se envía DELETE /api/clientes/:id",
+          "description": "Cliente no encontrado para eliminación",
+          "given": "ID que no existe.",
+          "when": "Se envía DELETE /api/clientes/:id.",
           "then": "Responde 404 NOT_FOUND con CLIENT_NOT_FOUND."
         }
       ]
     },
     {
       "id": "CU-CLI-06",
-      "name": "Obtener Pedidos Impagos y Desglose de Deuda para Cobro",
+      "name": "Consultar Pedidos Impagos y Desglose de Deuda Real",
       "endpoint": "GET /api/clientes/:id/pedidos-impagos",
-      "objective": "Listar todos los pedidos pendientes de pago del cliente, diferenciando cuáles constituyen deuda exigible (entregados) y cuáles están en taller.",
+      "objective": "Recuperar desde la base de datos todos los pedidos no cobrados del cliente, calculando el total de deuda exigible y excluyendo pedidos cancelados.",
       "criticality": "ALTA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH",
-          "description": "Recuperación de pedidos impagos con flags de deuda",
-          "given": "Cliente con pedidos impagos en diferentes estados (ENTREGADO, EN_LAVADO, CANCELADO)",
-          "when": "Se envía GET /api/clientes/:id/pedidos-impagos",
-          "then": "Responde 200 OK excluyendo cancelados, marcando esDeuda=true solo a los entregados y totalizando totalDeuda."
-        },
-        {
-          "type": "NEGATIVE_NOT_FOUND",
-          "description": "Cliente no encontrado",
-          "given": "ID inválido",
-          "when": "Se consulta el endpoint",
-          "then": "Responde 404 NOT_FOUND con CLIENT_NOT_FOUND."
+          "type": "HAPPY_PATH_DEBT_BREAKDOWN",
+          "description": "Desglose de pedidos impagos con flags de exigibilidad",
+          "given": "Cliente en DB con 1 pedido ENTREGADO impago ($1500), 1 pedido EN_LAVADO impago ($500) y 1 pedido CANCELADO ($700).",
+          "when": "Se consulta GET /api/clientes/:id/pedidos-impagos.",
+          "then": "Responde 200 OK con pedidosImpagos conteniendo los 2 pedidos activos (excluyendo el cancelado), marcando esDeuda=true solo en el entregado y totalDeuda = 1500."
         }
       ]
     },
     {
       "id": "CU-CLI-07",
-      "name": "Cobro de Pedidos y Liquidación de Deuda del Cliente",
+      "name": "Cobro Transaccional de Pedidos y Liquidación de Deuda",
       "endpoint": "POST /api/clientes/:id/cobrar-pedidos y POST /api/clientes/:id/cuenta-corriente/cobrar-deuda",
-      "objective": "Procesar transaccionalmente el cobro de pedidos del cliente, exigiendo caja abierta, consumiendo crédito a favor si aplica y registrando movimientos de caja.",
+      "objective": "Ejecutar la transacción ACID de cobro contra la base de datos viva, validando la existencia de una caja abierta, registrando el movimiento de caja y administrando saldos a favor.",
       "criticality": "CRÍTICA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH_EFECTIVO",
-          "description": "Cobro con efectivo, vuelto y generación de saldo a favor",
-          "given": "Caja abierta en turno, pedido ENTREGADO impago de $1000, pago de $1500 con dejarVueltoAFavor=true",
-          "when": "Se envía POST /api/clientes/:id/cobrar-pedidos",
-          "then": "Marca pedido cobrado=true, acredita $500 en CuentaCorriente y registra MovimientoCaja por $1500."
+          "type": "HAPPY_PATH_COBRO_EFECTIVO_Y_VUELTO_A_FAVOR",
+          "description": "Cobro en efectivo con acreditación de vuelto como saldo a favor",
+          "given": "Caja abierta real en el turno del empleado, pedido ENTREGADO impago de $1000, pago de $1500 con dejarVueltoAFavor = true.",
+          "when": "Se envía POST /api/clientes/:id/cobrar-pedidos al backend.",
+          "then": "En una única transacción SQL: marca pedido cobrado = true, crea registro Cobro, incrementa saldo en CuentaCorriente en $500, inserta MovimientoCaja por $1500 en la caja activa y responde 200 OK."
         },
         {
-          "type": "HAPPY_PATH_CONSUMO_CREDITO",
-          "description": "Cobro aplicando saldo a favor existente",
-          "given": "Caja abierta, cliente con $600 a favor, pedido de $1000, aplicarSaldoAFavor=true y pago restante de $400",
-          "when": "Se procesa el cobro",
-          "then": "Consume los $600 de CuentaCorriente (saldo resultante 0), cobra el pedido y registra $400 en caja."
+          "type": "HAPPY_PATH_CONSUMO_SALDO_A_FAVOR",
+          "description": "Cobro consumiendo saldo a favor previo en CuentaCorriente",
+          "given": "Caja abierta, cliente con saldo en CuentaCorriente = $600, pedido de $1000, aplicarSaldoAFavor = true y abono restante de $400.",
+          "when": "Se procesa el cobro.",
+          "then": "Descuenta $600 de CuentaCorriente (saldo final 0), inserta MovimientoCuenta de débito, cobra el pedido y registra $400 en MovimientoCaja."
         },
         {
-          "type": "NEGATIVE_CAJA_CERRADA",
-          "description": "Rechazo de cobro si la caja está cerrada",
-          "given": "No existe caja abierta activa en el tenant",
-          "when": "Se intenta procesar cualquier cobro",
-          "then": "Falla respondiendo 400 BAD_REQUEST con código NO_OPEN_CASH_REGISTER."
+          "type": "NEGATIVE_GATE_CAJA_CERRADA",
+          "description": "Bloqueo obligatorio si la caja se encuentra cerrada",
+          "given": "No existe caja abierta activa para el empleado en el tenant.",
+          "when": "Se intenta procesar cualquier cobro.",
+          "then": "El backend revierte inmediatamente con 400 BAD_REQUEST y código NO_OPEN_CASH_REGISTER sin modificar pedidos ni saldos."
         },
         {
-          "type": "NEGATIVE_PEDIDO_YA_COBRADO_O_CANCELADO",
-          "description": "Intento de cobro sobre pedido ya cobrado o cancelado",
-          "given": "Pedido con cobrado=true o estado CANCELADO",
-          "when": "Se intenta cobrar",
-          "then": "Revierte transacción y responde 400 BAD_REQUEST."
+          "type": "NEGATIVE_PEDIDO_YA_COBRADO",
+          "description": "Rechazo de cobro sobre pedido previamente pagado",
+          "given": "Pedido con cobrado = true en base de datos.",
+          "when": "Se intenta cobrar de nuevo.",
+          "then": "Responde 400 BAD_REQUEST con código ORDER_ALREADY_PAID."
         }
       ]
     },
     {
       "id": "CU-CLI-08",
-      "name": "Estado de Cuenta Corriente y Ajuste Manual de Crédito",
+      "name": "Estado de Cuenta Corriente y Ajuste Manual de Crédito Persistido",
       "endpoint": "GET /api/clientes/:id/cuenta-corriente/estado-cuenta y POST /api/clientes/:id/cuenta-corriente/ajuste-credito",
-      "objective": "Consultar la posición financiera neta y permitir acreditaciones manuales de saldo a favor con validación Fail-Fast estricta.",
+      "objective": "Consultar la posición de cuenta corriente y permitir ajustes manuales de crédito con validación Fail-Fast e inserción de auditoría en MovimientoCuenta.",
       "criticality": "ALTA",
       "scenarios": [
         {
-          "type": "HAPPY_PATH_AJUSTE",
-          "description": "Ajuste manual de crédito positivo exitoso",
-          "given": "Cliente con saldo inicial $0 y ajuste de $2000 con concepto explícito",
-          "when": "Se envía POST /api/clientes/:id/cuenta-corriente/ajuste-credito con { monto: 2000, concepto: 'Bonificación comercial' }",
-          "then": "Actualiza CuentaCorriente a $2000, crea MovimientoCuentaCorriente y responde 200 OK con nuevo estado de cuenta."
+          "type": "HAPPY_PATH_AJUSTE_PERSISTED",
+          "description": "Ajuste manual de crédito con persistencia de movimiento",
+          "given": "Cliente con saldo $0 en CuentaCorriente.",
+          "when": "Se envía POST /api/clientes/:id/cuenta-corriente/ajuste-credito con { monto: 2500, concepto: 'Bonificación por demora' }.",
+          "then": "El backend actualiza CuentaCorriente.saldo = 2500, crea un MovimientoCuenta con tipo 'Crédito' y descripción exacta, y responde 200 OK."
         },
         {
           "type": "NEGATIVE_FAIL_FAST_MONTO",
-          "description": "Falta de monto o monto no numérico/negativo",
-          "given": "Payload sin campo 'monto' o con monto <= 0",
-          "when": "Se envía el ajuste",
-          "then": "Falla rápido respondiendo 400 BAD_REQUEST con MISSING_AMOUNT o INVALID_AMOUNT."
+          "description": "Rechazo si falta el monto o es negativo",
+          "given": "Payload con monto = -100 o sin campo monto.",
+          "when": "Se envía la petición.",
+          "then": "El backend responde 400 BAD_REQUEST con MISSING_AMOUNT o INVALID_AMOUNT."
         },
         {
           "type": "NEGATIVE_FAIL_FAST_CONCEPTO",
-          "description": "Falta de concepto/motivo obligatorio (Sin fallbacks silenciosos)",
-          "given": "Payload con monto pero sin campo 'concepto'",
-          "when": "Se envía el ajuste",
-          "then": "Falla rápido respondiendo 400 BAD_REQUEST con MISSING_CONCEPT."
+          "description": "Rechazo si falta el concepto (prohibición de fallbacks silenciosos)",
+          "given": "Payload con { monto: 1000 } sin concepto o con string vacío.",
+          "when": "Se envía la petición.",
+          "then": "El backend responde 400 BAD_REQUEST con MISSING_CONCEPT."
         }
       ]
     }
   ],
-  "frontend_views_e2e": [
+  "frontend_live_e2e_views": [
     {
       "view": "Listado de Clientes (/admin/clientes)",
-      "component": "ClientesListPage",
-      "test_objectives": [
-        "Verificar renderizado de tabla de clientes con columnas Nombre, Teléfono, Saldo a Favor y Deuda.",
-        "Verificar badge visual de Deuda Exigible (rojo/alerta si saldoDeuda > 0).",
-        "Verificar badge visual de Saldo a Favor (verde si saldoAFavor > 0).",
-        "Verificar filtrado en tiempo real al escribir en el input de búsqueda.",
-        "Verificar navegación hacia el detalle del cliente (/admin/clientes/[id]) y al formulario de alta (/admin/clientes/nuevo)."
+      "component": "ClientesPage (ClientesHeader, ClientesKpis, ClientesTable, DesactivarClienteModal)",
+      "elements_and_flows_to_test": [
+        {
+          "element": "Header & Botón 'Nuevo Cliente'",
+          "action": "Clic en el botón 'Nuevo Cliente'",
+          "expected_outcome": "Navega exitosamente a /admin/clientes/nuevo."
+        },
+        {
+          "element": "Tarjetas KPI Superiores (ClientesKpis)",
+          "action": "Carga inicial de la página",
+          "expected_outcome": "Renderiza Total Clientes, Clientes Activos, Con Deuda y Saldo a Favor calculados desde la base de datos viva."
+        },
+        {
+          "element": "Input de Búsqueda (Buscador en tiempo real)",
+          "action": "Escribir nombre o teléfono del cliente de prueba en el input",
+          "expected_outcome": "La tabla ejecuta debounce y filtra las filas mostrando únicamente coincidencias reales devueltas por PostgreSQL."
+        },
+        {
+          "element": "Badges Financieros en Filas de la Tabla",
+          "action": "Inspección de celdas de Saldo a Favor y Deuda",
+          "expected_outcome": "Renderiza badge rojo de alerta si saldoDeuda > 0 y badge verde si saldoAFavor > 0."
+        },
+        {
+          "element": "Acción de Fila 'Ver Detalle'",
+          "action": "Clic en la fila o en la acción de ver detalle",
+          "expected_outcome": "Redirige a /admin/clientes/[id]."
+        },
+        {
+          "element": "Acción de Fila 'Editar'",
+          "action": "Clic en la acción de editar",
+          "expected_outcome": "Redirige a /admin/clientes/[id]/editar."
+        },
+        {
+          "element": "Modal de Desactivar Cliente (DesactivarClienteModal)",
+          "action": "Clic en la acción 'Desactivar', confirmar en el modal",
+          "expected_outcome": "Envía DELETE /api/clientes/:id real, cierra el modal, muestra toast de confirmación y actualiza la lista."
+        },
+        {
+          "element": "Paginador de la Tabla",
+          "action": "Clic en siguiente página / anterior página",
+          "expected_outcome": "Cambia de página y solicita los siguientes 10 registros reales al backend."
+        }
       ]
     },
     {
-      "view": "Alta de Cliente (/admin/clientes/nuevo)",
-      "component": "NuevoClientePage",
-      "test_objectives": [
-        "Verificar validación de Zod en el formulario (bloqueo de submit si nombre está vacío).",
-        "Verificar envío exitoso de cliente y redirección a la ficha del cliente o listado con toast de éxito.",
-        "Verificar retroalimentación de error si el servidor rechaza la creación."
+      "view": "Formulario de Alta de Cliente (/admin/clientes/nuevo)",
+      "component": "CrearClientePage",
+      "elements_and_flows_to_test": [
+        {
+          "element": "Botón 'Volver' / ArrowLeft",
+          "action": "Clic en la flecha de regreso",
+          "expected_outcome": "Vuelve a la vista previa (/admin/clientes)."
+        },
+        {
+          "element": "Validación de Campo Obligatorio 'Nombre Completo'",
+          "action": "Dejar el campo nombre vacío y hacer clic en 'Crear Cliente'",
+          "expected_outcome": "Bloquea el submit y despliega un toast de error 'El nombre es obligatorio'."
+        },
+        {
+          "element": "Flujo de Creación Exitosa",
+          "action": "Completar nombre, teléfono y email reales y presionar 'Crear Cliente'",
+          "expected_outcome": "Envía POST /api/clientes, inserta en Postgres, muestra toast de éxito '¡Cliente creado con éxito!' y redirige a /admin/clientes."
+        },
+        {
+          "element": "Botón 'Cancelar'",
+          "action": "Clic en 'Cancelar'",
+          "expected_outcome": "Cancela el alta y regresa al listado."
+        }
       ]
     },
     {
-      "view": "Detalle y Ficha del Cliente (/admin/clientes/[id])",
+      "view": "Ficha Integral del Cliente (/admin/clientes/[id])",
       "component": "ClienteDetailPage",
-      "test_objectives": [
-        "Verificar visualización de tarjetas de resumen: Deuda Exigible, Monto en Taller y Saldo a Favor.",
-        "Verificar listado de pedidos del cliente en sus respectivas pestañas.",
-        "Verificar apertura del SideSheet de Cobro al hacer clic en 'Cobrar Deuda'.",
-        "Verificar apertura del Modal de Ajuste de Crédito al hacer clic en 'Ajustar Crédito'.",
-        "Verificar navegación hacia la edición del cliente (/admin/clientes/[id]/editar)."
+      "elements_and_flows_to_test": [
+        {
+          "element": "Botón 'Volver' / ArrowLeft",
+          "action": "Clic en la flecha de regreso",
+          "expected_outcome": "Regresa a /admin/clientes."
+        },
+        {
+          "element": "Encabezado con Badges de Estado y Finanzas",
+          "action": "Carga de la ficha",
+          "expected_outcome": "Muestra avatar con inicial, nombre completo, badge 'Activo'/'Inactivo', enlace a WhatsApp (si tiene teléfono), y tarjetas dinámicas de 'En taller: $X', 'Saldo a Favor: $X', 'Deuda Pendiente: $X' o 'Al día ($0)'."
+        },
+        {
+          "element": "Botón 'Actualizar' (RefreshCw)",
+          "action": "Clic en 'Actualizar'",
+          "expected_outcome": "Re-ejecuta fetchCliente() consultando los datos más recientes en back2."
+        },
+        {
+          "element": "Botón 'Editar'",
+          "action": "Clic en 'Editar'",
+          "expected_outcome": "Navega a /admin/clientes/[id]/editar."
+        },
+        {
+          "element": "Tarjetas KPI de Consumo (4 KPIs)",
+          "action": "Inspección de tarjetas",
+          "expected_outcome": "Muestra Total Gastado, Pedidos Totales, Ticket Promedio y Pedidos Activos."
+        },
+        {
+          "element": "Tabla de Historial Comercial de Pedidos",
+          "action": "Inspección de pedidos listados",
+          "expected_outcome": "Muestra columnas Ticket (#numeroPedido), Servicios, Fecha, Estado Servicio, Estado Cobro (Cobrado / Deuda Pendiente / En Taller Impago / Cancelado) y Monto Total."
+        },
+        {
+          "element": "Botón 'Ver Pedido' (Eye)",
+          "action": "Clic en el icono de ver pedido",
+          "expected_outcome": "Navega a la vista de detalle del pedido (/admin/pedidos/[id])."
+        },
+        {
+          "element": "Botón 'Cobrar Pedido' (Banknote en fila)",
+          "action": "Clic en el icono de cobrar en un pedido impago",
+          "expected_outcome": "Abre el CobrarPedidoSheet preseleccionando el pedido específico."
+        },
+        {
+          "element": "SideSheet de Cobro (CobrarPedidoSheet)",
+          "action": "Procesar cobro dentro del SideSheet",
+          "expected_outcome": "Verifica estado de caja abierta, selecciona método de pago, envía cobro real a back2, cierra el sheet y actualiza la fila a 'Cobrado'."
+        }
       ]
     },
     {
       "view": "Edición de Cliente (/admin/clientes/[id]/editar)",
       "component": "EditarClientePage",
-      "test_objectives": [
-        "Verificar precarga correcta de los datos existentes en los inputs.",
-        "Verificar actualización de campos (teléfono, dirección) y guardado exitoso con toast.",
-        "Verificar botón de cancelar que retorne al detalle del cliente."
-      ]
-    },
-    {
-      "view": "SideSheet de Cobro de Pedidos",
-      "component": "CobrarPedidosSheet",
-      "test_objectives": [
-        "Verificar alerta y bloqueo de botón de cobro si la caja está cerrada.",
-        "Verificar cálculo dinámico del total a cobrar según pedidos seleccionados.",
-        "Verificar selector de método de pago (Efectivo, Transferencia, etc.).",
-        "Verificar toggles de 'Aplicar saldo a favor' y 'Dejar vuelto a favor'.",
-        "Verificar envío de cobro y actualización del estado del pedido a cobrado."
-      ]
-    },
-    {
-      "view": "Modal de Ajuste de Crédito",
-      "component": "AjustarCreditoModal",
-      "test_objectives": [
-        "Verificar inputs obligatorios de Monto y Concepto.",
-        "Verificar bloqueo de submit si el monto es <= 0 o falta el concepto.",
-        "Verificar acreditación exitosa con toast y actualización inmediata del saldo a favor mostrado."
+      "elements_and_flows_to_test": [
+        {
+          "element": "Precarga de Datos Existentes",
+          "action": "Carga inicial de /admin/clientes/[id]/editar",
+          "expected_outcome": "Los inputs de Nombre, Teléfono y Email se inicializan con los valores reales almacenados en PostgreSQL."
+        },
+        {
+          "element": "Validación de Nombre Vacío al Editar",
+          "action": "Borrar el nombre y hacer clic en 'Guardar Cambios'",
+          "expected_outcome": "Bloquea el envío y muestra toast de error 'El nombre es obligatorio'."
+        },
+        {
+          "element": "Guardado Exitoso de Modificaciones",
+          "action": "Actualizar teléfono o email y presionar 'Guardar Cambios'",
+          "expected_outcome": "Ejecuta PUT /api/clientes/:id real, muestra toast 'Cliente actualizado correctamente' y redirige a /admin/clientes/[id]."
+        },
+        {
+          "element": "Botón 'Cancelar'",
+          "action": "Clic en 'Cancelar'",
+          "expected_outcome": "Descarta cambios y regresa a /admin/clientes/[id]."
+        }
       ]
     }
   ],
-  "testing_strategy": {
-    "backend": {
-      "framework": "Jest + Supertest",
-      "database": "Sequelize en memoria / test con esquemas tenant aislados",
-      "caja_strategy": "Fixture de Caja Abierta para pruebas de cobro exitoso y Caja Cerrada para pruebas de compuerta 400"
-    },
-    "frontend": {
-      "framework": "Playwright E2E",
-      "approach": "Pruebas de interacción completas en navegador Chromium contra Next.js App Router",
-      "api_mocking": "page.route() de Playwright para simular endpoints de clientes, cuentas corrientes, deudas y cajas"
-    }
-  },
   "quality_rules": [
-    "La regla de Deuda Única debe cumplirse sin excepciones: solo pedidos ENTREGADO + impagos son deuda.",
-    "El ajuste de crédito jamás debe aceptar conceptos por defecto silenciosos.",
-    "Todo intento de cobro sin caja abierta debe ser rechazado con NO_OPEN_CASH_REGISTER.",
-    "Aislamiento multitenant absoluto: ningún cliente de un tenant debe ser visible ni modificable por otro."
+    "ZERO MOCKS: Queda estrictamente prohibido el uso de page.route() con payloads mockeados en las suites E2E de Playwright.",
+    "El navegador debe hablar por HTTP real contra el servidor Express (http://localhost:5000) y este contra PostgreSQL.",
+    "Toda prueba debe validar tanto la experiencia del usuario en la UI (botones, inputs, estados, diálogos, toasts) como la integridad de los datos persistidos en la base de datos.",
+    "La Regla de Deuda Única, el aislamiento multitenant y la validación de caja abierta deben ser probadas de forma viva e incorruptible."
   ]
 }

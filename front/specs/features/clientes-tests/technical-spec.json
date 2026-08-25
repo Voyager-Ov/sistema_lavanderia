@@ -1,0 +1,261 @@
+{
+  "feature": "Clientes y Cuentas Corrientes - Technical Specification (100% Live Real Integration - Zero Mocks)",
+  "version": "2.1.0",
+  "architecture": {
+    "backend": {
+      "runner": "Jest (ES Modules VM)",
+      "environment": "Node.js + Express 5 + Sequelize PostgreSQL / Isolated Tenant Schemas",
+      "http_agent": "Supertest HTTP Integration against Express app routes + Direct Service Verification",
+      "mock_strategy": "ZERO MOCKS on business logic. Real DB queries, transactions, cash registers and balance mutations",
+      "test_directory": "back2/src/tests/clientes",
+      "helper_directory": "back2/src/tests/helpers"
+    },
+    "frontend": {
+      "runner": "@playwright/test",
+      "environment": "Chromium (Headless / Next.js 16 App Router) communicating directly with Express backend on http://localhost:5000",
+      "mock_strategy": "ZERO NETWORK MOCKS (No page.route()). 100% Real HTTP requests via apiClient to back2 server with PostgreSQL persistence",
+      "test_directory": "front/e2e/clientes",
+      "helper_directory": "front/e2e/helpers"
+    }
+  },
+  "helpers": {
+    "backend": {
+      "file": "back2/src/tests/helpers/clientes.helper.js",
+      "capabilities": [
+        "createTenantWithAdmin(negocioId, adminEmail): Aprovisiona un tenant real con usuario admin y genera JWT legítimo",
+        "createClienteFixture(negocioId, data): Inserta un cliente real en DB con su CuentaCorriente inicial",
+        "createPedidoFixture(negocioId, clienteId, { total, estado, cobrado, items }): Inserta un pedido real con DetallePedido",
+        "openCajaFixture(negocioId, empleadoId): Abre una caja real para permitir cobros en pruebas",
+        "closeCajaFixture(negocioId, empleadoId): Cierra la caja activa para probar compuertas 400"
+      ]
+    },
+    "frontend": {
+      "file": "front/e2e/helpers/live-clientes.helper.ts",
+      "capabilities": [
+        "loginAsAdmin(page, credentials): Realiza login real contra /api/auth/login e inyecta la sesión persistida en el navegador",
+        "createLiveClientViaApi(apiContext, data): Crea un cliente real por HTTP para preparar escenarios de prueba",
+        "createLiveOrderViaApi(apiContext, clienteId, orderData): Crea un pedido real con estado específico (ENTREGADO vs EN_PROCESO)",
+        "ensureLiveCashRegisterOpen(apiContext, empleadoId): Garantiza una caja abierta viva para pruebas de cobro",
+        "closeLiveCashRegister(apiContext, empleadoId): Cierra la caja activa para probar advertencias y bloqueos en la UI",
+        "cleanupLiveClient(apiContext, clienteId): Limpia los datos de prueba al finalizar las suites"
+      ]
+    }
+  },
+  "test_suites": {
+    "backend": [
+      {
+        "file": "back2/src/tests/clientes/clientes.crud.test.js",
+        "target_use_cases": ["CU-CLI-01", "CU-CLI-03", "CU-CLI-04", "CU-CLI-05"],
+        "tests": [
+          {
+            "name": "Debe crear un cliente nuevo con CuentaCorriente real en saldo 0",
+            "input": "{ nombre: 'Pedro', apellido: 'Ramirez', telefono: '1122334455' }",
+            "expected_status": 201,
+            "db_assertions": "Cliente.findByPk(id) existe y CuentaCorriente.findOne({ where: { clienteId } }).saldo === 0"
+          },
+          {
+            "name": "Debe rechazar la creación si falta el nombre (Fail-Fast)",
+            "input": "{ apellido: 'Sin Nombre', telefono: '1122334455' }",
+            "expected_status": 400,
+            "expected_code": "MISSING_CLIENT_NAME"
+          },
+          {
+            "name": "Debe listar clientes paginados del tenant activo desde la base de datos",
+            "input": "GET /api/clientes?page=1&limit=10",
+            "expected_status": 200,
+            "assertions": "data.items es Array y data.meta.totalItems >= 1"
+          },
+          {
+            "name": "Debe filtrar clientes por término de búsqueda real en PostgreSQL (search)",
+            "input": "GET /api/clientes?search=Pedro",
+            "expected_status": 200,
+            "assertions": "Todos los items devueltos coinciden con 'Pedro'"
+          },
+          {
+            "name": "Debe aislar estrictamente los clientes entre diferentes tenants",
+            "input": "Consulta de cliente de Tenant 1 con token de Tenant 2",
+            "expected_status": 404,
+            "expected_code": "CLIENT_NOT_FOUND"
+          },
+          {
+            "name": "Debe actualizar datos de un cliente existente",
+            "input": "PUT /api/clientes/:id con { telefono: '99887766' }",
+            "expected_status": 200,
+            "assertions": "Cliente actualizado en DB con nuevo teléfono"
+          },
+          {
+            "name": "Debe eliminar un cliente de la base de datos",
+            "input": "DELETE /api/clientes/:id",
+            "expected_status": 200,
+            "db_assertions": "Cliente.findByPk(id) es null"
+          }
+        ]
+      },
+      {
+        "file": "back2/src/tests/clientes/clientes.deuda.test.js",
+        "target_use_cases": ["CU-CLI-02", "CU-CLI-06"],
+        "tests": [
+          {
+            "name": "Debe clasificar como Deuda Exigible ÚNICAMENTE los pedidos ENTREGADO impagos",
+            "fixture": "1 pedido ENTREGADO impago de $1000 y 1 pedido EN_LAVADO impago de $600",
+            "endpoint": "GET /api/clientes/:id",
+            "expected_status": 200,
+            "assertions": "res.data.saldoDeuda === 1000 y res.data.montoEnTaller === 600"
+          },
+          {
+            "name": "No debe computar como deuda ni taller los pedidos CANCELADOS",
+            "fixture": "1 pedido CANCELADO de $500",
+            "endpoint": "GET /api/clientes/:id/pedidos-impagos",
+            "expected_status": 200,
+            "assertions": "pedidosImpagos excluye cancelados y totalDeuda === 0"
+          },
+          {
+            "name": "Debe listar pedidos impagos marcando esDeuda=true solo en entregados",
+            "endpoint": "GET /api/clientes/:id/pedidos-impagos",
+            "expected_status": 200,
+            "assertions": "Array con flag esDeuda diferenciado correctamente"
+          }
+        ]
+      },
+      {
+        "file": "back2/src/tests/clientes/clientes.cobro.test.js",
+        "target_use_cases": ["CU-CLI-07"],
+        "tests": [
+          {
+            "name": "Debe rechazar el cobro si la caja está CERRADA en DB",
+            "fixture": "Caja cerrada en tenant",
+            "input": "POST /api/clientes/:id/cobrar-pedidos con { pedidosIds: [1] }",
+            "expected_status": 400,
+            "expected_code": "NO_OPEN_CASH_REGISTER"
+          },
+          {
+            "name": "Debe cobrar pedido en efectivo, registrar MovimientoCaja y acreditar vuelto como saldo a favor si dejarVueltoAFavor=true",
+            "fixture": "Caja abierta, pedido de $1000, pago de $1500",
+            "input": "{ pedidosIds: [1], montoRecibido: 1500, dejarVueltoAFavor: true }",
+            "expected_status": 200,
+            "db_assertions": "Pedido.cobrado === true, CuentaCorriente.saldo === 500, MovimientoCaja registrado en DB"
+          },
+          {
+            "name": "Debe consumir atómicamente saldo a favor existente al aplicarSaldoAFavor=true",
+            "fixture": "Cliente con saldoAFavor = $400, pedido de $1000, pago restante $600",
+            "input": "{ pedidosIds: [1], aplicarSaldoAFavor: true, montoRecibido: 600 }",
+            "expected_status": 200,
+            "db_assertions": "CuentaCorriente.saldo === 0, Pedido.cobrado === true en DB"
+          },
+          {
+            "name": "Debe rechazar el cobro si el pedido ya fue cobrado previamente",
+            "fixture": "Pedido con cobrado=true",
+            "input": "{ pedidosIds: [1] }",
+            "expected_status": 400,
+            "expected_code": "ORDER_ALREADY_PAID"
+          }
+        ]
+      },
+      {
+        "file": "back2/src/tests/clientes/clientes.cuenta-corriente.test.js",
+        "target_use_cases": ["CU-CLI-08"],
+        "tests": [
+          {
+            "name": "Debe registrar ajuste de crédito manual y crear MovimientoCuenta en DB",
+            "input": "{ monto: 1500, concepto: 'Compensación por prenda dañada' }",
+            "expected_status": 200,
+            "db_assertions": "CuentaCorriente.saldo incrementa en 1500, MovimientoCuenta creado con descripción exacta"
+          },
+          {
+            "name": "Debe fallar rápido si falta el monto (Fail-Fast)",
+            "input": "{ concepto: 'Sin monto' }",
+            "expected_status": 400,
+            "expected_code": "MISSING_AMOUNT"
+          },
+          {
+            "name": "Debe fallar si el monto es <= 0 o no numérico",
+            "input": "{ monto: -500, concepto: 'Monto inválido' }",
+            "expected_status": 400,
+            "expected_code": "INVALID_AMOUNT"
+          },
+          {
+            "name": "Debe fallar rápido si falta el concepto (Fail-Fast, sin fallbacks silenciosos)",
+            "input": "{ monto: 500 }",
+            "expected_status": 400,
+            "expected_code": "MISSING_CONCEPT"
+          }
+        ]
+      }
+    ],
+    "frontend": [
+      {
+        "file": "front/e2e/clientes/01-clientes-list-live.spec.ts",
+        "target_view": "Listado de Clientes (/admin/clientes)",
+        "tests": [
+          "1. [LIVE] Debe renderizar la tabla con clientes vivos y KPIs superiores (Total, Activos, Con Deuda, Saldo)",
+          "2. [LIVE] Debe navegar a /admin/clientes/nuevo al pulsar el botón 'Nuevo Cliente'",
+          "3. [LIVE] Debe filtrar la tabla en tiempo real con debounce al escribir en el input de búsqueda",
+          "4. [LIVE] Debe mostrar badges financieros de Deuda Pendiente (rojo) y Saldo a Favor (verde)",
+          "5. [LIVE] Debe abrir el modal DesactivarClienteModal, confirmar la baja y actualizar la tabla"
+        ]
+      },
+      {
+        "file": "front/e2e/clientes/02-cliente-create-live.spec.ts",
+        "target_view": "Alta de Cliente (/admin/clientes/nuevo)",
+        "tests": [
+          "1. [LIVE] Debe bloquear el submit y mostrar toast de error si el campo Nombre está vacío",
+          "2. [LIVE] Debe regresar al listado al hacer clic en 'Cancelar' o en la flecha de volver",
+          "3. [LIVE] Debe crear un cliente real en base de datos al completar el formulario y redirigir a /admin/clientes con toast de éxito"
+        ]
+      },
+      {
+        "file": "front/e2e/clientes/03-cliente-detail-live.spec.ts",
+        "target_view": "Ficha Integral del Cliente (/admin/clientes/[id])",
+        "tests": [
+          "1. [LIVE] Debe renderizar el encabezado con nombre, estado Activo, enlace WhatsApp y badges financieros vivos (En taller, Saldo a Favor, Deuda)",
+          "2. [LIVE] Debe renderizar las 4 tarjetas KPI de consumo (Total Gastado, Pedidos Totales, Ticket Promedio, Pedidos Activos)",
+          "3. [LIVE] Debe listar los pedidos del cliente en la tabla con sus columnas de Ticket, Servicios, Estado Cobro y Monto",
+          "4. [LIVE] Debe recargar la información viva al hacer clic en el botón 'Actualizar'",
+          "5. [LIVE] Debe navegar a /admin/clientes/[id]/editar al hacer clic en el botón 'Editar'",
+          "6. [LIVE] Debe navegar al detalle del pedido al hacer clic en el icono 'Ver Pedido' (Eye)"
+        ]
+      },
+      {
+        "file": "front/e2e/clientes/04-cliente-edit-live.spec.ts",
+        "target_view": "Edición de Cliente (/admin/clientes/[id]/editar)",
+        "tests": [
+          "1. [LIVE] Debe precargar los valores reales de Nombre, Teléfono y Email desde PostgreSQL",
+          "2. [LIVE] Debe validar que el nombre no esté vacío al guardar cambios",
+          "3. [LIVE] Debe enviar PUT real a back2, persistir los cambios y redirigir a /admin/clientes/[id] con toast de confirmación",
+          "4. [LIVE] Debe cancelar la edición y volver a la ficha al hacer clic en 'Cancelar'"
+        ]
+      },
+      {
+        "file": "front/e2e/clientes/05-cliente-cobro-sheet-live.spec.ts",
+        "target_view": "SideSheet de Cobro de Pedido desde la Ficha del Cliente",
+        "tests": [
+          "1. [LIVE] Debe abrir el CobrarPedidoSheet al hacer clic en el botón 'Cobrar Pedido' (Banknote) de un pedido impago",
+          "2. [LIVE] Debe mostrar advertencia '⚠️ Caja Cerrada' y deshabilitar el cobro si la caja activa está cerrada",
+          "3. [LIVE] Con caja abierta, debe procesar el cobro en efectivo, cerrar el sheet y actualizar la fila a 'Cobrado'"
+        ]
+      }
+    ]
+  },
+  "phased_dod": [
+    {
+      "phase": "PHASE_1_BACKEND_HELPERS",
+      "description": "Implementar clientes.helper.js con fixtures reales de base de datos."
+    },
+    {
+      "phase": "PHASE_2_BACKEND_SUITES",
+      "description": "Implementar y ejecutar clientes.crud.test.js, clientes.deuda.test.js, clientes.cobro.test.js, clientes.cuenta-corriente.test.js en Jest."
+    },
+    {
+      "phase": "PHASE_3_FRONTEND_LIVE_HELPERS",
+      "description": "Implementar live-clientes.helper.ts para autenticación real y llamadas HTTP de soporte."
+    },
+    {
+      "phase": "PHASE_4_FRONTEND_LIVE_SPECS",
+      "description": "Implementar las 5 suites de Playwright Live (01-clientes-list-live, 02-cliente-create-live, 03-cliente-detail-live, 04-cliente-edit-live, 05-cliente-cobro-sheet-live)."
+    },
+    {
+      "phase": "PHASE_5_VERIFICATION_GATE",
+      "description": "Ejecutar 100% de tests en Back-End y Front-End en vivo. Corregir cualquier bug descubierto en código productivo hasta lograr 0 fallos."
+    }
+  ]
+}

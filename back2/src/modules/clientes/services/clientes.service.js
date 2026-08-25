@@ -3,19 +3,15 @@ import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
 
 function isPedidoCancelado(p) {
-    if (!p) return false;
-    const est = typeof p.estado === "object" ? p.estado.nombre : p.estado;
-    if (!est) return false;
-    return est.toString().toUpperCase().includes("CANCELAD");
+    if (!p || !p.estado) return false;
+    const estStr = String(p.estado).toUpperCase();
+    return estStr.includes("CANCELAD");
 }
 
 // Regla de Negocio Única: Un pedido es DEUDA únicamente si fue ENTREGADO y NO FUE COBRADO
 function isPedidoEntregadoEImpago(p) {
-    if (!p) return false;
-    if (p.cobrado) return false;
-    const est = typeof p.estado === "object" ? p.estado.nombre : p.estado;
-    if (!est) return false;
-    const estUpper = est.toString().toUpperCase();
+    if (!p || p.cobrado || !p.estado) return false;
+    const estUpper = String(p.estado).toUpperCase();
     if (estUpper.includes("CANCELAD")) return false;
     return estUpper.includes("ENTREGADO") || estUpper.includes("COMPLETADO");
 }
@@ -35,8 +31,8 @@ class ClientesService {
         const tenantDb = await this._getModels(negocioId);
         const { Cliente, CuentaCorriente, Pedido, DetallePedido } = tenantDb.models;
 
-        const page = parseInt(query.page, 10);
-        const limit = parseInt(query.limit, 10);
+        const page = parseInt(query.page, 10) || 1;
+        const limit = parseInt(query.limit, 10) || 10;
         const offset = (page - 1) * limit;
 
         const where = {};
@@ -52,8 +48,8 @@ class ClientesService {
             ];
         }
 
-        const sortBy = query.sortBy;
-        const sortOrder = query.sortOrder;
+        const sortBy = query.sortBy || "id";
+        const sortOrder = query.sortOrder ? query.sortOrder.toUpperCase() : "ASC";
 
         const { count, rows } = await Cliente.findAndCountAll({
             where,
@@ -322,10 +318,10 @@ class ClientesService {
 
         const nuevoCliente = await Cliente.create({
             nombre: data.nombre.trim(),
-            apellido: data.apellido && typeof data.apellido === "string" ? data.apellido.trim() : "",
-            telefono: data.telefono && typeof data.telefono === "string" ? data.telefono.trim() : null,
-            email: data.email && typeof data.email === "string" ? data.email.trim() : null,
-            direccion: data.direccion && typeof data.direccion === "string" ? data.direccion.trim() : null,
+            apellido: typeof data.apellido === "string" ? data.apellido.trim() : "",
+            telefono: typeof data.telefono === "string" ? data.telefono.trim() : null,
+            email: typeof data.email === "string" ? data.email.trim() : null,
+            direccion: typeof data.direccion === "string" ? data.direccion.trim() : null,
             negocioId
         });
 
@@ -387,17 +383,11 @@ class ClientesService {
         const pedidosImpagos = impagosData.pedidosImpagos;
         
         const deudaExigible = pedidosImpagos
-            .filter(p => {
-                const est = typeof p.estado === 'object' ? p.estado.nombre : p.estado;
-                return est.toString().toUpperCase().includes("ENTREGADO");
-            })
+            .filter(p => p.estado && String(p.estado).toUpperCase().includes("ENTREGADO"))
             .reduce((sum, p) => sum + p.total, 0);
 
         const deudaNoExigible = pedidosImpagos
-            .filter(p => {
-                const est = typeof p.estado === 'object' ? p.estado.nombre : p.estado;
-                return !est.toString().toUpperCase().includes("ENTREGADO");
-            })
+            .filter(p => !p.estado || !String(p.estado).toUpperCase().includes("ENTREGADO"))
             .reduce((sum, p) => sum + p.total, 0);
 
         const saldoAFavor = Math.max(0, parseFloat(clienteData.saldoCuentaCorriente));
@@ -418,7 +408,7 @@ class ClientesService {
                 saldoAFavor
             },
             pedidosDeuda: pedidosImpagos,
-            creditosDisponibles: saldoAFavor > 0 ? [{ id: 1, montoDisponible: saldoAFavor }] : [],
+            creditosDisponibles: saldoAFavor > 0 ? [{ montoDisponible: saldoAFavor }] : [],
             movimientos: clienteData.movimientos
         };
     }

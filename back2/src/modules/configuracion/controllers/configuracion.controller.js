@@ -48,6 +48,10 @@ export const subirCertificadosAfip = async (req, res, next) => {
             }
         }
 
+        if (!certPath && !keyPath) {
+            throw new AppError("Debe adjuntar al menos un certificado o llave privada válidos.", 400, "MISSING_UPLOAD_FILE");
+        }
+
         await afipService.guardarCertificadosAfip(negocioId, certPath, keyPath);
         const config = await configuracionService.getConfiguracion(negocioId);
         return successResponse(res, 200, "Certificados de AFIP guardados exitosamente", config);
@@ -59,7 +63,10 @@ export const subirCertificadosAfip = async (req, res, next) => {
 export const subirLogo = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const logoPath = req.file ? `/uploads/logos/${req.file.filename}` : null;
+        if (!req.file) {
+            throw new AppError("Debe adjuntar un archivo de imagen para el logo.", 400, "MISSING_UPLOAD_FILE");
+        }
+        const logoPath = `/uploads/logos/${req.file.filename}`;
 
         const config = await configuracionService.guardarLogo(negocioId, logoPath);
         return successResponse(res, 200, "Logo actualizado exitosamente", config);

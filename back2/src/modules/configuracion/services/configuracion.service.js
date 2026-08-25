@@ -46,7 +46,7 @@ class ConfiguracionService {
 
         let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
+            throw new AppError("Negocio no encontrado.", 404, "BUSINESS_NOT_FOUND");
         }
 
         return this._formatConfigResponse(negocio);
@@ -61,7 +61,7 @@ class ConfiguracionService {
 
         let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
+            throw new AppError("Negocio no encontrado.", 404, "BUSINESS_NOT_FOUND");
         }
 
         // Mapeo de alias y propiedades recibidas
@@ -115,7 +115,7 @@ class ConfiguracionService {
 
         let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
+            throw new AppError("Negocio no encontrado.", 404, "BUSINESS_NOT_FOUND");
         }
 
         const updateFields = {};
@@ -138,7 +138,7 @@ class ConfiguracionService {
 
         let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
+            throw new AppError("Negocio no encontrado.", 404, "BUSINESS_NOT_FOUND");
         }
 
         await negocio.update({ logoUrl: logoPath });

@@ -1,0 +1,182 @@
+{
+  "feature": "Clientes y Cuentas Corrientes - Test Implementation & Live Execution Plan",
+  "version": "1.0.0",
+  "total_tasks": 12,
+  "batches": [
+    {
+      "batch_id": "BATCH-01",
+      "name": "Backend Test Fixtures & Helpers",
+      "description": "Construir los helpers de base de datos para aprovisionar tenants, clientes, pedidos, cajas y saldos en SQLite / PostgreSQL.",
+      "tasks": [
+        {
+          "id": "TASK-BE-HELP-01",
+          "title": "Crear helper de fixtures para Clientes en Back-End",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": [],
+          "outputs": ["back2/src/tests/helpers/clientes.helper.js"],
+          "exit_criteria": "Exporta funciones para aprovisionar tenants con admin, insertar clientes con CuentaCorriente, insertar pedidos clasificados por estado (ENTREGADO vs EN_LAVADO) y abrir/cerrar cajas de prueba."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-02",
+      "name": "Backend Jest Integration Suites",
+      "description": "Implementar las 4 suites de pruebas de negocio y base de datos para Clientes.",
+      "tasks": [
+        {
+          "id": "TASK-BE-SUITE-01",
+          "title": "Implementar suite CRUD, Búsqueda y Aislamiento Multi-Tenant",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-01"],
+          "outputs": ["back2/src/tests/clientes/clientes.crud.test.js"],
+          "exit_criteria": "Verifica creación con saldo inicial 0, Fail-Fast en nombre, listado paginado, búsqueda SQL por Op.iLike y 404 ante accesos cruzados entre tenants."
+        },
+        {
+          "id": "TASK-BE-SUITE-02",
+          "title": "Implementar suite de Regla de Deuda Única y Pedidos Impagos",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-01"],
+          "outputs": ["back2/src/tests/clientes/clientes.deuda.test.js"],
+          "exit_criteria": "Verifica que solo pedidos ENTREGADO impagos computen como saldoDeuda, que pedidos en proceso figuren en montoEnTaller y que cancelados queden excluidos."
+        },
+        {
+          "id": "TASK-BE-SUITE-03",
+          "title": "Implementar suite de Cobro de Pedidos y Validación de Caja Abierta",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-01"],
+          "outputs": ["back2/src/tests/clientes/clientes.cobro.test.js"],
+          "exit_criteria": "Verifica rechazo con NO_OPEN_CASH_REGISTER si la caja está cerrada, consumo de saldo a favor, acreditación de vuelto en CuentaCorriente y generación de MovimientoCaja."
+        },
+        {
+          "id": "TASK-BE-SUITE-04",
+          "title": "Implementar suite de Ajuste Manual de Crédito y Cuenta Corriente",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-01"],
+          "outputs": ["back2/src/tests/clientes/clientes.cuenta-corriente.test.js"],
+          "exit_criteria": "Verifica incremento atómico en CuentaCorriente, creación de MovimientoCuenta y validación Fail-Fast de monto y concepto."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-03",
+      "name": "Frontend Live E2E Helpers",
+      "description": "Construir helpers de soporte para pruebas Playwright en vivo (sin mocks) contra el servidor Express.",
+      "tasks": [
+        {
+          "id": "TASK-FE-HELP-01",
+          "title": "Crear helper de autenticación y preparación de datos Live en Playwright",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": [],
+          "outputs": ["front/e2e/helpers/live-clientes.helper.ts"],
+          "exit_criteria": "Permite autenticar administradores contra /api/auth/login real, inyectar el estado en auth-storage y crear entidades de soporte por HTTP directo."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-04",
+      "name": "Frontend Live Playwright Suites",
+      "description": "Implementar las 5 suites de pruebas End-to-End en navegador Chromium contra el servidor real.",
+      "tasks": [
+        {
+          "id": "TASK-FE-SPEC-01",
+          "title": "Implementar suite E2E de Listado de Clientes y Búsqueda",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-01"],
+          "outputs": ["front/e2e/clientes/01-clientes-list-live.spec.ts"],
+          "exit_criteria": "Prueba renderizado de tabla, KPIs superiores, buscador reactivo en vivo, badges financieros rojo/verde y modal de desactivación."
+        },
+        {
+          "id": "TASK-FE-SPEC-02",
+          "title": "Implementar suite E2E de Alta de Cliente",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-01"],
+          "outputs": ["front/e2e/clientes/02-cliente-create-live.spec.ts"],
+          "exit_criteria": "Prueba validación de campo nombre obligatorio con toast de error, submit exitoso, persistencia en Postgres y redirección con toast de éxito."
+        },
+        {
+          "id": "TASK-FE-SPEC-03",
+          "title": "Implementar suite E2E de Ficha Integral del Cliente",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-01"],
+          "outputs": ["front/e2e/clientes/03-cliente-detail-live.spec.ts"],
+          "exit_criteria": "Prueba encabezado con badges dinámicos (En taller, Saldo a Favor, Deuda), 4 tarjetas KPI, tabla de pedidos, botón actualizar y ver pedido."
+        },
+        {
+          "id": "TASK-FE-SPEC-04",
+          "title": "Implementar suite E2E de Edición de Cliente",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-01"],
+          "outputs": ["front/e2e/clientes/04-cliente-edit-live.spec.ts"],
+          "exit_criteria": "Prueba precarga de datos reales, validación de nombre, persistencia de modificaciones por PUT y botón de cancelar."
+        },
+        {
+          "id": "TASK-FE-SPEC-05",
+          "title": "Implementar suite E2E de SideSheet de Cobro de Pedidos",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-01"],
+          "outputs": ["front/e2e/clientes/05-cliente-cobro-sheet-live.spec.ts"],
+          "exit_criteria": "Prueba apertura desde la fila del pedido impago, compuerta de advertencia ante caja cerrada y cobro exitoso que actualiza la fila a Cobrado."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-05",
+      "name": "Live Execution, Verification & Zero-Failures Certification",
+      "description": "Ejecutar y certificar al 100% las suites de pruebas en Back-End y Front-End en vivo.",
+      "tasks": [
+        {
+          "id": "TASK-VERIFY-01",
+          "title": "Ejecutar suites de Jest para Clientes en Back-End",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-BE-SUITE-01", "TASK-BE-SUITE-02", "TASK-BE-SUITE-03", "TASK-BE-SUITE-04"],
+          "outputs": ["Jest test report"],
+          "exit_criteria": "100% de tests aprobados en src/tests/clientes sin fallos ni desvíos."
+        },
+        {
+          "id": "TASK-VERIFY-02",
+          "title": "Ejecutar suites de Playwright Live para Clientes en Front-End",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-FE-SPEC-01", "TASK-FE-SPEC-02", "TASK-FE-SPEC-03", "TASK-FE-SPEC-04", "TASK-FE-SPEC-05"],
+          "outputs": ["Playwright test report"],
+          "exit_criteria": "100% de tests E2E aprobados en e2e/clientes comunicándose contra el backend real."
+        },
+        {
+          "id": "TASK-VERIFY-03",
+          "title": "Certificación de Cero Fallos y Corrección de Bugs en Código Fuente",
+          "owner_role": "Lead Architect",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-VERIFY-01", "TASK-VERIFY-02"],
+          "outputs": ["Final certification walkthrough"],
+          "exit_criteria": "Garantizar que no existan inconsistencias de contratos, que la base de datos se mantenga limpia y que ambos reportes sean 100% verdes."
+        }
+      ]
+    }
+  ]
+}

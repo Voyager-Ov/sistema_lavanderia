@@ -11,11 +11,11 @@ const getTenantId = (req) => {
 };
 
 const getAuthUserId = (req) => {
-    const userId = req.user?.id;
-    if (!userId) {
-        throw new AppError("Usuario no autenticado o sesión inválida.", 401, "UNAUTHORIZED");
+    const empleadoId = req.user?.empleadoId;
+    if (!empleadoId) {
+        throw new AppError("No se ha identificado el empleado autenticado en la sesión.", 401, "UNAUTHORIZED");
     }
-    return userId;
+    return empleadoId;
 };
 
 export const listarClientes = async (req, res, next) => {

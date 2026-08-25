@@ -12,22 +12,33 @@ export interface EstadoCuentaResumen {
   creditosCount?: number
 }
 
+export interface DetallePedidoItem {
+  id?: number
+  cantidad: number
+  precioHistorico: number
+  subtotal?: number
+  servicio?: {
+    id: number
+    nombre: string
+  }
+}
+
 export interface PedidoDeudaItem {
   id: number
   numeroPedido?: number
   codigoSeguimiento: string
   total: number
-  estado: string | { nombre: string }
+  estado: string
   esDeuda?: boolean
   fechaRecepcion?: string
   fechaEntregaEstimada?: string
   createdAt: string
-  detalles?: any[]
+  detalles?: DetallePedidoItem[]
   itemsCount?: number
 }
 
 export interface CreditoDisponibleItem {
-  id: number
+  id?: number
   montoDisponible: number
   montoOriginal?: number
   origen?: "SOBREPAGO" | "CANCELACION_PEDIDO" | "AJUSTE_MANUAL" | string

@@ -29,7 +29,7 @@ class MercadoPagoService {
         const { Negocio } = connectionManager.centralModels;
         let negocio = await Negocio.findByPk(negocioId);
         if (!negocio) {
-            negocio = await Negocio.create({ id: negocioId, razonSocial: "Mi Lavandería" });
+            throw new AppError("Negocio no encontrado.", 404, "BUSINESS_NOT_FOUND");
         }
 
         await negocio.update({ tokenMercadoPago: token });

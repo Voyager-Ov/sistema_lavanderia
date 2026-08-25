@@ -46,15 +46,7 @@ export const subirCertificadosAfip = async (certificado: File | null, llavePriva
   if (certificado) formData.append("certificado", certificado)
   if (llavePrivada) formData.append("llavePrivada", llavePrivada)
 
-  try {
-    const res = await apiClient.post<{ success: boolean; data: ConfiguracionResponse }>("/configuracion/afip/certificados", formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    return res.data
-  } catch (error: any) {
-    throw error
-  }
+  const res = await apiClient.postForm<{ success: boolean; data: ConfiguracionResponse }>("/configuracion/afip/certificados", formData)
+  return res.data
 }
 

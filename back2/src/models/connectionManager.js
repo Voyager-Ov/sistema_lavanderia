@@ -142,7 +142,10 @@ class ConnectionManager {
                     await tenantDb.query("PRAGMA foreign_keys = OFF;");
                 }
             } else {
-                await tenantDb.sync();
+                const tenantModelKeys = Object.keys(tenantModels).filter(k => !['Usuario', 'Negocio', 'Rol'].includes(k));
+                for (const key of tenantModelKeys) {
+                    await tenantModels[key].sync();
+                }
             }
 
             // ─── AUTO-MIGRACIÓN DE COLUMNAS NUEVAS EN TENANTS EXISTENTES ───

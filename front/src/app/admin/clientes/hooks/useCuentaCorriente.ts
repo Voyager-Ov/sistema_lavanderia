@@ -73,8 +73,7 @@ export function useCuentaCorriente(clienteId: number) {
       setPage(1)
       return resultado
     } catch (error: any) {
-      const serverMessage = error?.response?.data?.error;
-      const msg = serverMessage ? serverMessage : error.message;
+      const msg = error?.message || "Error al realizar el cobro"
       toast.error(msg)
       throw error
     } finally {
@@ -91,8 +90,7 @@ export function useCuentaCorriente(clienteId: number) {
       setPage(1)
       return res
     } catch (error: any) {
-      const serverMessage = error?.response?.data?.error;
-      const msg = serverMessage ? serverMessage : error.message;
+      const msg = error?.message || "Error al ajustar el crédito"
       toast.error(msg)
       throw error
     } finally {

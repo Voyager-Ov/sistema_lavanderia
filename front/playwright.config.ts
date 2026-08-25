@@ -38,10 +38,10 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: 'npx next dev -p 3000',
+    command: 'npx next dev -p 3000 --webpack',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
-    timeout: 60000,
+    timeout: 120000,
   }
 });
 
