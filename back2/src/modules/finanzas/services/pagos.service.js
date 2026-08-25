@@ -61,7 +61,7 @@ class PagosService {
 
         const nuevoMetodo = await MetodoPago.create({
             nombre: data.nombre.trim(),
-            icono: data.icono || "CreditCard",
+            icono: data.icono ? String(data.icono).trim() : "CreditCard",
             activo: true,
             esFijo: false,
             negocioId
@@ -139,18 +139,12 @@ class PagosService {
         const executeTransaction = async (t) => {
             const { Pedido, DetallePedido, Cobro, Caja, MovimientoCaja, MetodoPago, CuentaCorriente } = await this._getModels(negocioId);
 
-            let pedidosIds = params.pedidosIds || params.pedidoIds;
-            if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
-                const singleId = params.pedidoId || params.pedidoNumeroPedido || params.id || params.numeroPedido;
-                if (singleId) {
-                    pedidosIds = [singleId];
-                } else {
-                    pedidosIds = [];
-                }
+            let pedidosIds = params.pedidosIds;
+            if (typeof pedidosIds === "number" || typeof pedidosIds === "string") {
+                pedidosIds = [parseInt(pedidosIds, 10)];
             }
-
-            if (pedidosIds.length === 0) {
-                throw new AppError("Debe especificar al menos un pedido para cobrar.", 400, "MISSING_ORDER_ID");
+            if (!Array.isArray(pedidosIds) || pedidosIds.length === 0) {
+                throw new AppError("Debe especificar 'pedidosIds' para registrar el cobro.", 400, "MISSING_ORDER_ID");
             }
 
             // Buscar pedidos con sus detalles

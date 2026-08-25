@@ -1,0 +1,175 @@
+{
+  "feature": "Dashboard Principal y Métricas Operativas - Test Implementation & Live Execution Plan",
+  "version": "1.0.0",
+  "total_tasks": 13,
+  "batches": [
+    {
+      "batch_id": "BATCH-01",
+      "name": "Backend Test Fixtures & Helpers",
+      "description": "Construir los helpers de base de datos para aprovisionar tenants, sembrar pedidos históricos clasificados por fechas y estados, registrar movimientos de caja/cobros y abrir/cerrar turnos de caja chica.",
+      "tasks": [
+        {
+          "id": "TASK-BE-HELP-DASH-01",
+          "title": "Crear helper de fixtures para Dashboard en Back-End",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": [],
+          "outputs": ["back2/src/tests/helpers/dashboard.helper.js"],
+          "exit_criteria": "Exporta funciones para aprovisionar tenants con JWT, insertar pedidos en fechas personalizadas (hoy, ayer, hace días), crear registros de MovimientoCaja con 'Ingreso por Venta' y Cobro, y abrir/cerrar cajas de prueba."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-02",
+      "name": "Backend Jest Integration Suites",
+      "description": "Implementar las 3 suites de pruebas de negocio y base de datos para el módulo de Dashboard.",
+      "tasks": [
+        {
+          "id": "TASK-BE-SUITE-DASH-01",
+          "title": "Implementar suite de Cálculo de Ingresos, Ventas de 7 Días y Top Clientes",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-DASH-01"],
+          "outputs": ["back2/src/tests/dashboard/dashboard.stats.test.js"],
+          "exit_criteria": "Verifica cálculo de ingresos.hoyCobrado, ingresos.ayerCobrado, ingresos.mesActual, ingresos.mesAnterior, serie temporal ventasPorDia (7 días) y topClientes ordenado descendentemente."
+        },
+        {
+          "id": "TASK-BE-SUITE-DASH-02",
+          "title": "Implementar suite de Clasificación de Pedidos Activos y Feed Reciente",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-DASH-01"],
+          "outputs": ["back2/src/tests/dashboard/dashboard.estados.test.js"],
+          "exit_criteria": "Verifica conteo exacto de PENDIENTE, EN_PROCESO, LISTO_PARA_RETIRAR, ENTREGADO, segregación de pedidos CANCELADO y feed ultimosPedidos con límite de 5 items."
+        },
+        {
+          "id": "TASK-BE-SUITE-DASH-03",
+          "title": "Implementar suite de Aislamiento Multi-Tenant y Seguridad de Rutas",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-BE-HELP-DASH-01"],
+          "outputs": ["back2/src/tests/dashboard/dashboard.isolation.test.js"],
+          "exit_criteria": "Verifica que los datos del Tenant 1 no contaminen el dashboard del Tenant 2, y que peticiones sin JWT o sin negocioId respondan 401."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-03",
+      "name": "Frontend Live E2E Helpers",
+      "description": "Construir helpers de soporte para pruebas Playwright en vivo (sin mocks) contra el servidor Express y captura de capturas de pantalla.",
+      "tasks": [
+        {
+          "id": "TASK-FE-HELP-DASH-01",
+          "title": "Crear helper de autenticación y siembra de datos Live para Dashboard",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": [],
+          "outputs": [
+            "front/e2e/helpers/live-dashboard.helper.ts",
+            "front/e2e/helpers/screenshot.helper.ts"
+          ],
+          "exit_criteria": "Permite aprovisionar un tenant real con SuperAdmin (octavio.velo2022@gmail.com), inyectar sesión en auth-storage, sembrar pedidos y pagos en PostgreSQL por HTTP directo y capturar evidencias en front/e2e/dashboard/screenshots/."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-04",
+      "name": "Frontend Live Playwright Suites with Visual Screenshots",
+      "description": "Implementar las 5 suites de pruebas End-to-End en navegador Chromium contra el servidor real con captura automática de imágenes fullPage.",
+      "tasks": [
+        {
+          "id": "TASK-FE-SPEC-DASH-01",
+          "title": "Implementar suite E2E de KPIs Superiores y Navegación",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-DASH-01"],
+          "outputs": ["front/e2e/dashboard/01-dashboard-kpis-live.spec.ts"],
+          "exit_criteria": "Prueba renderizado de 'Pedidos del Día', 'Ingresos Hoy', 'Servicios Activos', 'Entregas Pend.', animación GSAP, redirecciones a /admin/pedidos y /admin/caja, y captura 3 screenshots."
+        },
+        {
+          "id": "TASK-FE-SPEC-DASH-02",
+          "title": "Implementar suite E2E de Gráfico de Barras y Feed de Últimos Pedidos",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-DASH-01"],
+          "outputs": ["front/e2e/dashboard/02-dashboard-analytics-charts-live.spec.ts"],
+          "exit_criteria": "Prueba gráfico de barras de 7 días (DashboardBarChart), lista de últimos 5 pedidos con badges semánticos, botón '+ Nuevo' y captura 3 screenshots."
+        },
+        {
+          "id": "TASK-FE-SPEC-DASH-03",
+          "title": "Implementar suite E2E de Integración Reactiva con Caja Chica",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-DASH-01"],
+          "outputs": ["front/e2e/dashboard/03-dashboard-caja-integration-live.spec.ts"],
+          "exit_criteria": "Prueba tarjeta 'Estado de Caja' con caja cerrada ('Caja Cerrada' / 'Abrir Caja'), apertura real vía API, recarga con 'Turno en Curso' / 'Ver Caja' y captura 3 screenshots."
+        },
+        {
+          "id": "TASK-FE-SPEC-DASH-04",
+          "title": "Implementar suite E2E de Alertas de Entrega y Medidor de Progreso Gauge",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-DASH-01"],
+          "outputs": ["front/e2e/dashboard/04-dashboard-alerts-and-gauge-live.spec.ts"],
+          "exit_criteria": "Prueba tarjeta de Alertas con badges VENCIDO y HOY calculados con date-fns, botón 'Ir a Pedidos', medidor circular DashboardGauge y captura 3 screenshots."
+        },
+        {
+          "id": "TASK-FE-SPEC-DASH-05",
+          "title": "Implementar suite E2E de Acciones Globales del Encabezado y Recarga",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": true,
+          "depends_on": ["TASK-FE-HELP-DASH-01"],
+          "outputs": ["front/e2e/dashboard/05-dashboard-global-actions-live.spec.ts"],
+          "exit_criteria": "Prueba botón principal 'Crear Pedido' con navegación a /admin/pedidos/nuevo, botón 'Exportar Info', recarga en caliente con consistencia total y captura 2 screenshots."
+        }
+      ]
+    },
+    {
+      "batch_id": "BATCH-05",
+      "name": "Live Execution, Verification & Zero-Failures Certification",
+      "description": "Ejecutar 1-por-1 y certificar al 100% las suites de pruebas en Back-End y Front-End en vivo.",
+      "tasks": [
+        {
+          "id": "TASK-VERIFY-DASH-01",
+          "title": "Ejecutar suites de Jest para Dashboard en Back-End",
+          "owner_role": "Backend Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-BE-SUITE-DASH-01", "TASK-BE-SUITE-DASH-02", "TASK-BE-SUITE-DASH-03"],
+          "outputs": ["Jest test report (100% passed / 0 failed)"],
+          "exit_criteria": "100% de tests aprobados en src/tests/dashboard sin fallos ni desvíos."
+        },
+        {
+          "id": "TASK-VERIFY-DASH-02",
+          "title": "Ejecutar suites de Playwright Live para Dashboard en Front-End (1 por 1)",
+          "owner_role": "QA Automation Engineer",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-FE-SPEC-DASH-01", "TASK-FE-SPEC-DASH-02", "TASK-FE-SPEC-DASH-03", "TASK-FE-SPEC-DASH-04", "TASK-FE-SPEC-DASH-05"],
+          "outputs": ["Playwright test report (14 passed / 0 failed)", "14 screenshots en front/e2e/dashboard/screenshots/"],
+          "exit_criteria": "100% de tests E2E aprobados en e2e/dashboard comunicándose contra el backend real y 14 capturas generadas."
+        },
+        {
+          "id": "TASK-VERIFY-DASH-03",
+          "title": "Certificación de Cero Fallos y Documentación Final",
+          "owner_role": "Lead Architect",
+          "status": "PENDING",
+          "parallelizable": false,
+          "depends_on": ["TASK-VERIFY-DASH-01", "TASK-VERIFY-DASH-02"],
+          "outputs": ["Final certification walkthrough"],
+          "exit_criteria": "Garantizar que no existan inconsistencias de contratos, que la base de datos se mantenga limpia y que ambos reportes sean 100% verdes."
+        }
+      ]
+    }
+  ]
+}

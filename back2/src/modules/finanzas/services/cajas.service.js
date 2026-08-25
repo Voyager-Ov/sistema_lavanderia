@@ -219,21 +219,27 @@ class CajasService {
         }
         const { Caja, Empleado } = await this._getModels(negocioId);
 
-        const empleadoId = data.empleadoId || data.usuarioId || null;
-
-        if (empleadoId) {
-            const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
-            if (cajaAbierta) {
-                throw new AppError("Ya posees un turno de caja abierto actualmente.", 400, "CASH_REGISTER_ALREADY_OPEN");
-            }
+        const empleadoId = data.empleadoId;
+        if (!empleadoId) {
+            throw new AppError("No se ha identificado el empleado para abrir el turno de caja.", 400, "MISSING_EMPLOYEE_ID");
         }
 
-        const montoInicial = parseFloat(data.montoInicial || data.montoInicialEfectivo || 0);
+        const cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
+        if (cajaAbierta) {
+            throw new AppError("Ya posees un turno de caja abierto actualmente.", 400, "CASH_REGISTER_ALREADY_OPEN");
+        }
+
+        const montoInicial = parseFloat(data.montoInicial);
+        if (isNaN(montoInicial) || montoInicial < 0) {
+            throw new AppError("El monto inicial de caja debe ser mayor o igual a cero.", 400, "INVALID_INITIAL_AMOUNT");
+        }
+
+        const observacionApertura = data.observacionApertura ? String(data.observacionApertura).trim() : null;
 
         const nuevaCaja = await Caja.create({
             montoInicialEfectivo: montoInicial,
             estadoCaja: "Abierta",
-            observacionApertura: data.observaciones || "Apertura de turno",
+            observacionApertura,
             fechaHoraApertura: new Date(),
             empleadoId,
             negocioId
@@ -291,13 +297,18 @@ class CajasService {
             return this._formatCaja(caja);
         }
 
-        const efectivoReal = parseFloat(data.efectivoReal || data.montoFinalEfectivoReal || 0);
+        const efectivoReal = parseFloat(data.efectivoReal);
+        if (isNaN(efectivoReal) || efectivoReal < 0) {
+            throw new AppError("El efectivo real debe ser mayor o igual a cero.", 400, "INVALID_FINAL_AMOUNT");
+        }
+
+        const observacionCierre = data.observacionCierre ? String(data.observacionCierre).trim() : null;
 
         await caja.update({
             estadoCaja: "Cerrada",
             montoFinalEfectivoReal: efectivoReal,
             fechaHoraCierre: new Date(),
-            observacionCierre: data.observaciones || "Cierre de turno"
+            observacionCierre
         });
 
         const formattedCierre = this._formatCaja(caja);

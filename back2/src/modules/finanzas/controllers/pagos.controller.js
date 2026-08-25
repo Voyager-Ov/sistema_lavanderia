@@ -10,6 +10,14 @@ const getTenantId = (req) => {
     return negocioId;
 };
 
+const getAuthEmpleadoId = (req) => {
+    const empId = req.user?.empleadoId;
+    if (!empId) {
+        throw new AppError("Empleado no autenticado en la sesión.", 401, "UNAUTHORIZED");
+    }
+    return empId;
+};
+
 export const obtenerMetodosPago = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
@@ -63,7 +71,7 @@ export const eliminarMetodoPago = async (req, res, next) => {
 export const registrarPago = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const empleadoId = getAuthEmpleadoId(req);
         const pago = await pagosService.registrarPago(negocioId, { ...req.body, empleadoId });
         return successResponse(res, 201, "Pago registrado exitosamente", pago);
     } catch (error) {
