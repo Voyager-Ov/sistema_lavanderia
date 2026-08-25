@@ -96,10 +96,16 @@ class RegisterService {
             throw new AppError(`La solicitud ya se encuentra en estado ${solicitud.estado}.`, 400, "INVALID_SOLICITUD_STATE");
         }
 
+        let subdominioFinal = solicitud.subdominio ? solicitud.subdominio.toLowerCase().trim() : `negocio-${Date.now()}`;
+        const existeNegocio = await Negocio.findOne({ where: { subdominio: subdominioFinal } });
+        if (existeNegocio) {
+            subdominioFinal = `${subdominioFinal}-${Math.floor(100 + Math.random() * 900)}`;
+        }
+
         const nuevoNegocio = await Negocio.create({
             nombre: solicitud.nombreNegocio,
             razonSocial: solicitud.razonSocial ? solicitud.razonSocial : solicitud.nombreNegocio,
-            subdominio: solicitud.subdominio,
+            subdominio: subdominioFinal,
             cuit: solicitud.cuit,
             facturacionHabilitada: false,
             activo: true,
@@ -108,15 +114,24 @@ class RegisterService {
             maxStorageGB: 1.0
         });
 
-        const tokenConfirmacion = Math.floor(100000 + Math.random() * 900000).toString();
-        const nuevoUsuario = await Usuario.create({
-            email: solicitud.emailSolicitante,
-            password: solicitud.passwordHash,
-            negocioId: nuevoNegocio.id,
-            tokenConfirmacion,
-            emailConfirmado: true,
-            activo: true
-        });
+        let nuevoUsuario = await Usuario.findOne({ where: { email: solicitud.emailSolicitante.toLowerCase().trim() } });
+        if (nuevoUsuario) {
+            nuevoUsuario.password = solicitud.passwordHash;
+            nuevoUsuario.negocioId = nuevoNegocio.id;
+            nuevoUsuario.emailConfirmado = true;
+            nuevoUsuario.activo = true;
+            await nuevoUsuario.save();
+        } else {
+            const tokenConfirmacion = Math.floor(100000 + Math.random() * 900000).toString();
+            nuevoUsuario = await Usuario.create({
+                email: solicitud.emailSolicitante.toLowerCase().trim(),
+                password: solicitud.passwordHash,
+                negocioId: nuevoNegocio.id,
+                tokenConfirmacion,
+                emailConfirmado: true,
+                activo: true
+            });
+        }
 
         let [rolAdmin] = await Rol.findOrCreate({
             where: { nombre: "ADMIN" },
