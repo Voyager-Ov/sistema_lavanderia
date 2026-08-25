@@ -118,7 +118,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full text-gray-400">
         <Loader2 className="w-12 h-12 animate-spin mb-4 text-brand-blue" />
-        <p className="text-lg font-medium">Cargando estadÃ­sticas...</p>
+        <p className="text-lg font-medium">Cargando estadísticas...</p>
       </div>
     )
   }
@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => router.push('/admin/pedidos/nuevo')}
-            className="bg-brand-blue hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm"
+            className="bg-brand-blue hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Crear Pedido
@@ -196,11 +196,11 @@ export default function AdminDashboardPage() {
       {/* Row 1: KPIs */}
       <div className="fade-up grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <DashboardKpi 
-          title="Pedidos del DÃ­a" 
+          title="Pedidos del Día" 
           value={(stats.pedidosDelDia.hoy || 0).toString()} 
           trendValue={incrementPedidos} 
           subtitle="Incremento vs ayer"
-          backMessage="Total de pedidos recibidos durante el dÃ­a de hoy en todas las sucursales."
+          backMessage="Total de pedidos recibidos durante el día de hoy en todas las sucursales."
           href="/admin/pedidos"
           variant="active"
         />
@@ -209,21 +209,21 @@ export default function AdminDashboardPage() {
           value={formatCurrency(stats.ingresos.hoyCobrado || 0)}
           trendValue={incrementIngresos} 
           subtitle="Cobrado vs ayer"
-          backMessage={`Dinero en mano hoy. Potencial del dÃ­a si se cobra todo: ${formatCurrency(stats.ingresos.hoyTotalPedidos || 0)}`}
+          backMessage={`Dinero en mano hoy. Potencial del día si se cobra todo: ${formatCurrency(stats.ingresos.hoyTotalPedidos || 0)}`}
           href="/admin/caja"
         />
         <DashboardKpi 
           title="Servicios Activos" 
           value={(stats.pedidosActivos.EN_PROCESO || 0).toString()} 
           subtitle="Pedidos en proceso"
-          backMessage="Lavadoras, secadoras o planchas que actualmente estÃ¡n procesando un pedido."
+          backMessage="Lavadoras, secadoras o planchas que actualmente están procesando un pedido."
           href="/admin/servicios"
         />
         <DashboardKpi 
           title="Entregas Pend." 
           value={(stats.pedidosActivos.LISTO_PARA_RETIRAR || 0).toString()} 
           subtitle="Listos para retirar"
-          backMessage="Pedidos listos que el cliente debe retirar el dÃ­a de hoy."
+          backMessage="Pedidos listos que el cliente debe retirar el día de hoy."
           href="/admin/pedidos?filtro=listos"
         />
       </div>
@@ -232,7 +232,7 @@ export default function AdminDashboardPage() {
       <div className="fade-up grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-5">
           <DashboardBarChart 
-            title="Ingresos por DÃ­a ($)" 
+            title="Ingresos por Día ($)" 
             data={chartData} 
             dataKeyX="name" 
             dataKeyY="ventas"
@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="xl:col-span-4">
           <DashboardListCard 
-            title="Ãšltimos Pedidos" 
+            title="Últimos Pedidos" 
             actionButtonText="+ Nuevo"
             onActionClick={() => router.push('/admin/pedidos/nuevo')}
             items={recentOrdersList}
@@ -272,7 +272,7 @@ export default function AdminDashboardPage() {
             onActionClick={() => router.push('/admin/pedidos?estado=PENDIENTE')}
             items={alertas.length > 0 ? alertas : [{
               id: "empty",
-              title: "Todo al dÃ­a",
+              title: "Todo al día",
               subtitle: "No hay pedidos pendientes urgentes",
               badgeText: "OK",
               badgeColor: "green"
@@ -282,7 +282,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="xl:col-span-5">
           <DashboardGauge 
-            title="Progreso del DÃ­a" 
+            title="Progreso del Día" 
             currentValue={progresoActual} 
             targetValue={metaDiaria}
             subtitle="Pedidos entregados vs recibidos hoy"

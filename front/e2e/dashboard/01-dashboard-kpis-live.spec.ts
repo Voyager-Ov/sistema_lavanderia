@@ -33,7 +33,8 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
   test('2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el botón de enlace de "Pedidos del Día"', async ({ page }) => {
     await page.goto('/admin/dashboard');
 
-    const linkPedidos = page.locator('a[href="/admin/pedidos"]').first();
+    const cardPedidos = page.locator('main').locator('div').filter({ hasText: 'Pedidos del Día' });
+    const linkPedidos = cardPedidos.locator('a').first();
     await expect(linkPedidos).toBeVisible({ timeout: 15000 });
     await linkPedidos.click();
 
@@ -46,7 +47,8 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
   test('3. [LIVE] Debe navegar a /admin/caja al hacer clic en el botón de enlace de "Ingresos Hoy"', async ({ page }) => {
     await page.goto('/admin/dashboard');
 
-    const linkCaja = page.locator('a[href="/admin/caja"]').first();
+    const cardIngresos = page.locator('main').locator('div').filter({ hasText: 'Ingresos Hoy' });
+    const linkCaja = cardIngresos.locator('a').first();
     await expect(linkCaja).toBeVisible({ timeout: 15000 });
     await linkCaja.click();
 

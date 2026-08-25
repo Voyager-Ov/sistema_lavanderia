@@ -21,15 +21,15 @@ export const validateServicio = [
         .isFloat({ min: 0 })
         .withMessage("El precio actual debe ser un número mayor o igual a 0"),
     body("costoEstimado")
-        .optional()
+        .optional({ checkFalsy: true })
         .isFloat({ min: 0 })
         .withMessage("El costo estimado debe ser un número mayor o igual a 0"),
     body("tiempoEstimadoMinutos")
-        .optional()
+        .optional({ checkFalsy: true })
         .isInt({ min: 0 })
         .withMessage("El tiempo estimado debe ser un número entero mayor o igual a 0"),
     body("categoriaId")
-        .optional()
+        .optional({ checkFalsy: true })
         .isInt({ min: 1 })
         .withMessage("Debes seleccionar una categoría válida"),
     handleValidationErrors
@@ -42,19 +42,19 @@ export const validateServicioUpdate = [
         .notEmpty()
         .withMessage("El nombre del servicio no puede estar vacío"),
     body("precioActual")
-        .optional()
+        .optional({ checkFalsy: true })
         .isFloat({ min: 0 })
         .withMessage("El precio actual debe ser un número mayor o igual a 0"),
     body("costoEstimado")
-        .optional()
+        .optional({ checkFalsy: true })
         .isFloat({ min: 0 })
         .withMessage("El costo estimado debe ser un número mayor o igual a 0"),
     body("tiempoEstimadoMinutos")
-        .optional()
+        .optional({ checkFalsy: true })
         .isInt({ min: 0 })
         .withMessage("El tiempo estimado debe ser un número entero mayor o igual a 0"),
     body("categoriaId")
-        .optional()
+        .optional({ checkFalsy: true })
         .isInt({ min: 1 })
         .withMessage("Debes seleccionar una categoría válida"),
     handleValidationErrors

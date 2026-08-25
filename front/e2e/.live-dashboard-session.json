@@ -1,18 +1,18 @@
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluX2Rhc2hfMTc4NzY5NzA1MDU1N0BsYXZhbmRlcmlhLnRlc3QiLCJuZWdvY2lvSWQiOjgxLCJlbXBsZWFkb0lkIjoxLCJyb2wiOiJBRE1JTiIsImlhdCI6MTc4NzY5NzA2NCwiZXhwIjoxNzg3NzI1ODY0fQ.rXyRgGazuUf6vL8mygsZyXzpmM1J2rBz9aQe-tY3-PM",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluX2Rhc2hfMTc4NzY5NzEwNjMyNEBsYXZhbmRlcmlhLnRlc3QiLCJuZWdvY2lvSWQiOjgzLCJlbXBsZWFkb0lkIjoxLCJyb2wiOiJBRE1JTiIsImlhdCI6MTc4NzY5NzEyMCwiZXhwIjoxNzg3NzI1OTIwfQ.pCJlxRYeyZhTZa4B-Efyai-VDp7r_OQNpyLGIhFnm2E",
   "usuario": {
     "id": 1,
-    "email": "admin_dash_1787697050557@lavanderia.test",
+    "email": "admin_dash_1787697106324@lavanderia.test",
     "nombre": "Admin Dashboard Live",
     "rol": "ADMIN",
-    "negocioId": 81,
+    "negocioId": 83,
     "googleLinked": false
   },
   "negocio": {
-    "id": 81,
-    "nombre": "Lavanderia Dashboard 1787697050557",
-    "subdominio": "sub-1787697050557"
+    "id": 83,
+    "nombre": "Lavanderia Dashboard 1787697106324",
+    "subdominio": "sub-1787697106324"
   },
-  "adminEmail": "admin_dash_1787697050557@lavanderia.test",
+  "adminEmail": "admin_dash_1787697106324@lavanderia.test",
   "adminPassword": "Password123!"
 }

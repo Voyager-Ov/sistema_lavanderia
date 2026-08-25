@@ -171,15 +171,21 @@ class PagosService {
 
             // Función de cálculo de monto real
             const calcularMontoReal = (p) => {
-                let subtotalItems = 0;
+                const totalNum = parseFloat(p.total);
+                if (!isNaN(totalNum) && totalNum > 0) {
+                    return totalNum;
+                }
                 if (p.detalles && Array.isArray(p.detalles)) {
-                    subtotalItems = p.detalles.reduce((acc, d) => {
-                        const precio = parseFloat(d.precioHistorico ?? d.precioUnitario) || 0;
-                        const cant = parseInt(d.cantidad, 10) || 1;
+                    return p.detalles.reduce((acc, d) => {
+                        const precio = parseFloat(d.precioHistorico);
+                        const cant = Number(d.cantidad);
+                        if (isNaN(precio) || isNaN(cant)) {
+                            throw new AppError(`El pedido #${p.numeroPedido} contiene ítems con precio o cantidad inválida.`, 400, "INVALID_ORDER_DETAIL");
+                        }
                         return acc + (precio * cant);
                     }, 0);
                 }
-                return parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
+                return 0;
             };
 
             const totalMontoPedidos = pedidosTarget.reduce((acc, p) => acc + calcularMontoReal(p), 0);
