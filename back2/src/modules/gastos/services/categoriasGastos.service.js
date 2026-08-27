@@ -20,7 +20,7 @@ class CategoriasGastosService {
     }
 
     async obtenerCategorias(negocioId) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { CategoriaGasto } = await this._getModels(negocioId);
 
         let categorias = await CategoriaGasto.findAll({ order: [["id", "ASC"]] });
@@ -37,7 +37,7 @@ class CategoriasGastosService {
     }
 
     async crearCategoria(negocioId, data) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { CategoriaGasto } = await this._getModels(negocioId);
 
         if (!data.nombre || data.nombre.trim() === "") {
@@ -51,12 +51,12 @@ class CategoriasGastosService {
 
         return await CategoriaGasto.create({
             nombre: data.nombre.trim(),
-            descripcion: data.descripcion || null
+            descripcion: data.descripcion && typeof data.descripcion === "string" ? data.descripcion.trim() : null
         });
     }
 
     async eliminarCategoria(negocioId, id) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { CategoriaGasto } = await this._getModels(negocioId);
 
         const cat = await CategoriaGasto.findByPk(id);

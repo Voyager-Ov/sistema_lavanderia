@@ -1,0 +1,62 @@
+{
+  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
+  "scope": {
+    "in_scope": [
+      "Simulación completa E2E en Chromium (Playwright visual con --headed) de un negocio creado 100% desde cero.",
+      "Módulo 1: Registro de nuevo Negocio ('Lavandería E2E Test Suite') vía formulario de registro (/register).",
+      "Verificación de código de correo y autenticación inicial para obtener sesión de Administrador y Negocio ID único.",
+      "Setup inicial de configuración del negocio (nombre, dirección, teléfono, parámetros operacionales).",
+      "Diseño modular que encadena las etapas posteriores: Categorías -> Servicios -> Empleados -> Clientes -> Pedidos (POS) -> Transiciones de Estado -> Cobros/Saldo a Favor -> Caja -> Reportes/Finanzas.",
+      "Garantizar que los datos generados permitan probar paginación de tablas, acciones por fila, cálculos de deuda exigible vs taller y gráficos en Dashboard."
+    ],
+    "out_of_scope": [
+      "Modificación de esquemas de base de datos en producción.",
+      "Bypasses silenciosos o datos hardcodeados que omitan los formularios y validaciones de la interfaz del usuario."
+    ]
+  },
+  "user_journeys": [
+    {
+      "actor": "Dueño de Negocio (Administrador)",
+      "goal": "Registrar un negocio desde cero a través de la UI del sistema, verificar la cuenta e ingresar al dashboard inicial.",
+      "flow": [
+        "Navega a la pantalla de Registro de Negocio (/register) en Chromium.",
+        "Completa el formulario con nombre del negocio ('Lavandería E2E Test Suite'), nombre del administrador, email dinámico único y contraseña segura.",
+        "Envía el formulario y recibe el código de verificación.",
+        "Ingresa el código en la pantalla de Verificación (/verify-email) o mediante la API de testing E2E.",
+        "Inicia sesión con sus credenciales en la pantalla de Login (/login).",
+        "Redirige exitosamente al Dashboard principal (/dashboard) y valida la bienvenida y el estado del nuevo tenant creado."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "scenario": "Registro exitoso de un negocio desde la UI",
+      "given": "Un navegador Chromium abierto en la ruta /register con un estado limpio",
+      "when": "El usuario ingresa un nombre de negocio, nombre de administrador, email válido no registrado y password válida, y presiona 'Registrarse'",
+      "then": "El servidor crea el registro de Negocio y Usuario Admin en la base de datos y muestra la pantalla de verificación o redirección."
+    },
+    {
+      "scenario": "Inicio de sesión y persistencia de sesión",
+      "given": "El usuario ha verificado su cuenta recién registrada",
+      "when": "Ingresa sus credenciales en /login y presiona 'Iniciar Sesión'",
+      "then": "El JWT token y datos del usuario se almacenan en el estado de autenticación de la app y la UI navega a /dashboard."
+    },
+    {
+      "scenario": "Aislamiento y consistencia del Tenant",
+      "given": "El usuario administrador ha iniciado sesión",
+      "when": "Se consulta /api/auth/me",
+      "then": "El negocioId devuelto coincide con el registro creado y req.user contiene las credenciales de dicho tenant únicamente."
+    }
+  ],
+  "ux_behavior": {
+    "aesthetics": "Ejecución visible e interactiva en Chromium Playwright a velocidad adecuada para seguimiento en tiempo real.",
+    "interactions": "Comportamiento 1:1 con un usuario real haciendo clic en botones, rellenando inputs, recibiendo feedback con toast notifications y navegando por rutas de Next.js.",
+    "performance": "La suite de pruebas ejecuta cada paso verificando respuestas de API y renderizado de la UI antes de avanzar al siguiente módulo."
+  },
+  "business_rules": [
+    "No se deben usar fallbacks de negocioId = 1 ni datos hardcodeados.",
+    "El registro debe generar un Negocio ID independiente en la base de datos PostgreSQL.",
+    "El Administrador creado debe poseer los permisos completos de administración sobre la empresa registrada.",
+    "Cada módulo siguiente del test (Categorías, Servicios, Empleados, Clientes, Pedidos, Cobros, Finanzas) se ejecutará secuencialmente utilizando este mismo tenant recién creado."
+  ]
+}

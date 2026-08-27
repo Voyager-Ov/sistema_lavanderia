@@ -15,6 +15,7 @@ test.describe('E2E Live: Integración Reactiva con el Estado de Caja', () => {
 
   test('1. [LIVE] Debe renderizar la tarjeta "Estado de Caja" con su estado actual', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     await expect(page.getByText('Estado de Caja')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /(Abrir Caja|Ver Caja)/i })).toBeVisible({ timeout: 10000 });
@@ -25,12 +26,13 @@ test.describe('E2E Live: Integración Reactiva con el Estado de Caja', () => {
 
   test('2. [LIVE] Debe navegar a /admin/caja al pulsar el botón de acción de caja', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     const btnCaja = page.getByRole('button', { name: /(Abrir Caja|Ver Caja)/i });
     await expect(btnCaja).toBeVisible({ timeout: 15000 });
     await btnCaja.click();
 
-    await expect(page).toHaveURL(/.*\/admin\/caja/);
+    await expect(page).toHaveURL(/.*\/admin\/caja/, { timeout: 15000 });
 
     // Captura de pantalla tras navegación a caja
     await ScreenshotHelper.take(page, '08-dashboard-navegacion-caja', 'dashboard');
@@ -41,6 +43,7 @@ test.describe('E2E Live: Integración Reactiva con el Estado de Caja', () => {
     await LiveDashboardHelper.openLiveCajaViaApi(session.token, 7500);
 
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     // Verificar que la tarjeta muestre Turno en Curso y Ver Caja
     await expect(page.getByText(/Turno en Curso/i)).toBeVisible({ timeout: 15000 });

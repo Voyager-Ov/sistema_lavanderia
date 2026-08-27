@@ -7,7 +7,7 @@ import { AppError } from "../../../utils/appError.js";
 const getTenantId = (req) => {
     const negocioId = req.user?.negocioId;
     if (!negocioId) {
-        throw new AppError("No se ha identificado el negocio activo en la sesión.", 401, "TENANT_REQUIRED");
+        throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
     }
     return negocioId;
 };

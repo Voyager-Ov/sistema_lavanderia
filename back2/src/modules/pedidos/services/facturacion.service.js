@@ -10,13 +10,13 @@ class FacturacionService {
 
     async generarFactura(negocioId, numeroPedido) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         const { Pedido, Factura, DetallePedido } = await this._getModels(negocioId);
         const { Negocio } = connectionManager.centralModels;
 
         const pedido = await Pedido.findOne({
-            where: { numeroPedido },
+            where: { numeroPedido, negocioId },
             include: [
                 { model: Factura, as: "factura" },
                 { model: DetallePedido, as: "detalles" }

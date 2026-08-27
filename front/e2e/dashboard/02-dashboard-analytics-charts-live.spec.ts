@@ -15,6 +15,7 @@ test.describe('E2E Live: Gráficos de Analítica y Feed de Últimos Pedidos', ()
 
   test('1. [LIVE] Debe renderizar el gráfico "Ingresos por Día ($)" con los 7 días de la semana', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     // Verificar presencia del gráfico
     await expect(page.getByText(/Ingresos por Día/i)).toBeVisible({ timeout: 15000 });
@@ -25,6 +26,7 @@ test.describe('E2E Live: Gráficos de Analítica y Feed de Últimos Pedidos', ()
 
   test('2. [LIVE] Debe mostrar la lista de "Últimos Pedidos"', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     // Verificar sección de últimos pedidos
     await expect(page.getByText('Últimos Pedidos')).toBeVisible({ timeout: 15000 });
@@ -35,12 +37,13 @@ test.describe('E2E Live: Gráficos de Analítica y Feed de Últimos Pedidos', ()
 
   test('3. [LIVE] Debe navegar a /admin/pedidos/nuevo al pulsar "+ Nuevo" en Últimos Pedidos', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 
     const btnNuevo = page.getByRole('button', { name: /\+ Nuevo/i });
     await expect(btnNuevo).toBeVisible({ timeout: 15000 });
     await btnNuevo.click();
 
-    await expect(page).toHaveURL(/.*\/admin\/pedidos\/nuevo/);
+    await expect(page).toHaveURL(/.*\/admin\/pedidos\/nuevo/, { timeout: 15000 });
 
     // Captura de navegación
     await ScreenshotHelper.take(page, '06-dashboard-navegacion-nuevo-pedido-desde-lista', 'dashboard');

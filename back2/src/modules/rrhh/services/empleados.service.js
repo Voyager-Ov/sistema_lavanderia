@@ -34,12 +34,20 @@ class EmpleadosService {
     }
 
     async crearEmpleado(negocioId, data) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { Empleado } = await this._getModels(negocioId);
         const centralModels = connectionManager.centralModels;
 
-        if (!data.nombre || !data.email) {
-            throw new AppError("Nombre y email son requeridos.", 400, "MISSING_REQUIRED_FIELDS");
+        if (!data.nombre || typeof data.nombre !== "string" || !data.nombre.trim()) {
+            throw new AppError("El nombre del empleado es obligatorio.", 400, "MISSING_NAME");
+        }
+
+        if (!data.email || typeof data.email !== "string" || !data.email.includes("@")) {
+            throw new AppError("Un correo electrónico válido es obligatorio.", 400, "INVALID_EMAIL");
+        }
+
+        if (!data.password || typeof data.password !== "string" || data.password.trim().length < 6) {
+            throw new AppError("La contraseña es obligatoria y debe tener al menos 6 caracteres.", 400, "INVALID_PASSWORD");
         }
 
         const emailLower = data.email.toLowerCase().trim();
@@ -50,8 +58,7 @@ class EmpleadosService {
             throw new AppError("El email ya se encuentra registrado en el sistema.", 400, "EMAIL_ALREADY_EXISTS");
         }
 
-        const passRaw = data.password || "lavanderia123";
-        const passwordHash = await bcrypt.hash(passRaw, 10);
+        const passwordHash = await bcrypt.hash(data.password.trim(), 10);
 
         // Crear credencial en base de datos central
         const nuevoUsuario = await centralModels.Usuario.create({
@@ -62,8 +69,12 @@ class EmpleadosService {
             negocioId: negocioId
         });
 
+        if (!data.rol || typeof data.rol !== "string" || !data.rol.trim()) {
+            throw new AppError("El rol del empleado es obligatorio.", 400, "MISSING_ROLE");
+        }
+
         // Vincular rol central
-        const rolNombre = (data.rol || "empleado").toLowerCase();
+        const rolNombre = data.rol.toLowerCase().trim();
         const rolNombreUpper = rolNombre.toUpperCase();
         const [rol] = await centralModels.Rol.findOrCreate({
             where: { nombre: rolNombreUpper },
@@ -73,15 +84,29 @@ class EmpleadosService {
             await nuevoUsuario.addRole(rol);
         }
 
+        const sueldoBase = data.sueldoBase !== undefined && data.sueldoBase !== null && data.sueldoBase !== "" 
+            ? parseFloat(data.sueldoBase) 
+            : 0;
+        if (isNaN(sueldoBase) || sueldoBase < 0) {
+            throw new AppError("El sueldo base debe ser un monto numérico válido mayor o igual a 0.", 400, "INVALID_SUELDO");
+        }
+
+        const horasSemanalesObjetivo = data.horasSemanalesObjetivo !== undefined && data.horasSemanalesObjetivo !== null && data.horasSemanalesObjetivo !== ""
+            ? parseInt(data.horasSemanalesObjetivo)
+            : 40;
+        if (isNaN(horasSemanalesObjetivo) || horasSemanalesObjetivo <= 0) {
+            throw new AppError("Las horas semanales objetivo deben ser un número entero positivo.", 400, "INVALID_HORAS");
+        }
+
         // Crear legajo local de empleado en base de datos del tenant
         const nuevoEmpleado = await Empleado.create({
             nombre: data.nombre.trim(),
             email: emailLower,
-            telefono: data.telefono || null,
+            telefono: data.telefono ? data.telefono.trim() : null,
             rol: rolNombre,
             activo: true,
-            sueldoBase: parseFloat(data.sueldoBase) || 0,
-            horasSemanalesObjetivo: parseInt(data.horasSemanalesObjetivo) || 40,
+            sueldoBase,
+            horasSemanalesObjetivo,
             usuarioIdCentral: nuevoUsuario.id
         });
 
@@ -93,54 +118,78 @@ class EmpleadosService {
     }
 
     async obtenerEmpleadoPorId(negocioId, id) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { Empleado } = await this._getModels(negocioId);
 
-        const empleado = await Empleado.findByPk(id);
+        const idNum = parseInt(id);
+        if (isNaN(idNum) || idNum <= 0) throw new AppError("ID de empleado inválido.", 400, "INVALID_ID");
+
+        const empleado = await Empleado.findByPk(idNum);
         if (!empleado) throw new AppError("Empleado no encontrado.", 404, "EMPLOYEE_NOT_FOUND");
         return empleado;
     }
 
     async actualizarEmpleado(negocioId, id, data) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { Empleado } = await this._getModels(negocioId);
         const centralModels = connectionManager.centralModels;
 
-        const empleado = await Empleado.findByPk(id);
+        const idNum = parseInt(id);
+        if (isNaN(idNum) || idNum <= 0) throw new AppError("ID de empleado inválido.", 400, "INVALID_ID");
+
+        const empleado = await Empleado.findByPk(idNum);
         if (!empleado) throw new AppError("Empleado no encontrado.", 404, "EMPLOYEE_NOT_FOUND");
 
         const updateFields = {};
-        if (data.nombre) updateFields.nombre = data.nombre.trim();
-        if (data.telefono !== undefined) updateFields.telefono = data.telefono ? data.telefono.trim() : null;
-        if (data.rol) updateFields.rol = data.rol.toLowerCase();
-        if (data.sueldoBase !== undefined) updateFields.sueldoBase = parseFloat(data.sueldoBase);
-        if (data.horasSemanalesObjetivo !== undefined) updateFields.horasSemanalesObjetivo = parseInt(data.horasSemanalesObjetivo);
+        if (data.nombre !== undefined) {
+            if (typeof data.nombre !== "string" || !data.nombre.trim()) {
+                throw new AppError("El nombre del empleado no puede estar vacío.", 400, "INVALID_NAME");
+            }
+            updateFields.nombre = data.nombre.trim();
+        }
+
+        if (data.telefono !== undefined) {
+            updateFields.telefono = data.telefono && typeof data.telefono === "string" ? data.telefono.trim() : null;
+        }
+
+        if (data.rol !== undefined) {
+            updateFields.rol = data.rol.toLowerCase().trim();
+        }
+
+        if (data.sueldoBase !== undefined && data.sueldoBase !== null && data.sueldoBase !== "") {
+            const sueldo = parseFloat(data.sueldoBase);
+            if (isNaN(sueldo) || sueldo < 0) {
+                throw new AppError("El sueldo base debe ser un monto numérico válido mayor o igual a 0.", 400, "INVALID_SUELDO");
+            }
+            updateFields.sueldoBase = sueldo;
+        }
+
+        if (data.horasSemanalesObjetivo !== undefined && data.horasSemanalesObjetivo !== null && data.horasSemanalesObjetivo !== "") {
+            const horas = parseInt(data.horasSemanalesObjetivo);
+            if (isNaN(horas) || horas <= 0) {
+                throw new AppError("Las horas semanales objetivo deben ser un entero positivo.", 400, "INVALID_HORAS");
+            }
+            updateFields.horasSemanalesObjetivo = horas;
+        }
 
         await empleado.update(updateFields);
 
-        // Buscar registro de usuario central vinculado para actualizar clave o rol si fueron enviados
-        let usuarioCentral = null;
+        // Actualizar usuario central mediante FK usuarioIdCentral
         if (empleado.usuarioIdCentral) {
-            usuarioCentral = await centralModels.Usuario.findByPk(empleado.usuarioIdCentral);
-        } else if (empleado.email) {
-            usuarioCentral = await centralModels.Usuario.findOne({ where: { email: empleado.email } });
-        }
+            const usuarioCentral = await centralModels.Usuario.findByPk(empleado.usuarioIdCentral);
+            if (usuarioCentral) {
+                if (data.password && typeof data.password === "string" && data.password.trim().length >= 6) {
+                    usuarioCentral.password = await bcrypt.hash(data.password.trim(), 10);
+                    await usuarioCentral.save();
+                }
 
-        if (usuarioCentral) {
-            // Actualizar contraseña si fue proporcionada y es válida
-            if (data.password && data.password.trim().length >= 6) {
-                const passwordHash = await bcrypt.hash(data.password.trim(), 10);
-                usuarioCentral.password = passwordHash;
-                await usuarioCentral.save();
-            }
-
-            // Sincronizar rol en base central
-            if (data.rol) {
-                const rolNombre = data.rol.toLowerCase() === "admin" ? "admin" : "empleado";
-                const rolObj = await centralModels.Rol.findOne({ where: { nombre: rolNombre } });
-                if (rolObj) {
-                    await centralModels.UsuarioRoles.destroy({ where: { usuarioId: usuarioCentral.id } });
-                    await centralModels.UsuarioRoles.create({ usuarioId: usuarioCentral.id, rolId: rolObj.id });
+                if (data.rol) {
+                    const rolNombreUpper = data.rol.toUpperCase().trim();
+                    const rolObj = await centralModels.Rol.findOne({ where: { nombre: rolNombreUpper } });
+                    if (rolObj) {
+                        await centralModels.UsuarioRoles.destroy({ where: { usuarioId: usuarioCentral.id } });
+                        await centralModels.UsuarioRoles.create({ usuarioId: usuarioCentral.id, rolId: rolObj.id });
+                    }
                 }
             }
         }

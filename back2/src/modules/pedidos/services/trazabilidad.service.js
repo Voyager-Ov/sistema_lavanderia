@@ -4,8 +4,8 @@ import { AppError } from "../../../utils/appError.js";
 class TrazabilidadService {
 
     async _getModels(negocioId) {
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
-        return tenantDb.models;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        return { sequelize: tenantContext.sequelize, models: tenantContext.models };
     }
 
     _validarTransicionEstado(estadoActual, nuevoEstado) {
@@ -26,14 +26,16 @@ class TrazabilidadService {
         }
     }
 
-    // Cambiar estado de un pedido y registrar auditoría de tiempo
+    // Cambiar estado de un pedido y registrar auditoría de tiempo de forma atómica
     async cambiarEstado(negocioId, numeroPedido, nuevoEstadoNombre) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
-        const { Pedido, Estado, CambioEstadoPedido } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Pedido, Estado, CambioEstadoPedido } = models;
 
-        const pedido = await Pedido.findByPk(numeroPedido, {
+        const pedido = await Pedido.findOne({
+            where: { numeroPedido, negocioId },
             include: [{
                 model: CambioEstadoPedido,
                 as: "cambiosEstado",
@@ -67,42 +69,52 @@ class TrazabilidadService {
 
         this._validarTransicionEstado(estadoActualNombre, nuevoEstadoNombre);
 
-        let estado = await Estado.findOne({ where: { nombre: nuevoEstadoNombre } });
-        if (!estado) {
-            estado = await Estado.create({ nombre: nuevoEstadoNombre, descripcion: `Estado ${nuevoEstadoNombre}`, ambito: "Pedido" });
+        const transaction = await sequelize.transaction();
+        try {
+            let estado = await Estado.findOne({ where: { nombre: nuevoEstadoNombre }, transaction });
+            if (!estado) {
+                estado = await Estado.create({ nombre: nuevoEstadoNombre, descripcion: `Estado ${nuevoEstadoNombre}`, ambito: "Pedido" }, { transaction });
+            }
+
+            // Actualizar el campo estado en la tabla de Pedido
+            await pedido.update({ estado: nuevoEstadoNombre }, { transaction });
+
+            // Cerrar el cambio de estado previo asignando fechaHoraFin
+            const ultimoCambio = await CambioEstadoPedido.findOne({
+                where: { pedidoNumeroPedido: numeroPedido, fechaHoraFin: null },
+                order: [["id", "DESC"]],
+                transaction
+            });
+
+            if (ultimoCambio) {
+                await ultimoCambio.update({ fechaHoraFin: new Date() }, { transaction });
+            }
+
+            // Registrar nuevo estado
+            await CambioEstadoPedido.create({
+                pedidoNumeroPedido: numeroPedido,
+                estadoId: estado.id,
+                fechaHoraInicio: new Date()
+            }, { transaction });
+
+            await transaction.commit();
+
+            return { numeroPedido, nuevoEstado: nuevoEstadoNombre };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
         }
-
-        // Actualizar el campo estado en la tabla de Pedido
-        await pedido.update({ estado: nuevoEstadoNombre });
-
-        // Cerrar el cambio de estado previo asignando fechaHoraFin
-        const ultimoCambio = await CambioEstadoPedido.findOne({
-            where: { pedidoNumeroPedido: numeroPedido, fechaHoraFin: null },
-            order: [["id", "DESC"]]
-        });
-
-        if (ultimoCambio) {
-            await ultimoCambio.update({ fechaHoraFin: new Date() });
-        }
-
-        // Registrar nuevo estado
-        await CambioEstadoPedido.create({
-            pedidoNumeroPedido: numeroPedido,
-            estadoId: estado.id,
-            fechaHoraInicio: new Date()
-        });
-
-        return { numeroPedido, nuevoEstado: nuevoEstadoNombre };
     }
 
     // Marcar ticket como impreso
     async marcarTicketImpreso(negocioId, numeroPedido) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
-        const { Pedido } = await this._getModels(negocioId);
+        const { models } = await this._getModels(negocioId);
+        const { Pedido } = models;
 
-        const pedido = await Pedido.findByPk(numeroPedido);
+        const pedido = await Pedido.findOne({ where: { numeroPedido, negocioId } });
         if (!pedido) {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }

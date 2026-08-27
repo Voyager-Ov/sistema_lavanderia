@@ -6,6 +6,7 @@ import { ResponsiveSheet, ResponsiveSheetContent, ResponsiveSheetHeader, Respons
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/ui/overlays/dialog"
 import { useAuthStore } from "@/shared/store/useAuthStore"
 import { apiClient } from "@/shared/lib/api-client"
+import { empleadosApi } from "@/domains/empleados/api/empleados.api"
 import { toast } from "sonner"
 
 const createSchema = z.object({
@@ -76,14 +77,12 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
 
   const onSubmitCreate = async (data: any) => {
     try {
-      const res = await apiClient.post<any>(`/usuarios`, data)
-      if (res.success || res.data) {
+      const res = await empleadosApi.crearEmpleado(data)
+      if (res) {
         toast.success("Empleado creado exitosamente")
         props.setIsCrearOpen(false)
         createForm.reset()
         onActionSuccess()
-      } else {
-        toast.error("Error al crear empleado")
       }
     } catch (e: any) {
       console.error(e)
@@ -98,13 +97,11 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
       if (!cleanData.password || cleanData.password.trim() === "") {
         delete cleanData.password
       }
-      const res = await apiClient.put<any>(`/usuarios/${props.empleadoToEdit.id}`, cleanData)
-      if (res.success || res.data) {
+      const res = await empleadosApi.actualizarEmpleado(props.empleadoToEdit.id, cleanData)
+      if (res) {
         toast.success("Empleado actualizado exitosamente")
         props.setIsEditarOpen(false)
         onActionSuccess()
-      } else {
-        toast.error("Error al actualizar el empleado")
       }
     } catch (e: any) {
       console.error(e)
@@ -115,13 +112,12 @@ export function EmpleadosModals({ props, onActionSuccess }: { props: any, onActi
   const onDesactivar = async () => {
     if (!props.empleadoToDesactivar) return
     try {
-      const res = await apiClient.patch<any>(`/usuarios/${props.empleadoToDesactivar.id}/estado`, {})
-      if (res.success || res.data) {
+      const targetState = !props.empleadoToDesactivar.activo
+      const res = await empleadosApi.cambiarEstadoEmpleado(props.empleadoToDesactivar.id, targetState)
+      if (res) {
         toast.success(`Empleado ${props.empleadoToDesactivar?.activo ? 'desactivado' : 'activado'} exitosamente`)
         props.setIsDesactivarOpen(false)
         onActionSuccess()
-      } else {
-        toast.error("Error al modificar el estado del empleado")
       }
     } catch (e: any) {
       console.error(e)

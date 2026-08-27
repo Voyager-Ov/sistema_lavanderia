@@ -2,6 +2,26 @@
 
 Todas las modificaciones notables realizadas al backend se documentarán en este archivo.
 
+## [Fecha: 2026-08-26] - Auditoría, Limpieza de Anti-Patrones y Tipado 1:1 de RRHH / Empleados
+### Modificaciones en Módulo de RRHH y Empleados (`back2/src/modules/rrhh`)
+- **`src/modules/rrhh/validators/empleados.validator.js`**:
+  - Validadores Fail-Fast (`express-validator`) inyectados en Express. Exigen `nombre`, `email`, `password` (min 6 caracteres), `rol` obligatorio (`"admin"` o `"empleado"`), y validación de tipos numéricos.
+- **`src/modules/rrhh/services/empleados.service.js`**:
+  - Erradicación de clave por defecto hardcodeada (`"lavanderia123"`), fallbacks silenciosos a `0` / `40`, y asignaciones por defecto de rol (`data.rol ? ... : "empleado"`).
+  - Lanza error explícito `AppError("El rol del empleado es obligatorio.", 400, "MISSING_ROLE")` si no se envía `rol`.
+- **`src/modules/rrhh/services/desempenoEmpleados.service.js`**:
+  - Eliminados datos sintéticos (`0`) en reportes y reemplazados por agregaciones SQL reales por empleado.
+- **`src/modules/rrhh/rrhh.routes.js`**:
+  - Rutas canónicas limpias en `/api/rrhh/empleados` con validadores Fail-Fast `:id`.
+
+### Modificaciones en Front-End (`front`)
+- **`front/src/domains/empleados/api/empleados.api.ts`**:
+  - Cliente de dominio tipado 1:1 con DTOs explícitos (`EmpleadoDTO`, `CrearEmpleadoPayload`, `ActualizarEmpleadoPayload`, `EmpleadoMetricasDTO`).
+- **`front/src/app/admin/empleados/hooks/useEmpleadosData.ts` & `empleados-modals.tsx`**:
+  - Migrados para consumir `empleadosApi`, eliminando llamados genéricos a `/usuarios` y tipos `any`.
+
+---
+
 ## [Fecha: 2026-08-17] - Unificación de Cobro por Pedido Individual y Trazabilidad Contable Dual
 ### Modificaciones en Módulo de Finanzas y Pagos
 - **`src/modules/finanzas/services/pagos.service.js`**:

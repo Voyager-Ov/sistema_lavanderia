@@ -27,7 +27,7 @@ class TrackingService {
         }
 
         const pedido = await Pedido.findOne({
-            where: { numeroPedido },
+            where: { numeroPedido, negocioId },
             include: [
                 { model: Cliente, as: "cliente", attributes: ["nombre"] },
                 {
@@ -74,7 +74,10 @@ class TrackingService {
         }
 
         for (const d of pedido.detalles) {
-            const srv = d.servicio ? d.servicio.nombre : "Servicio";
+            if (!d.servicio || !d.servicio.nombre) {
+                throw new AppError(`Detalle (ID: ${d.id}) sin servicio asociado en la base de datos.`, 500, "INVALID_DATA");
+            }
+            const srv = d.servicio.nombre;
             const cant = Number(d.cantidad);
             const p = Number(d.precioHistorico);
             if (isNaN(cant) || cant <= 0 || isNaN(p) || p < 0) {
@@ -89,7 +92,7 @@ class TrackingService {
         let cobradoTotal = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
             for (const c of pedido.cobros) {
-                const monto = Number(c.montoAbonado !== null ? c.montoAbonado : c.monto);
+                const monto = Number(c.montoAbonado);
                 if (isNaN(monto) || monto < 0) {
                      throw new AppError(`Cobro corrupto (ID: ${c.id}).`, 500, "INVALID_DATA");
                 }

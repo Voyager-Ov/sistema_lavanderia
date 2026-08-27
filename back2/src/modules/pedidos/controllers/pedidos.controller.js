@@ -11,7 +11,7 @@ import { AppError } from "../../../utils/appError.js";
 const getTenantId = (req) => {
     const negocioId = req.user?.negocioId;
     if (!negocioId) {
-        throw new AppError("No se ha identificado el negocio activo en la sesión.", 401, "TENANT_REQUIRED");
+        throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
     }
     return negocioId;
 };
@@ -62,7 +62,7 @@ export const cambiarEstado = async (req, res, next) => {
         const { estado, motivoCancelacion, descripcionCancelacion, accionDinero } = req.body;
 
         if (estado === "CANCELADO") {
-            const empleadoId = req.user?.empleadoId || req.user?.id;
+            const empleadoId = req.user?.empleadoId ?? req.user?.id;
             if (!empleadoId) {
                 throw new AppError("No se ha identificado el empleado activo en la sesión.", 401, "MISSING_USER_ID");
             }

@@ -1,0 +1,105 @@
+{
+  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
+  "todos": [
+    {
+      "id": "TASK-001",
+      "title": "Crear Fixtures y Helpers de Datos para el Sembrado E2E",
+      "owner_role": "Test Engineer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": [],
+      "outputs": [
+        "front/e2e/fixtures/seed-data.ts",
+        "front/e2e/helpers/e2e-seed.helper.ts"
+      ],
+      "exit_criteria": "Exportar funciones de generación de datos únicos (negocio, categorías, servicios, clientes, pedidos) y helpers de interacción UI en Playwright."
+    },
+    {
+      "id": "TASK-002",
+      "title": "Implementar Módulo 1: Registro de Negocio y Autenticación E2E",
+      "owner_role": "Fullstack Developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-001"],
+      "outputs": [
+        "front/e2e/seed/01-registro-negocio-setup.spec.ts"
+      ],
+      "exit_criteria": "El test se ejecuta visualmente en Chromium en /register, verifica email, realiza /login y redirige a /dashboard con negocioId aislado."
+    },
+    {
+      "id": "TASK-003",
+      "title": "Implementar Módulo 2 y 3: Categorías y Catálogo de Servicios con Paginación",
+      "owner_role": "Fullstack Developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-002"],
+      "outputs": [
+        "front/e2e/seed/02-catalogo-servicios.spec.ts"
+      ],
+      "exit_criteria": "Creación de 4 categorías y 12+ servicios desde la UI. Verificación de filtrado por categoría y paginación de la tabla de servicios."
+    },
+    {
+      "id": "TASK-004",
+      "title": "Implementar Módulo 4 y 5: Empleados y Base de Clientes (+15 registros)",
+      "owner_role": "Fullstack Developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-003"],
+      "outputs": [
+        "front/e2e/seed/03-empleados-clientes.spec.ts"
+      ],
+      "exit_criteria": "Creación de empleados y 15+ clientes desde la UI. Verificación de paginado (Siguiente/Anterior) y acciones por fila en tabla de clientes."
+    },
+    {
+      "id": "TASK-005",
+      "title": "Implementar Módulo 6 y 7: Apertura de Caja, Pedidos POS y Transiciones de Estado",
+      "owner_role": "Fullstack Developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-004"],
+      "outputs": [
+        "front/e2e/seed/04-pos-pedidos-estados.spec.ts"
+      ],
+      "exit_criteria": "Apertura de caja, creación de 10 pedidos en /pedidos/nuevo y avance por estados (PENDIENTE -> EN_LAVADO -> LISTO -> ENTREGADO)."
+    },
+    {
+      "id": "TASK-006",
+      "title": "Implementar Módulo 8, 9 y 10: Cobros, Saldo a Favor, Caja Chica y Dashboard 1:1",
+      "owner_role": "Fullstack Developer",
+      "status": "completed",
+      "parallelizable": false,
+      "depends_on": ["TASK-005"],
+      "outputs": [
+        "front/e2e/seed/05-cobros-caja-dashboard.spec.ts",
+        "front/e2e/seed/master-seed-suite.spec.ts"
+      ],
+      "exit_criteria": "Procesamiento de cobros con vuelto a favor, consumo de crédito, egreso de caja y comprobación 1:1 de los gráficos y KPIs en /dashboard."
+    }
+  ],
+  "execution_batches": [
+    {
+      "batch_number": 1,
+      "tasks": ["TASK-001"]
+    },
+    {
+      "batch_number": 2,
+      "tasks": ["TASK-002"]
+    },
+    {
+      "batch_number": 3,
+      "tasks": ["TASK-003"]
+    },
+    {
+      "batch_number": 4,
+      "tasks": ["TASK-004"]
+    },
+    {
+      "batch_number": 5,
+      "tasks": ["TASK-005"]
+    },
+    {
+      "batch_number": 6,
+      "tasks": ["TASK-006"]
+    }
+  ]
+}

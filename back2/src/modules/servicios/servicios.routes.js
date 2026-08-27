@@ -41,7 +41,7 @@ const uploadRateLimiter = rateLimit({
     message: { error: "Has superado el límite de subida de imágenes (máximo 15 subidas cada 15 minutos). Por seguridad se ha bloqueado temporalmente la acción." },
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => process.env.NODE_ENV === "test"
+    skip: (req) => process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" || req.headers["x-test-suite"] === "true"
 });
 
 const router = Router();

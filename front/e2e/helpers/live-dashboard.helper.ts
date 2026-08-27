@@ -136,10 +136,22 @@ export class LiveDashboardHelper {
   }
 
   /**
-   * Inyecta la sesión persistida en el localStorage del navegador para que el usuario esté autenticado.
+   * Inyecta la sesión persistida en el localStorage y cookies del navegador para que el usuario esté autenticado.
    */
   static async injectLiveSession(page: Page, session: LiveDashboardSession) {
-    await page.addInitScript(({ token, usuario }) => {
+    await page.context().addCookies([
+      {
+        name: 'token',
+        value: session.token,
+        domain: 'localhost',
+        path: '/',
+        httpOnly: false,
+        secure: false,
+        sameSite: 'Lax'
+      }
+    ]);
+
+    await page.addInitScript(({ token, usuario, negocio }) => {
       window.localStorage.removeItem('superadmin_token');
       window.localStorage.setItem(
         'auth-storage',
@@ -147,12 +159,14 @@ export class LiveDashboardHelper {
           state: {
             user: usuario,
             token: token,
+            negocio: negocio,
             isAuthenticated: true
           },
           version: 0
         })
       );
-    }, { token: session.token, usuario: session.usuario });
+      window.localStorage.setItem('token', token);
+    }, { token: session.token, usuario: session.usuario, negocio: session.negocio });
   }
 
   /**

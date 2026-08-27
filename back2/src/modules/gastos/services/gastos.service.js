@@ -1,85 +1,135 @@
 import { connectionManager } from "../../../models/connectionManager.js";
 import { AppError } from "../../../utils/appError.js";
+import { parseDateRange } from "../../../utils/date.util.js";
 import { categoriasGastosService } from "./categoriasGastos.service.js";
 import { cajasSocket } from "../../finanzas/sockets/cajas.socket.js";
 
 class GastosService {
 
     async _getModels(negocioId) {
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
-        return tenantDb.models;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        return { sequelize: tenantContext.sequelize, models: tenantContext.models };
     }
 
     async registrarGasto(negocioId, data) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
-        const { Gasto, CategoriaGasto, Caja, MovimientoCaja, MetodoPago } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Gasto, CategoriaGasto, Caja, MovimientoCaja, MetodoPago } = models;
 
-        const monto = parseFloat(data.monto || data.montoTotal) || 0;
-        if (monto <= 0) {
-            throw new AppError("El monto del gasto debe ser mayor a cero.", 400, "INVALID_EXPENSE_AMOUNT");
+        const monto = parseFloat(data.monto);
+        if (isNaN(monto) || monto <= 0) {
+            throw new AppError("El monto del gasto debe ser un número positivo.", 400, "INVALID_EXPENSE_AMOUNT");
         }
 
-        // Determinar CategoriaGasto
-        let categoriaGastoId = data.categoriaGastoId;
-        if (!categoriaGastoId && data.categoria) {
-            if (typeof data.categoria === "number") {
-                categoriaGastoId = data.categoria;
-            } else {
-                const catObj = await categoriasGastosService.crearCategoria(negocioId, { nombre: data.categoria });
-                categoriaGastoId = catObj.id;
-            }
+        if (!data.metodoPagoId) {
+            throw new AppError("El método de pago es obligatorio.", 400, "MISSING_PAYMENT_METHOD");
         }
 
-        // Buscar caja abierta para asociar egreso (estrictamente del turno del empleado)
-        const empleadoId = data.empleadoId || data.usuarioId;
+        const metodoPagoObj = await MetodoPago.findByPk(data.metodoPagoId);
+        if (!metodoPagoObj) {
+            throw new AppError("El método de pago especificado no existe.", 400, "INVALID_PAYMENT_METHOD");
+        }
+
+        // Determinar CategoriaGasto por ID canónico o creación de nombre explícito
+        let categoriaGastoId = null;
+        if (data.categoriaGastoId) {
+            categoriaGastoId = Number(data.categoriaGastoId);
+        } else if (data.categoria && typeof data.categoria === "string" && data.categoria.trim() !== "") {
+            const catObj = await categoriasGastosService.crearCategoria(negocioId, { nombre: data.categoria.trim() });
+            categoriaGastoId = catObj.id;
+        }
+
+        const empleadoId = data.empleadoId;
         let cajaAbierta = null;
         if (empleadoId) {
             cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta", empleadoId } });
         }
         if (!cajaAbierta) {
+            cajaAbierta = await Caja.findOne({ where: { estadoCaja: "Abierta" } });
+        }
+        if (!cajaAbierta) {
             throw new AppError("No posees una caja abierta actualmente. Debes abrir tu turno de caja antes de registrar un gasto.", 400, "NO_OPEN_CASH_REGISTER");
         }
 
-        let movimientoCajaId = null;
-        if (cajaAbierta) {
+        const desgloseNeto = data.desgloseNeto !== undefined ? parseFloat(data.desgloseNeto) : monto;
+        const impuestos = data.impuestos !== undefined ? parseFloat(data.impuestos) : 0;
+        const percepciones = data.percepciones !== undefined ? parseFloat(data.percepciones) : 0;
+        
+        const descripcion = data.descripcion && typeof data.descripcion === "string" && data.descripcion.trim() !== ""
+            ? data.descripcion.trim()
+            : null;
+        const proveedor = data.proveedor && typeof data.proveedor === "string" && data.proveedor.trim() !== ""
+            ? data.proveedor.trim()
+            : null;
+        const nroComprobante = data.nroComprobante && typeof data.nroComprobante === "string" && data.nroComprobante.trim() !== ""
+            ? data.nroComprobante.trim()
+            : null;
+
+        const transaction = await sequelize.transaction();
+        try {
+            const obsMovimiento = descripcion ? `Gasto: ${descripcion}` : "Gasto sin descripción";
             const nuevoMovimiento = await MovimientoCaja.create({
-                monto: -monto, // Registrar egreso en caja
+                monto: -monto,
                 tipoMovimiento: "Egreso por Gasto",
-                observacion: `Gasto: ${data.descripcion || "Egreso operativo"}`,
-                metodoPagoId: data.metodoPagoId || 1,
+                observacion: obsMovimiento,
+                metodoPagoId: data.metodoPagoId,
                 cajaIdCaja: cajaAbierta.idCaja
-            });
-            movimientoCajaId = nuevoMovimiento.id;
+            }, { transaction });
+
+            const nuevoGasto = await Gasto.create({
+                montoTotal: monto,
+                descripcion,
+                proveedor,
+                nroComprobante,
+                desgloseNeto,
+                impuestos,
+                percepciones,
+                estadoGasto: "Pagado",
+                fechaHora: new Date(),
+                negocioId,
+                categoriaGastoId,
+                metodoPagoId: data.metodoPagoId,
+                movimientoCajaId: nuevoMovimiento.id
+            }, { transaction });
+
+            await transaction.commit();
+
+            cajasSocket.emitirGastoRegistrado(negocioId, nuevoGasto);
+            return nuevoGasto;
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
         }
-
-        const nuevoGasto = await Gasto.create({
-            montoTotal: monto,
-            descripcion: data.descripcion || "Gasto operativo",
-            proveedor: data.proveedor || null,
-            nroComprobante: data.nroComprobante || null,
-            desgloseNeto: parseFloat(data.desgloseNeto) || monto,
-            impuestos: parseFloat(data.impuestos) || 0,
-            percepciones: parseFloat(data.percepciones) || 0,
-            estadoGasto: "Pagado",
-            fechaHora: new Date(),
-            negocioId,
-            categoriaGastoId,
-            metodoPagoId: data.metodoPagoId || 1,
-            movimientoCajaId
-        });
-
-        cajasSocket.emitirGastoRegistrado(negocioId, nuevoGasto);
-        return nuevoGasto;
     }
 
     async obtenerGastos(negocioId, query = {}) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
-        const { Gasto, CategoriaGasto, MetodoPago } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Gasto, CategoriaGasto, MetodoPago } = models;
 
-        const limit = parseInt(query.limit) || 50;
-        const offset = parseInt(query.offset) || 0;
+        const limit = query.limit !== undefined ? Math.max(1, parseInt(query.limit, 10)) : 50;
+        const offset = query.offset !== undefined ? Math.max(0, parseInt(query.offset, 10)) : 0;
+
+        const whereClause = { negocioId };
+
+        const { fechaDesde, fechaHasta, categoriaGastoId, estadoGasto } = query;
+        if (fechaDesde || fechaHasta) {
+            const dateFilter = parseDateRange(fechaDesde, fechaHasta);
+            if (dateFilter) {
+                whereClause.fechaHora = dateFilter;
+            }
+        }
+
+        if (categoriaGastoId) {
+            whereClause.categoriaGastoId = Number(categoriaGastoId);
+        }
+        if (estadoGasto) {
+            whereClause.estadoGasto = estadoGasto;
+        }
 
         const { count, rows } = await Gasto.findAndCountAll({
+            where: whereClause,
             include: [
                 { model: CategoriaGasto, as: "categoria" },
                 { model: MetodoPago, as: "metodoPago" }
@@ -93,10 +143,12 @@ class GastosService {
     }
 
     async obtenerGastoPorId(negocioId, id) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
-        const { Gasto, CategoriaGasto, MetodoPago } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Gasto, CategoriaGasto, MetodoPago } = models;
 
-        const gasto = await Gasto.findByPk(id, {
+        const gasto = await Gasto.findOne({
+            where: { id, negocioId },
             include: [
                 { model: CategoriaGasto, as: "categoria" },
                 { model: MetodoPago, as: "metodoPago" }

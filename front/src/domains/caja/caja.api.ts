@@ -132,9 +132,10 @@ export async function cerrarCaja(cajaId: number, efectivoReal: number): Promise<
 
 export interface RegistrarGastoInput {
   monto: number;
-  categoria: string;
-  descripcion: string;
-  metodoPagoId?: number;
+  metodoPagoId: number;
+  categoria?: string;
+  categoriaGastoId?: number;
+  descripcion?: string;
 }
 
 export async function registrarGasto(data: RegistrarGastoInput): Promise<CajaGasto> {

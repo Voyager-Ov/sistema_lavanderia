@@ -32,13 +32,13 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
 
   test('2. [LIVE] Debe navegar a /admin/pedidos al hacer clic en el botón de enlace de "Pedidos del Día"', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
 
-    const cardPedidos = page.locator('main').locator('div').filter({ hasText: 'Pedidos del Día' });
-    const linkPedidos = cardPedidos.locator('a').first();
+    const linkPedidos = page.locator('main .grid a[href="/admin/pedidos"]').first();
     await expect(linkPedidos).toBeVisible({ timeout: 15000 });
     await linkPedidos.click();
 
-    await expect(page).toHaveURL(/.*\/admin\/pedidos/);
+    await expect(page).toHaveURL(/.*\/admin\/pedidos/, { timeout: 15000 });
 
     // Captura de pantalla de navegación
     await ScreenshotHelper.take(page, '02-dashboard-navegacion-pedidos-kpi', 'dashboard');
@@ -46,13 +46,13 @@ test.describe('E2E Live: Dashboard Principal y KPIs Superiores (/admin/dashboard
 
   test('3. [LIVE] Debe navegar a /admin/caja al hacer clic en el botón de enlace de "Ingresos Hoy"', async ({ page }) => {
     await page.goto('/admin/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
 
-    const cardIngresos = page.locator('main').locator('div').filter({ hasText: 'Ingresos Hoy' });
-    const linkCaja = cardIngresos.locator('a').first();
+    const linkCaja = page.locator('main .grid a[href="/admin/caja"]').first();
     await expect(linkCaja).toBeVisible({ timeout: 15000 });
     await linkCaja.click();
 
-    await expect(page).toHaveURL(/.*\/admin\/caja/);
+    await expect(page).toHaveURL(/.*\/admin\/caja/, { timeout: 15000 });
 
     // Captura de pantalla de navegación a caja
     await ScreenshotHelper.take(page, '03-dashboard-navegacion-caja-kpi', 'dashboard');

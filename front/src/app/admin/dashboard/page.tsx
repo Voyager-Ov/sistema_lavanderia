@@ -24,11 +24,21 @@ import { DashboardListCard, DashboardListItem } from "@/shared/ui/dashboard/dash
 import { DashboardActionCard } from "@/shared/ui/dashboard/dashboard-action-card"
 import { formatCurrency } from "@/shared/lib/utils"
 
+const defaultEmptyStats: DashboardStatsResponse = {
+  ingresos: { mesActual: 0, mesAnterior: 0, hoyCobrado: 0, ayerCobrado: 0, hoyTotalPedidos: 0 },
+  pedidosDelDia: { hoy: 0, ayer: 0 },
+  pedidosActivos: { PENDIENTE: 0, EN_PROCESO: 0, LISTO_PARA_RETIRAR: 0, ENTREGADO: 0, PAGADO: 0, CANCELADO: 0 },
+  topProductos: [],
+  topClientes: [],
+  ultimosPedidos: [],
+  ventasPorDia: []
+};
+
 export default function AdminDashboardPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   
-  const [stats, setStats] = useState<DashboardStatsResponse | null>(null)
+  const [stats, setStats] = useState<DashboardStatsResponse>(defaultEmptyStats)
   const [caja, setCaja] = useState<CajaActual | null>(null)
   const [alertas, setAlertas] = useState<DashboardListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -58,14 +68,15 @@ export default function AdminDashboardPage() {
     try {
       setIsLoading(true)
       const [statsData, cajaData, pedidosData] = await Promise.all([
-        getDashboardStats(),
-        obtenerCajaActual().catch(() => null), // Retorna null si es 404/cerrada
+        getDashboardStats().catch(() => defaultEmptyStats),
+        obtenerCajaActual().catch(() => null),
         getPedidos({ estado: 'PENDIENTE', limit: 5, sortBy: 'fechaHoraEntregaEstimada', sortOrder: 'asc' }).catch(() => null)
       ])
-      setStats(statsData)
+      
+      setStats(statsData || defaultEmptyStats)
       setCaja(cajaData)
       
-      if (pedidosData && pedidosData.data) {
+      if (pedidosData && pedidosData.data && pedidosData.data.items) {
         const hoy = new Date()
         setAlertas(pedidosData.data.items.map(p => {
           let badgeText = "NORMAL"
@@ -97,6 +108,7 @@ export default function AdminDashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error)
+      setStats(defaultEmptyStats)
     } finally {
       setIsLoading(false)
     }
@@ -114,7 +126,7 @@ export default function AdminDashboardPage() {
     setIsGastoModalOpen(true)
   }
 
-  if (isLoading || !stats) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full text-gray-400">
         <Loader2 className="w-12 h-12 animate-spin mb-4 text-brand-blue" />

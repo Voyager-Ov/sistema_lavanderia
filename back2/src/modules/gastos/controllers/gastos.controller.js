@@ -4,14 +4,14 @@ import { AppError } from "../../../utils/appError.js";
 
 const getTenantId = (req) => {
     const negocioId = req.user?.negocioId;
-    if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 401, "TENANT_REQUIRED");
+    if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
     return negocioId;
 };
 
 export const registrarGasto = async (req, res, next) => {
     try {
         const negocioId = getTenantId(req);
-        const empleadoId = req.user?.empleadoId || req.user?.id;
+        const empleadoId = req.user?.empleadoId ?? req.user?.id;
         const gasto = await gastosService.registrarGasto(negocioId, { ...req.body, empleadoId });
         return successResponse(res, 201, "Gasto registrado exitosamente", gasto);
     } catch (error) {

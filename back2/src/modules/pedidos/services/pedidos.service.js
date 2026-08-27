@@ -7,8 +7,8 @@ import { pedidosSocket } from "../sockets/pedidos.socket.js";
 class PedidosService {
 
     async _getModels(negocioId) {
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
-        return tenantDb.models;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        return { sequelize: tenantContext.sequelize, models: tenantContext.models };
     }
 
     // Formatea un pedido agregando totales calculados, estado actual y alineado con interfaces SSOT
@@ -92,11 +92,13 @@ class PedidosService {
             for (let i = 0; i < sortedCambios.length; i++) {
                 const ce = sortedCambios[i];
                 const prev = i > 0 ? sortedCambios[i - 1] : null;
+                const estNuevo = ce.estado?.nombre ?? "PENDIENTE";
+                const estAnt = prev?.estado?.nombre ?? null;
                 cambiosEstadoFormatted.push({
                     id: ce.id,
-                    estadoAnterior: prev && prev.estado ? prev.estado.nombre : null,
-                    estadoNuevo: ce.estado ? ce.estado.nombre : "PENDIENTE",
-                    comentario: ce.comentario || `Estado cambiado a ${ce.estado ? ce.estado.nombre : "PENDIENTE"}`,
+                    estadoAnterior: estAnt,
+                    estadoNuevo: estNuevo,
+                    comentario: `Estado cambiado a ${estNuevo}`,
                     fechaHoraInicio: ce.fechaHoraInicio
                 });
             }
@@ -143,26 +145,19 @@ class PedidosService {
     }
 
     // Listar pedidos con paginación, filtros de cliente, estado, fechas y ordenamiento
-    async listarPedidos(negocioId, query) {
-        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = await this._getModels(negocioId);
+    async listarPedidos(negocioId, query = {}) {
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro } = models;
 
-        let page = 1;
-        if (query.page) {
-            page = Number(query.page);
-            if (isNaN(page) || page < 1) throw new AppError("Página inválida.", 400, "INVALID_PAGINATION");
-        }
-
-        let limit = 10;
-        if (query.limit) {
-            limit = Number(query.limit);
-            if (isNaN(limit) || limit < 1) throw new AppError("Límite inválido.", 400, "INVALID_PAGINATION");
-        }
-
+        const page = query.page !== undefined ? Math.max(1, parseInt(query.page, 10)) : 1;
+        const limit = query.limit !== undefined ? Math.max(1, parseInt(query.limit, 10)) : 10;
         const offset = (page - 1) * limit;
-        const where = {};
+
+        const where = { negocioId };
 
         // Filtro por número de pedido o nombre/teléfono de cliente
-        if (query.search && query.search.trim() !== "") {
+        if (query.search && typeof query.search === "string" && query.search.trim() !== "") {
             const searchVal = query.search.trim();
             const searchNum = Number(searchVal);
 
@@ -178,9 +173,10 @@ class PedidosService {
             }
         }
 
-        // Filtro por rango de fechas (usar fechaInicio y fechaFin como canónicos)
-        if (query.fechaInicio || query.fechaFin) {
-            const dateClause = parseDateRange(query.fechaInicio, query.fechaFin);
+        // Filtro por rango de fechas canónico (fechaInicio / fechaFin)
+        const { fechaInicio, fechaFin } = query;
+        if (fechaInicio || fechaFin) {
+            const dateClause = parseDateRange(fechaInicio, fechaFin);
             if (dateClause) {
                 where[Op.or] = [
                     { fechaHoraCreacion: dateClause },
@@ -190,13 +186,12 @@ class PedidosService {
             }
         }
 
-        // Ordenamiento
         let sortBy = "numeroPedido";
-        if (query.sortBy === "numeroPedido" || query.sortBy === "fechaHoraEntregaEstimada" || query.sortBy === "createdAt" || query.sortBy === "total" || query.sortBy === "estado" || query.sortBy === "codigoSeguimiento") {
+        if (["numeroPedido", "fechaHoraEntregaEstimada", "createdAt", "total", "estado", "codigoSeguimiento"].includes(query.sortBy)) {
             sortBy = query.sortBy;
         }
 
-        const sortOrder = query.sortOrder ? query.sortOrder.toUpperCase() : "DESC";
+        const sortOrder = (query.sortOrder && typeof query.sortOrder === "string") ? query.sortOrder.toUpperCase() : "DESC";
 
         const { count, rows } = await Pedido.findAndCountAll({
             where,
@@ -222,7 +217,6 @@ class PedidosService {
 
         const formattedItems = rows.map(p => this._formatPedido(p));
 
-        // Filtrar por estado
         let filteredItems = formattedItems;
         if (query.estado && query.estado !== "ALL") {
             filteredItems = formattedItems.filter(p => p.estado === query.estado);
@@ -231,7 +225,7 @@ class PedidosService {
         const totalPages = Math.max(1, Math.ceil(count / limit));
 
         return {
-            items: filteredItems, // Maintained items here for pagination container wrapper in Next.js
+            items: filteredItems,
             meta: {
                 totalItems: count,
                 total: count,
@@ -244,11 +238,14 @@ class PedidosService {
 
     // Obtener estadísticas de pedidos
     async obtenerEstadisticas(negocioId) {
-        const { Pedido, CambioEstadoPedido, Estado } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Pedido, CambioEstadoPedido, Estado } = models;
 
-        const totalPedidos = await Pedido.count();
+        const totalPedidos = await Pedido.count({ where: { negocioId } });
         
         const pedidos = await Pedido.findAll({
+            where: { negocioId },
             include: [{
                 model: CambioEstadoPedido,
                 as: "cambiosEstado",
@@ -280,10 +277,12 @@ class PedidosService {
 
     // Obtener detalle de un pedido por su número / ID
     async obtenerPedidoPorNumero(negocioId, numeroPedido) {
-        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro, Factura } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Pedido, Cliente, DetallePedido, Servicio, CambioEstadoPedido, Estado, Cobro, Factura } = models;
 
         const pedido = await Pedido.findOne({
-            where: { numeroPedido },
+            where: { numeroPedido, negocioId },
             include: [
                 { model: Cliente, as: "cliente" },
                 {
@@ -308,102 +307,119 @@ class PedidosService {
         return this._formatPedido(pedido);
     }
 
-    // Crear un nuevo pedido con sus ítems y estado inicial
+    // Crear un nuevo pedido con sus ítems y estado inicial de forma atómica
     async crearPedido(negocioId, data) {
-        const { Pedido, DetallePedido, Servicio, Cliente, Estado, CambioEstadoPedido } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Pedido, DetallePedido, Servicio, Cliente, Estado, CambioEstadoPedido } = models;
 
         const itemsList = data.detalles;
         if (!Array.isArray(itemsList) || itemsList.length === 0) {
             throw new AppError("El pedido debe contener al menos un detalle (servicio).", 400, "MISSING_ORDER_ITEMS");
         }
 
-        let clienteId = data.clienteId;
-        if (!clienteId && data.clienteNombre) {
-            const nuevoCliente = await Cliente.create({
-                nombre: data.clienteNombre.trim(),
-                telefono: data.clienteTelefono || null,
-                direccion: data.direccionEntrega || null,
+        const transaction = await sequelize.transaction();
+        try {
+            let clienteId = data.clienteId;
+            if (!clienteId && data.clienteNombre && typeof data.clienteNombre === "string" && data.clienteNombre.trim() !== "") {
+                const nuevoCliente = await Cliente.create({
+                    nombre: data.clienteNombre.trim(),
+                    telefono: (data.clienteTelefono && typeof data.clienteTelefono === "string") ? data.clienteTelefono.trim() : null,
+                    direccion: (data.direccionEntrega && typeof data.direccionEntrega === "string") ? data.direccionEntrega.trim() : null,
+                    negocioId
+                }, { transaction });
+                clienteId = nuevoCliente.id;
+            }
+
+            if (!clienteId) {
+                throw new AppError("El cliente (clienteId o clienteNombre) es obligatorio para crear el pedido.", 400, "MISSING_CLIENT");
+            }
+
+            // Verificar pertenencia del cliente al tenant
+            const clienteExistente = await Cliente.findOne({ where: { id: clienteId, negocioId }, transaction });
+            if (!clienteExistente) {
+                throw new AppError("El cliente especificado no existe para este negocio.", 404, "CLIENT_NOT_FOUND");
+            }
+
+            const fechaHoraPedido = data.fechaHoraPedido ? new Date(data.fechaHoraPedido) : new Date();
+            const origen = (data.origen && typeof data.origen === "string") ? data.origen.trim() : "MOSTRADOR";
+            const observaciones = (data.observaciones && typeof data.observaciones === "string" && data.observaciones.trim() !== "") ? data.observaciones.trim() : null;
+            const direccionEntrega = (data.direccionEntrega && typeof data.direccionEntrega === "string" && data.direccionEntrega.trim() !== "") ? data.direccionEntrega.trim() : null;
+
+            const nuevoPedido = await Pedido.create({
+                clienteId,
+                origen,
+                observaciones,
+                direccionEntrega,
+                costoEnvio: 0,
+                fechaHoraCreacion: new Date(),
+                fechaHoraPedido,
+                fechaHoraEntregaEstimada: data.fechaHoraEntregaEstimada ? new Date(data.fechaHoraEntregaEstimada) : null,
+                ticketImpreso: false,
                 negocioId
-            });
-            clienteId = nuevoCliente.id;
-        }
+            }, { transaction });
 
-        if (!clienteId) {
-            throw new AppError("El cliente (clienteId o clienteNombre) es obligatorio para crear el pedido.", 400, "MISSING_CLIENT");
-        }
+            let subtotalTotal = 0;
+            for (const item of itemsList) {
+                const servicioId = item.servicioId;
+                if (!servicioId) throw new AppError("Detalle de pedido sin ID de servicio.", 400, "INVALID_DATA");
 
-        const fechaHoraPedido = data.fechaHoraPedido ? new Date(data.fechaHoraPedido) : new Date();
-        const origen = data.origen || "MOSTRADOR";
+                let precioUnitario = parseFloat(item.precioUnitario);
 
-        // Crear registro principal del pedido
-        const nuevoPedido = await Pedido.create({
-            clienteId,
-            origen,
-            observaciones: data.observaciones || null,
-            direccionEntrega: data.direccionEntrega || null,
-            costoEnvio: 0,
-            fechaHoraCreacion: new Date(),
-            fechaHoraPedido: fechaHoraPedido,
-            fechaHoraEntregaEstimada: data.fechaHoraEntregaEstimada ? new Date(data.fechaHoraEntregaEstimada) : null,
-            ticketImpreso: false,
-            negocioId
-        });
-
-        // Insertar ítems y calcular subtotal total
-        let subtotalTotal = 0;
-        for (const item of itemsList) {
-            const servicioId = item.servicioId;
-            if (!servicioId) throw new AppError("Detalle de pedido sin ID de servicio.", 400, "INVALID_DATA");
-
-            let precioUnitario = Number(item.precioUnitario);
-
-            if (isNaN(precioUnitario)) {
-                const srv = await Servicio.findByPk(servicioId);
-                if (srv) {
-                    precioUnitario = Number(srv.precioActual);
-                } else {
-                    throw new AppError(`Servicio ID ${servicioId} no encontrado.`, 404, "SERVICE_NOT_FOUND");
+                if (isNaN(precioUnitario)) {
+                    const srv = await Servicio.findOne({ where: { id: servicioId, negocioId }, transaction });
+                    if (srv && srv.precioActual !== null && srv.precioActual !== undefined) {
+                        precioUnitario = parseFloat(srv.precioActual);
+                    } else {
+                        throw new AppError(`Servicio ID ${servicioId} no encontrado o sin precio configurado.`, 404, "SERVICE_NOT_FOUND");
+                    }
                 }
+
+                const cant = parseFloat(item.cantidad);
+                if (isNaN(cant) || cant <= 0 || isNaN(precioUnitario) || precioUnitario < 0) {
+                     throw new AppError("Detalle de pedido con cantidad o precio corrupto.", 400, "INVALID_DATA");
+                }
+                subtotalTotal += (precioUnitario * cant);
+
+                await DetallePedido.create({
+                    pedidoNumeroPedido: nuevoPedido.numeroPedido,
+                    servicioId,
+                    cantidad: cant,
+                    precioHistorico: precioUnitario
+                }, { transaction });
             }
 
-            const cant = Number(item.cantidad);
-            if (isNaN(cant) || cant <= 0 || isNaN(precioUnitario) || precioUnitario < 0) {
-                 throw new AppError("Detalle de pedido con cantidad o precio corrupto.", 400, "INVALID_DATA");
-            }
-            subtotalTotal += (precioUnitario * cant);
+            await nuevoPedido.update({ subtotal: subtotalTotal, total: subtotalTotal }, { transaction });
 
-            await DetallePedido.create({
+            let estadoInicial = await Estado.findOne({ where: { nombre: "PENDIENTE" }, transaction });
+            if (!estadoInicial) {
+                estadoInicial = await Estado.create({ nombre: "PENDIENTE", descripcion: "Pedido recepcionado", ambito: "Pedido" }, { transaction });
+            }
+
+            await CambioEstadoPedido.create({
                 pedidoNumeroPedido: nuevoPedido.numeroPedido,
-                servicioId: servicioId,
-                cantidad: cant,
-                precioHistorico: precioUnitario
-            });
+                estadoId: estadoInicial.id,
+                fechaHoraInicio: new Date()
+            }, { transaction });
+
+            await transaction.commit();
+
+            const res = await this.obtenerPedidoPorNumero(negocioId, nuevoPedido.numeroPedido);
+            pedidosSocket.emitirPedidoCreado(negocioId, res);
+            return res;
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
         }
-
-        await nuevoPedido.update({ subtotal: subtotalTotal, total: subtotalTotal });
-
-        // Asignar estado inicial PENDIENTE
-        let estadoInicial = await Estado.findOne({ where: { nombre: "PENDIENTE" } });
-        if (!estadoInicial) {
-            estadoInicial = await Estado.create({ nombre: "PENDIENTE", descripcion: "Pedido recepcionado", ambito: "Pedido" });
-        }
-
-        await CambioEstadoPedido.create({
-            pedidoNumeroPedido: nuevoPedido.numeroPedido,
-            estadoId: estadoInicial.id,
-            fechaHoraInicio: new Date()
-        });
-
-        const res = await this.obtenerPedidoPorNumero(negocioId, nuevoPedido.numeroPedido);
-        pedidosSocket.emitirPedidoCreado(negocioId, res);
-        return res;
     }
 
     // Marcar ticket como impreso
     async marcarTicketImpreso(negocioId, numeroPedido) {
-        const { Pedido } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { models } = await this._getModels(negocioId);
+        const { Pedido } = models;
 
-        const pedido = await Pedido.findByPk(numeroPedido);
+        const pedido = await Pedido.findOne({ where: { numeroPedido, negocioId } });
         if (!pedido) {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }

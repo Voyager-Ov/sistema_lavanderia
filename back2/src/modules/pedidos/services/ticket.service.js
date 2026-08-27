@@ -12,7 +12,7 @@ class TicketService {
     // Renderiza el HTML para impresión térmica de 80mm
     async obtenerTicketHTML(negocioId, numeroPedido) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         const { Pedido, Cliente, DetallePedido, Servicio, Cobro } = await this._getModels(negocioId);
         const { Negocio } = connectionManager.centralModels;
@@ -23,7 +23,7 @@ class TicketService {
         }
 
         const pedido = await Pedido.findOne({
-            where: { numeroPedido },
+            where: { numeroPedido, negocioId },
             include: [
                 { model: Cliente, as: "cliente" },
                 {
@@ -39,14 +39,22 @@ class TicketService {
             throw new AppError("Pedido no encontrado para imprimir ticket.", 404, "ORDER_NOT_FOUND");
         }
 
-        const nombreNegocio = negocio.razonSocial || "LAVANDERÍA";
-        const direccionNegocio = negocio.direccion || "";
-        const telefonoNegocio = negocio.telefonoContacto || "";
-        const mensajeTicket = negocio.mensajeTicket || "¡Gracias por su preferencia!";
-        const simboloMoneda = negocio.simboloMoneda || "$";
+        const nombreNegocio = negocio.razonSocial || negocio.nombre;
+        if (!nombreNegocio) {
+            throw new AppError("El negocio no tiene un nombre ni razón social configurados.", 400, "MISSING_BUSINESS_NAME");
+        }
 
-        const clienteNombre = pedido.cliente ? pedido.cliente.nombre : "Consumidor Final";
-        const clienteTel = pedido.cliente?.telefono || "N/A";
+        if (!pedido.cliente) {
+            throw new AppError("El pedido no posee un cliente asociado.", 400, "MISSING_CLIENT_DATA");
+        }
+
+        const direccionNegocio = negocio.direccion;
+        const telefonoNegocio = negocio.telefonoContacto;
+        const mensajeTicket = negocio.mensajeTicket;
+        const simboloMoneda = negocio.simboloMoneda;
+
+        const clienteNombre = pedido.cliente.nombre;
+        const clienteTel = pedido.cliente.telefono;
 
         let subtotal = 0;
         let itemsHTML = "";
@@ -79,7 +87,7 @@ class TicketService {
         let totalCobrado = 0;
         if (pedido.cobros && Array.isArray(pedido.cobros)) {
             for (const c of pedido.cobros) {
-                const monto = Number(c.montoAbonado !== null ? c.montoAbonado : c.monto);
+                const monto = Number(c.montoAbonado);
                 if (isNaN(monto) || monto < 0) {
                     throw new AppError(`Registro de cobro corrupto (ID: ${c.id}). Monto inválido.`, 500, "INVALID_DATA");
                 }
@@ -135,7 +143,7 @@ class TicketService {
             <div><span class="bold">Pedido #:</span> LAV-${pedido.numeroPedido}</div>
             <div><span class="bold">Fecha:</span> ${fechaStr}</div>
             <div><span class="bold">Cliente:</span> ${clienteNombre}</div>
-            ${clienteTel !== "N/A" ? `<div><span class="bold">Teléfono:</span> ${clienteTel}</div>` : ''}
+            ${clienteTel ? `<div><span class="bold">Teléfono:</span> ${clienteTel}</div>` : ''}
             <div><span class="bold">Entrega Est.:</span> ${entregaStr}</div>
             <div><span class="bold">Estado Pago:</span> ${estadoCobroText}</div>
             <div class="line"></div>
@@ -157,7 +165,7 @@ class TicketService {
             <div class="bold" style="font-size: 13px;">SALDO PENDIENTE: ${simboloMoneda}${saldo.toFixed(2)}</div>
             <div class="line"></div>
             ${pedido.observaciones ? `<div><span class="bold">Notas:</span> ${pedido.observaciones}</div><div class="line"></div>` : ''}
-            <div class="center bold" style="margin-top: 10px;">${mensajeTicket}</div>
+            ${mensajeTicket ? `<div class="center bold" style="margin-top: 10px;">${mensajeTicket}</div>` : ''}
             
             <!-- SEGUIMIENTO QR OBLIGATORIO -->
             <div class="qr-container">
@@ -172,11 +180,11 @@ class TicketService {
     // Generación dinámica al vuelo de etiquetas de prendas (en memoria, sin persistencia en BD)
     async generarTicketsPrenda(negocioId, numeroPedido, cantidad) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         const { Pedido } = await this._getModels(negocioId);
 
-        const pedido = await Pedido.findByPk(numeroPedido);
+        const pedido = await Pedido.findOne({ where: { numeroPedido, negocioId } });
         if (!pedido) {
             throw new AppError("Pedido no encontrado.", 404, "ORDER_NOT_FOUND");
         }
@@ -202,12 +210,12 @@ class TicketService {
     // Consulta de etiquetas formateadas al vuelo según la cantidad de ítems del pedido
     async obtenerTicketsPrenda(negocioId, numeroPedido) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         const { Pedido, DetallePedido } = await this._getModels(negocioId);
 
         const pedido = await Pedido.findOne({
-            where: { numeroPedido },
+            where: { numeroPedido, negocioId },
             include: [{ model: DetallePedido, as: "detalles" }]
         });
 

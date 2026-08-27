@@ -1,0 +1,119 @@
+{
+  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
+  "architecture": {
+    "module_boundaries": {
+      "frontend_e2e": "front/e2e/seed/master-seed-suite.spec.ts",
+      "seed_fixtures": "front/e2e/fixtures/seed-data.ts",
+      "e2e_helpers": "front/e2e/helpers/e2e-seed.helper.ts",
+      "backend_routes_tested": [
+        "POST /api/auth/register",
+        "POST /api/auth/verify-email",
+        "POST /api/auth/login",
+        "GET /api/auth/me",
+        "POST /api/servicios/categorias",
+        "GET /api/servicios/categorias",
+        "POST /api/servicios",
+        "GET /api/servicios",
+        "POST /api/usuarios",
+        "GET /api/usuarios",
+        "POST /api/clientes",
+        "GET /api/clientes",
+        "POST /api/cajas/abrir",
+        "GET /api/cajas/actual",
+        "POST /api/pedidos",
+        "PATCH /api/pedidos/:id/estado",
+        "POST /api/pagos",
+        "POST /api/cajas/movimientos",
+        "GET /api/dashboard/kpis",
+        "GET /api/dashboard/graficos",
+        "GET /api/finanzas/resumen"
+      ]
+    },
+    "data_flow": [
+      "1. Chromium Playwright abre /register y envía formulario con datos dinámicos únicos.",
+      "2. Captura del verificationCode para activar la cuenta vía /api/auth/verify-email.",
+      "3. Login visual en /login, guardando auth-storage en localStorage y navegando a /dashboard.",
+      "4. Navegación a /servicios: creación de 4 categorías y 12 servicios vía modals/formularios de UI.",
+      "5. Navegación a /empleados: alta de 3 empleados con roles diferenciados.",
+      "6. Navegación a /clientes: registro de 15 clientes para validar paginado (10 ítems por página), filtros y acciones.",
+      "7. Navegación a /caja: apertura de turno de caja con monto inicial.",
+      "8. Navegación a /pedidos/nuevo: creación de 10 pedidos POS asignando clientes y servicios.",
+      "9. Navegación a /pedidos: avance de estados de pedidos de PENDIENTE a ENTREGADO.",
+      "10. Cobranza en /cobros y /clientes/[id]: registro de pagos de 1 pedido por transacción, vuelto a favor y consumo de crédito.",
+      "11. Arqueo en /caja y verificación de métricas en /dashboard y /reportes."
+    ]
+  },
+  "interfaces_and_contracts": {
+    "registration_payload": {
+      "negocioNombre": "string (min 3)",
+      "usuarioNombre": "string (min 3)",
+      "email": "string (email format)",
+      "password": "string (min 6)"
+    },
+    "local_storage_auth_shape": {
+      "state": {
+        "user": { "id": "number", "nombre": "string", "email": "string", "rol": "string", "negocioId": "number" },
+        "token": "string (JWT)",
+        "isAuthenticated": true
+      },
+      "version": 0
+    },
+    "single_order_payment_contract": {
+      "pedidoId": "number",
+      "monto": "number",
+      "metodoPago": "EFECTIVO | TRANSFERENCIA | MERCADO_PAGO",
+      "dejarVueltoAFavor": "boolean",
+      "aplicarSaldoAFavor": "boolean"
+    }
+  },
+  "dependency_decisions": {
+    "runner": "@playwright/test ejecutado con --headed para inspección visual en Chromium.",
+    "execution_mode": "workers: 1, fullyParallel: false para mantener secuencia lineal de datos del tenant.",
+    "helpers": "Formateo de fechas usando toLocalYMD (YYYY-MM-DD) para evitar descalces UTC en reportes/filtros."
+  },
+  "failure_modes_and_edge_cases": [
+    "Caja Cerrada: Rechazo explícito con toast.error si se intenta cobro sin caja abierta.",
+    "Cobro duplicado/Cancelado: Error 400 BAD_REQUEST revertido atómicamente en transacción SQL.",
+    "Sesión sin tenant: Error explícito MISSING_TENANT_ID si req.user.negocioId es ambiguo o nulo.",
+    "Descalce de paginado: Validación de botones 'Siguiente' / 'Anterior' en tablas con 15+ ítems."
+  ],
+  "testing_strategy": {
+    "type": "E2E Integration Test & Data Seeding",
+    "headed": true,
+    "quality_gates": [
+      "100% de la navegación ejecutada desde la UI de Next.js.",
+      "Cero errores de consola unhandled en Chromium durante la prueba.",
+      "Verificación de montos en Dashboard coincidan 1:1 con la suma de cobros y pedidos sembrados."
+    ]
+  },
+  "phased_implementation": [
+    {
+      "phase": "Fase 1: Registro & Setup de Tenant",
+      "tasks": [
+        "Crear helper e2e-seed.helper.ts para acciones de navegación y formulario.",
+        "Implementar Módulo 1 en e2e/seed/01-registro-negocio.spec.ts."
+      ]
+    },
+    {
+      "phase": "Fase 2: Catálogo, Empleados & Clientes",
+      "tasks": [
+        "Implementar alta de Categorías y Servicios con paginación en Módulo 2 y 3.",
+        "Implementar alta de Empleados y Clientes (15+ registros) en Módulo 4 y 5."
+      ]
+    },
+    {
+      "phase": "Fase 3: Caja, Pedidos, Transiciones & Cobros",
+      "tasks": [
+        "Implementar apertura de caja, creación POS de pedidos y ciclo de vida de estados.",
+        "Implementar cobros atómicos, vuelto a favor y consumo de saldo a favor."
+      ]
+    },
+    {
+      "phase": "Fase 4: Arqueo & Validación Dashboard 1:1",
+      "tasks": [
+        "Registrar gastos de caja y arqueo final.",
+        "Validar KPIs y gráficos de Dashboard y Finanzas contra la data sembrada."
+      ]
+    }
+  ]
+}

@@ -10,15 +10,18 @@ class DesempenoEmpleadosService {
     }
 
     async obtenerMetricasEmpleado(negocioId, id) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         const { Empleado, Caja, MovimientoCaja } = await this._getModels(negocioId);
 
-        const empleado = await Empleado.findByPk(id);
+        const idNum = parseInt(id);
+        if (isNaN(idNum) || idNum <= 0) throw new AppError("ID de empleado inválido.", 400, "INVALID_ID");
+
+        const empleado = await Empleado.findByPk(idNum);
         if (!empleado) throw new AppError("Empleado no encontrado.", 404, "EMPLOYEE_NOT_FOUND");
 
         // Buscar todas las cajas operadas por este empleado con sus movimientos
         const cajas = await Caja.findAll({
-            where: { empleadoId: id },
+            where: { empleadoId: idNum },
             include: [{
                 model: MovimientoCaja,
                 as: "movimientos"
@@ -34,15 +37,15 @@ class DesempenoEmpleadosService {
         // Formatear la lista de cajas operadas por el empleado y calcular métricas acumuladas
         const cajasOperadas = cajas.map(c => {
             const plain = c.get ? c.get({ plain: true }) : c;
-            const isAbierta = plain.abierta === true || plain.estadoCaja === "Abierta" || plain.estado === "ABIERTA";
-            const montoInicial = parseFloat(plain.montoInicialEfectivo) || 0;
+            const isAbierta = plain.estadoCaja === "Abierta";
+            const montoInicial = parseFloat(plain.montoInicialEfectivo || 0);
             
             let ingEnVivo = 0;
             let egrEnVivo = 0;
             if (plain.movimientos && Array.isArray(plain.movimientos)) {
                 for (const mov of plain.movimientos) {
                     const val = Math.abs(parseFloat(mov.monto) || 0);
-                    const isIngreso = mov.tipoMovimiento?.toLowerCase().includes("ingreso") || mov.tipoMovimiento?.toLowerCase().includes("venta");
+                    const isIngreso = mov.tipoMovimiento === "Ingreso" || mov.tipoMovimiento === "CobroPedido";
                     if (isIngreso) {
                         ingEnVivo += val;
                         totalCobrosMonto += val;
@@ -56,14 +59,16 @@ class DesempenoEmpleadosService {
             }
 
             const efectivoEsperado = montoInicial + ingEnVivo - egrEnVivo;
-            const efectivoReal = plain.montoFinalEfectivoReal !== null && plain.montoFinalEfectivoReal !== undefined ? parseFloat(plain.montoFinalEfectivoReal) : null;
+            const efectivoReal = plain.montoFinalEfectivoReal !== null && plain.montoFinalEfectivoReal !== undefined 
+                ? parseFloat(plain.montoFinalEfectivoReal) 
+                : null;
             const diferenciaEfectivo = efectivoReal !== null ? (efectivoReal - efectivoEsperado) : 0;
 
             return {
                 id: plain.idCaja,
                 idCaja: plain.idCaja,
-                fechaApertura: plain.fechaHoraApertura || plain.createdAt,
-                fechaCierre: plain.fechaHoraCierre,
+                fechaApertura: plain.fechaHoraApertura,
+                fechaCierre: plain.fechaHoraCierre || null,
                 montoInicial,
                 diferenciaEfectivo,
                 estado: isAbierta ? "ABIERTA" : "CERRADA",
@@ -92,23 +97,45 @@ class DesempenoEmpleadosService {
     }
 
     async obtenerReporteEmpleados(negocioId, query = {}) {
-        if (!negocioId) throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
-        const { Empleado, Caja, Pedido } = await this._getModels(negocioId);
+        if (!negocioId) throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
+        const { Empleado, Caja, MovimientoCaja } = await this._getModels(negocioId);
 
         const empleados = await Empleado.findAll();
         const items = [];
 
         for (const emp of empleados) {
-            const cajas = await Caja.count({ where: { empleadoId: emp.id } });
+            const cajas = await Caja.findAll({
+                where: { empleadoId: emp.id },
+                include: [{
+                    model: MovimientoCaja,
+                    as: "movimientos"
+                }]
+            });
+
+            let totalRecaudado = 0;
+            let pedidosAtendidos = 0;
+
+            for (const caja of cajas) {
+                if (caja.movimientos && Array.isArray(caja.movimientos)) {
+                    for (const mov of caja.movimientos) {
+                        const isIngreso = mov.tipoMovimiento === "Ingreso" || mov.tipoMovimiento === "CobroPedido";
+                        if (isIngreso) {
+                            totalRecaudado += Math.abs(parseFloat(mov.monto) || 0);
+                            pedidosAtendidos++;
+                        }
+                    }
+                }
+            }
+
             items.push({
                 id: emp.id,
                 nombre: emp.nombre,
                 email: emp.email,
                 rol: emp.rol,
                 activo: emp.activo,
-                cajasAtendidas: cajas,
-                pedidosAtendidos: 0,
-                totalRecaudado: 0
+                cajasAtendidas: cajas.length,
+                pedidosAtendidos,
+                totalRecaudado
             });
         }
 

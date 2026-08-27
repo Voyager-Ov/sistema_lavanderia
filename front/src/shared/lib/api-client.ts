@@ -25,10 +25,10 @@ export const apiClient = {
       }
       if (!token) {
         const authData = localStorage.getItem('auth-storage');
-        if (authData) {
+        if (authData && authData.trim() !== '') {
           try {
             const parsed = JSON.parse(authData);
-            if (parsed.state && parsed.state.token) {
+            if (parsed && parsed.state && parsed.state.token) {
               token = parsed.state.token;
             }
           } catch (e) {

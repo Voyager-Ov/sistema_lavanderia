@@ -33,15 +33,18 @@ export default defineConfig({
       testMatch: /.*\.(ui\.)?spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
+        headless: false,
+        launchOptions: {
+          slowMo: 100, // Velocity pacing: 100ms per action for smooth, visible execution without lag
+        },
         baseURL: process.env.FRONTEND_URL || 'http://localhost:3000'
       }
     }
   ],
   webServer: {
-    command: 'npx next dev -p 3000 --webpack',
+    command: 'npx next dev -p 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120000,
   }
 });
-

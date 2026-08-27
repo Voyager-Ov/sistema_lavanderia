@@ -6,16 +6,17 @@ import { AppError } from "../../../utils/appError.js";
 class ServiciosService {
 
     async _getModels(negocioId) {
-        const tenantDb = await connectionManager.getTenantDb(negocioId);
-        return tenantDb.models;
+        const tenantContext = await connectionManager.getTenantDb(negocioId);
+        return { sequelize: tenantContext.sequelize, models: tenantContext.models };
     }
 
     // Listar servicios / productos con paginación, filtros y ordenamiento
     async listarServicios(negocioId, query = {}) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
-        const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
+        const { models } = await this._getModels(negocioId);
+        const { Servicio, CategoriaServicio } = models;
 
         const parsedPage = parseInt(query.page, 10);
         const page = !isNaN(parsedPage) && parsedPage > 0 ? parsedPage : 1;
@@ -24,10 +25,10 @@ class ServiciosService {
         const limit = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
         const offset = (page - 1) * limit;
 
-        const where = { activo: true };
+        const where = { negocioId, activo: true };
 
         // Filtro por término de búsqueda
-        if (query.search && query.search.trim() !== "") {
+        if (query.search && typeof query.search === "string" && query.search.trim() !== "") {
             const searchOperator = process.env.NODE_ENV === "test" ? Op.like : Op.iLike;
             where[Op.or] = [
                 { nombre: { [searchOperator]: `%${query.search.trim()}%` } },
@@ -92,16 +93,17 @@ class ServiciosService {
     // Estadísticas rápidas para el dashboard de servicios
     async obtenerEstadisticas(negocioId) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
-        const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
+        const { models } = await this._getModels(negocioId);
+        const { Servicio, CategoriaServicio } = models;
 
-        const total = await Servicio.count({ where: { activo: true } });
-        const activos = await Servicio.count({ where: { activo: true, disponible: true } });
-        const categoriasCount = await CategoriaServicio.count({ where: { activo: true } });
+        const total = await Servicio.count({ where: { negocioId, activo: true } });
+        const activos = await Servicio.count({ where: { negocioId, activo: true, disponible: true } });
+        const categoriasCount = await CategoriaServicio.count({ where: { negocioId, activo: true } });
 
         const primerServicio = await Servicio.findOne({
-            where: { activo: true, disponible: true },
+            where: { negocioId, activo: true, disponible: true },
             order: [["id", "ASC"]]
         });
 
@@ -109,22 +111,23 @@ class ServiciosService {
             total,
             activos,
             categorias: categoriasCount,
-            masSolicitado: primerServicio ? primerServicio.nombre : "N/A"
+            masSolicitado: primerServicio ? primerServicio.nombre : null
         };
     }
 
     // Obtener servicio por ID
     async obtenerServicioPorId(negocioId, id) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!id) {
             throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
-        const { Servicio, CategoriaServicio } = await this._getModels(negocioId);
+        const { models } = await this._getModels(negocioId);
+        const { Servicio, CategoriaServicio } = models;
 
         const servicio = await Servicio.findOne({
-            where: { id, activo: true },
+            where: { id, negocioId, activo: true },
             include: [{
                 model: CategoriaServicio,
                 as: "categoria"
@@ -138,14 +141,15 @@ class ServiciosService {
         return servicio;
     }
 
-    // Crear nuevo servicio (Fail-Fast: exige precioActual canónico y valida categoriaId real)
+    // Crear nuevo servicio atómicamente con historial inicial
     async crearServicio(negocioId, data, imagenPath = null) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
-        const { Servicio, CategoriaServicio, HistorialPrecioServicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio, CategoriaServicio, HistorialPrecioServicio } = models;
 
-        if (!data.nombre || data.nombre.trim() === "") {
+        if (!data.nombre || typeof data.nombre !== "string" || data.nombre.trim() === "") {
             throw new AppError("El nombre del servicio es obligatorio.", 400, "MISSING_SERVICE_NAME");
         }
 
@@ -164,16 +168,16 @@ class ServiciosService {
             if (isNaN(parsedCatId) || parsedCatId <= 0) {
                 throw new AppError("El ID de categoría debe ser un número entero positivo válido.", 400, "INVALID_CATEGORY_ID");
             }
-            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, activo: true } });
+            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, negocioId, activo: true } });
             if (!categoria) {
-                throw new AppError("La categoría seleccionada no existe.", 404, "CATEGORY_NOT_FOUND");
+                throw new AppError("La categoría seleccionada no existe para este negocio.", 404, "CATEGORY_NOT_FOUND");
             }
             catId = parsedCatId;
         }
 
         if (imagenPath) {
             const fotosActuales = await Servicio.count({
-                where: { activo: true, imagenUrl: { [Op.ne]: null } }
+                where: { negocioId, activo: true, imagenUrl: { [Op.ne]: null } }
             });
             if (fotosActuales >= 30) {
                 await storageService.deleteFile(imagenPath);
@@ -185,57 +189,65 @@ class ServiciosService {
             }
         }
 
-        const nuevoServicio = await Servicio.create({
-            nombre: data.nombre.trim(),
-            descripcion: data.descripcion ? data.descripcion.trim() : null,
-            precioActual: precioNum,
-            costoEstimado: data.costoEstimado !== undefined && data.costoEstimado !== "" ? parseFloat(data.costoEstimado) : 0,
-            tiempoEstimadoMinutos: data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "" ? parseInt(data.tiempoEstimadoMinutos) : 0,
-            disponible: data.disponible === "true" || data.disponible === true || data.disponible === undefined,
-            activo: true,
-            imagenUrl: imagenPath ? imagenPath : (data.imagenUrl ? data.imagenUrl : null),
-            categoriaId: catId,
-            negocioId
-        });
-
-        // Registrar precio inicial en historial
+        const transaction = await sequelize.transaction();
         try {
-            await HistorialPrecioServicio.create({
-                servicioId: nuevoServicio.id,
-                precio: precioNum,
-                fechaDesde: new Date(),
-                fechaHasta: null,
-                motivo: "Precio Inicial",
+            const nuevoServicio = await Servicio.create({
+                nombre: data.nombre.trim(),
+                descripcion: (data.descripcion && typeof data.descripcion === "string" && data.descripcion.trim() !== "") ? data.descripcion.trim() : null,
+                precioActual: precioNum,
+                costoEstimado: data.costoEstimado !== undefined && data.costoEstimado !== "" ? parseFloat(data.costoEstimado) : 0,
+                tiempoEstimadoMinutos: data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "" ? parseInt(data.tiempoEstimadoMinutos) : 0,
+                disponible: data.disponible === "true" || data.disponible === true || data.disponible === undefined,
+                activo: true,
+                imagenUrl: imagenPath ? imagenPath : (data.imagenUrl ? data.imagenUrl : null),
+                categoriaId: catId,
                 negocioId
-            });
-        } catch (e) {
-            console.warn("⚠️ No se pudo guardar historial inicial:", e.message);
-        }
+            }, { transaction });
 
-        return this.obtenerServicioPorId(negocioId, nuevoServicio.id);
+            if (HistorialPrecioServicio) {
+                await HistorialPrecioServicio.create({
+                    servicioId: nuevoServicio.id,
+                    precio: precioNum,
+                    fechaDesde: new Date(),
+                    fechaHasta: null,
+                    motivo: "Precio Inicial",
+                    negocioId
+                }, { transaction });
+            }
+
+            await transaction.commit();
+            return this.obtenerServicioPorId(negocioId, nuevoServicio.id);
+        } catch (error) {
+            await transaction.rollback();
+            if (imagenPath) {
+                await storageService.deleteFile(imagenPath).catch(() => {});
+            }
+            throw error;
+        }
     }
 
-    // Actualizar servicio existente
+    // Actualizar servicio existente atómicamente
     async actualizarServicio(negocioId, id, data, imagenPath = null) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!id) {
             throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
-        const { Servicio, CategoriaServicio, HistorialPrecioServicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio, CategoriaServicio, HistorialPrecioServicio } = models;
 
-        const servicio = await Servicio.findOne({ where: { id, activo: true } });
+        const servicio = await Servicio.findOne({ where: { id, negocioId, activo: true } });
         if (!servicio) {
             throw new AppError("Servicio no encontrado para actualizar.", 404, "SERVICE_NOT_FOUND");
         }
 
         const updateFields = {};
         if (data.nombre !== undefined) {
-            if (data.nombre.trim() === "") throw new AppError("El nombre del servicio no puede estar vacío.", 400, "INVALID_NAME");
+            if (typeof data.nombre !== "string" || data.nombre.trim() === "") throw new AppError("El nombre del servicio no puede estar vacío.", 400, "INVALID_NAME");
             updateFields.nombre = data.nombre.trim();
         }
-        if (data.descripcion !== undefined) updateFields.descripcion = data.descripcion ? data.descripcion.trim() : null;
+        if (data.descripcion !== undefined) updateFields.descripcion = (data.descripcion && typeof data.descripcion === "string" && data.descripcion.trim() !== "") ? data.descripcion.trim() : null;
         if (data.costoEstimado !== undefined && data.costoEstimado !== "") updateFields.costoEstimado = parseFloat(data.costoEstimado);
         if (data.tiempoEstimadoMinutos !== undefined && data.tiempoEstimadoMinutos !== "") updateFields.tiempoEstimadoMinutos = parseInt(data.tiempoEstimadoMinutos);
         if (data.disponible !== undefined) updateFields.disponible = data.disponible === "true" || data.disponible === true;
@@ -245,7 +257,7 @@ class ServiciosService {
             if (isNaN(parsedCatId) || parsedCatId <= 0) {
                 throw new AppError("El ID de categoría debe ser un número entero positivo válido.", 400, "INVALID_CATEGORY_ID");
             }
-            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, activo: true } });
+            const categoria = await CategoriaServicio.findOne({ where: { id: parsedCatId, negocioId, activo: true } });
             if (!categoria) {
                 throw new AppError("La categoría seleccionada no existe.", 404, "CATEGORY_NOT_FOUND");
             }
@@ -256,7 +268,7 @@ class ServiciosService {
             const yaTeniaFoto = Boolean(servicio.imagenUrl);
             if (!yaTeniaFoto) {
                 const fotosActuales = await Servicio.count({
-                    where: { activo: true, imagenUrl: { [Op.ne]: null } }
+                    where: { negocioId, activo: true, imagenUrl: { [Op.ne]: null } }
                 });
                 if (fotosActuales >= 30) {
                     await storageService.deleteFile(imagenPath);
@@ -278,94 +290,110 @@ class ServiciosService {
             updateFields.imagenUrl = null;
         }
 
-        if (data.precioActual !== undefined && data.precioActual !== null && data.precioActual !== "") {
-            const nuevoPrecio = parseFloat(data.precioActual);
-            if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
-                throw new AppError("El precio actual debe ser un número mayor o igual a 0.", 400, "INVALID_PRICE");
-            }
+        const transaction = await sequelize.transaction();
+        try {
+            if (data.precioActual !== undefined && data.precioActual !== null && data.precioActual !== "") {
+                const nuevoPrecio = parseFloat(data.precioActual);
+                if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+                    throw new AppError("El precio actual debe ser un número mayor o igual a 0.", 400, "INVALID_PRICE");
+                }
 
-            if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
-                updateFields.precioActual = nuevoPrecio;
+                if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
+                    updateFields.precioActual = nuevoPrecio;
 
-                // Cerrar precio previo e insertar nuevo en historial
-                const ahora = new Date();
-                try {
-                    await HistorialPrecioServicio.update(
-                        { fechaHasta: ahora },
-                        { where: { servicioId: id, negocioId, fechaHasta: null } }
-                    );
-                    await HistorialPrecioServicio.create({
-                        servicioId: id,
-                        precio: nuevoPrecio,
-                        fechaDesde: ahora,
-                        fechaHasta: null,
-                        motivo: typeof data.motivo === "string" && data.motivo.trim() !== "" ? data.motivo.trim() : "Edición de precio",
-                        negocioId
-                    });
-                } catch (e) {
-                    console.warn("⚠️ No se pudo actualizar historial de precio:", e.message);
+                    const ahora = new Date();
+                    if (HistorialPrecioServicio) {
+                        await HistorialPrecioServicio.update(
+                            { fechaHasta: ahora },
+                            { where: { servicioId: id, negocioId, fechaHasta: null }, transaction }
+                        );
+                        await HistorialPrecioServicio.create({
+                            servicioId: id,
+                            precio: nuevoPrecio,
+                            fechaDesde: ahora,
+                            fechaHasta: null,
+                            motivo: (typeof data.motivo === "string" && data.motivo.trim() !== "") ? data.motivo.trim() : "Edición de precio",
+                            negocioId
+                        }, { transaction });
+                    }
                 }
             }
+
+            await servicio.update(updateFields, { transaction });
+            await transaction.commit();
+
+            return this.obtenerServicioPorId(negocioId, id);
+        } catch (error) {
+            await transaction.rollback();
+            if (imagenPath) {
+                await storageService.deleteFile(imagenPath).catch(() => {});
+            }
+            throw error;
         }
-
-        await servicio.update(updateFields);
-
-        return this.obtenerServicioPorId(negocioId, id);
     }
 
-    // Cambiar disponibilidad individual
+    // Cambiar disponibilidad individual atómicamente
     async cambiarDisponibilidad(negocioId, id, disponible) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!id) {
             throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
-        const { Servicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio } = models;
 
-        const servicio = await Servicio.findOne({ where: { id, activo: true } });
+        const servicio = await Servicio.findOne({ where: { id, negocioId, activo: true } });
         if (!servicio) {
             throw new AppError("Servicio no encontrado.", 404, "SERVICE_NOT_FOUND");
         }
 
         const isDisponible = disponible === "true" || disponible === true;
-        await servicio.update({ disponible: isDisponible });
-
-        return servicio;
+        const transaction = await sequelize.transaction();
+        try {
+            await servicio.update({ disponible: isDisponible }, { transaction });
+            await transaction.commit();
+            return servicio;
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
-    // Actualizar precios de forma masiva (Fail-Fast y validación estricta del array de servicios)
+    // Actualizar precios de forma masiva (Fail-Fast y transacción atómica)
     async actualizarPreciosMasivo(negocioId, servicios) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!Array.isArray(servicios) || servicios.length === 0) {
             throw new AppError("Se requiere un arreglo de 'servicios' no vacío para actualizar precios.", 400, "INVALID_BULK_DATA");
         }
 
-        const { Servicio, HistorialPrecioServicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio, HistorialPrecioServicio } = models;
         const resultados = [];
         const ahora = new Date();
 
-        for (const item of servicios) {
-            if (!item || !item.id || item.precioActual === undefined || isNaN(parseFloat(item.precioActual)) || parseFloat(item.precioActual) < 0) {
-                const targetId = item && item.id ? item.id : 'desconocido';
-                throw new AppError(`El servicio ID ${targetId} no contiene un precioActual válido.`, 400, "INVALID_SERVICE_ITEM");
-            }
-            const servicio = await Servicio.findOne({ where: { id: item.id, activo: true } });
-            if (!servicio) {
-                throw new AppError(`Servicio con ID ${item.id} no encontrado o inactivo.`, 404, "SERVICE_NOT_FOUND");
-            }
+        const transaction = await sequelize.transaction();
+        try {
+            for (const item of servicios) {
+                if (!item || !item.id || item.precioActual === undefined || isNaN(parseFloat(item.precioActual)) || parseFloat(item.precioActual) < 0) {
+                    const targetId = item && item.id ? item.id : 'desconocido';
+                    throw new AppError(`El servicio ID ${targetId} no contiene un precioActual válido.`, 400, "INVALID_SERVICE_ITEM");
+                }
+                const servicio = await Servicio.findOne({ where: { id: item.id, negocioId, activo: true }, transaction });
+                if (!servicio) {
+                    throw new AppError(`Servicio con ID ${item.id} no encontrado o inactivo.`, 404, "SERVICE_NOT_FOUND");
+                }
 
-            const nuevoPrecio = parseFloat(item.precioActual);
-            if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
-                await servicio.update({ precioActual: nuevoPrecio });
+                const nuevoPrecio = parseFloat(item.precioActual);
+                if (nuevoPrecio !== parseFloat(servicio.precioActual)) {
+                    await servicio.update({ precioActual: nuevoPrecio }, { transaction });
 
-                if (HistorialPrecioServicio) {
-                    try {
+                    if (HistorialPrecioServicio) {
                         await HistorialPrecioServicio.update(
                             { fechaHasta: ahora },
-                            { where: { servicioId: item.id, negocioId, fechaHasta: null } }
+                            { where: { servicioId: item.id, negocioId, fechaHasta: null }, transaction }
                         );
                         await HistorialPrecioServicio.create({
                             servicioId: item.id,
@@ -374,114 +402,114 @@ class ServiciosService {
                             fechaHasta: null,
                             motivo: "Ajuste Masivo de Precios",
                             negocioId
-                        });
-                    } catch (e) {
-                        console.warn("⚠️ No se pudo registrar historial masivo:", e.message);
+                        }, { transaction });
                     }
                 }
+                resultados.push(servicio);
             }
-            resultados.push(servicio);
-        }
 
-        return { count: resultados.length, items: resultados };
+            await transaction.commit();
+            return { count: resultados.length, items: resultados };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
-    // Actualizar disponibilidad masiva
+    // Actualizar disponibilidad masiva atómicamente
     async actualizarDisponibilidadMasiva(negocioId, ids, disponible) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!Array.isArray(ids) || ids.length === 0) {
             throw new AppError("Se requiere un arreglo de IDs válido y no vacío.", 400, "INVALID_IDS");
         }
 
-        const { Servicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio } = models;
         const isDisponible = disponible === "true" || disponible === true;
 
-        const [affectedCount] = await Servicio.update(
-            { disponible: isDisponible },
-            { where: { id: { [Op.in]: ids }, activo: true } }
-        );
-
-        return { count: affectedCount };
+        const transaction = await sequelize.transaction();
+        try {
+            const [affectedCount] = await Servicio.update(
+                { disponible: isDisponible },
+                { where: { id: { [Op.in]: ids }, negocioId, activo: true }, transaction }
+            );
+            await transaction.commit();
+            return { count: affectedCount };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 
-    // Obtener historial de precios de un servicio
+    // Obtener historial de precios de un servicio (Consultas reales sin fallbacks sintéticos)
     async obtenerHistorialPrecios(negocioId, id) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!id) {
             throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
-        const { Servicio, HistorialPrecioServicio } = await this._getModels(negocioId);
+        const { models } = await this._getModels(negocioId);
+        const { Servicio, HistorialPrecioServicio } = models;
 
-        const servicio = await Servicio.findOne({ where: { id, activo: true } });
+        const servicio = await Servicio.findOne({ where: { id, negocioId, activo: true } });
         if (!servicio) {
             throw new AppError("Servicio no encontrado.", 404, "SERVICE_NOT_FOUND");
         }
 
-        let historial = [];
-        try {
-            historial = await HistorialPrecioServicio.findAll({
-                where: { servicioId: id, negocioId },
-                order: [["fechaDesde", "ASC"]]
-            });
-        } catch (e) {
-            console.warn("⚠️ No se pudo consultar historial en la BD:", e.message);
+        if (!HistorialPrecioServicio) {
+            return [];
         }
 
-        if (historial.length === 0) {
-            const p = parseFloat(servicio.precioActual);
-            historial = [
-                {
-                    id: 1,
-                    precio: p,
-                    precioNuevo: p,
-                    precioAnterior: p,
-                    fechaCambio: servicio.createdAt,
-                    createdAt: servicio.createdAt,
-                    motivo: "Precio Inicial"
-                }
-            ];
-        } else {
-            historial = historial.map((h, idx) => {
-                const p = parseFloat(h.precio);
-                const prev = idx > 0 ? parseFloat(historial[idx - 1].precio) : p;
-                return {
-                    id: h.id,
-                    precio: p,
-                    precioNuevo: p,
-                    precioAnterior: prev,
-                    fechaCambio: h.fechaDesde,
-                    createdAt: h.fechaDesde,
-                    fechaDesde: h.fechaDesde,
-                    fechaHasta: h.fechaHasta,
-                    motivo: h.motivo ? h.motivo : "Cambio de precio"
-                };
-            });
-        }
+        const historial = await HistorialPrecioServicio.findAll({
+            where: { servicioId: id, negocioId },
+            order: [["fechaDesde", "ASC"]]
+        });
 
-        return historial;
+        return historial.map((h, idx) => {
+            const p = parseFloat(h.precio);
+            const prev = idx > 0 ? parseFloat(historial[idx - 1].precio) : p;
+            return {
+                id: h.id,
+                precio: p,
+                precioNuevo: p,
+                precioAnterior: prev,
+                fechaCambio: h.fechaDesde,
+                createdAt: h.fechaDesde,
+                fechaDesde: h.fechaDesde,
+                fechaHasta: h.fechaHasta,
+                motivo: h.motivo
+            };
+        });
     }
 
-    // Eliminar servicio (soft delete)
+    // Eliminar servicio (soft delete atómico)
     async eliminarServicio(negocioId, id) {
         if (!negocioId) {
-            throw new AppError("ID de negocio es requerido.", 400, "MISSING_TENANT_ID");
+            throw new AppError("No se ha identificado el negocio activo.", 400, "MISSING_TENANT_ID");
         }
         if (!id) {
             throw new AppError("ID de servicio es requerido.", 400, "MISSING_SERVICE_ID");
         }
-        const { Servicio } = await this._getModels(negocioId);
+        const { sequelize, models } = await this._getModels(negocioId);
+        const { Servicio } = models;
 
-        const servicio = await Servicio.findOne({ where: { id, activo: true } });
+        const servicio = await Servicio.findOne({ where: { id, negocioId, activo: true } });
         if (!servicio) {
             throw new AppError("Servicio no encontrado para eliminar.", 404, "SERVICE_NOT_FOUND");
         }
 
-        await servicio.update({ activo: false, disponible: false });
-        return { message: "Servicio eliminado correctamente." };
+        const transaction = await sequelize.transaction();
+        try {
+            await servicio.update({ activo: false, disponible: false }, { transaction });
+            await transaction.commit();
+            return { message: "Servicio eliminado correctamente." };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
     }
 }
 
