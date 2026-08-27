@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { BaseReportService } from "./baseReport.service.js";
+import { AppError } from "../../../utils/appError.js";
 
 export class ReportePedidosService extends BaseReportService {
     async obtenerReportePedidos(negocioId, query = {}) {
@@ -37,21 +38,33 @@ export class ReportePedidosService extends BaseReportService {
         const categoryMap = {};
 
         for (const p of pedidos) {
-            const isCancelado = (p.estado || "").toString().toUpperCase().includes("CANCELAD");
+            if (!p.estado) {
+                throw new AppError(`El pedido N° ${p.numeroPedido} carece de un estado registrado.`, 400, "MISSING_ORDER_STATUS");
+            }
+            const isCancelado = p.estado.toString().toUpperCase().includes("CANCELAD");
             const isCobrado = p.cobrado;
 
             let subtotalItems = 0;
             if (p.detalles && Array.isArray(p.detalles)) {
                 subtotalItems = p.detalles.reduce((acc, d) => {
-                    const pr = parseFloat(d.precioHistorico) || 0;
-                    const cant = parseInt(d.cantidad) || 1;
-                    const catNombre = d.servicio?.nombre || "Lavandería & Tintorería";
+                    if (d.precioHistorico === undefined || d.precioHistorico === null || isNaN(Number(d.precioHistorico))) {
+                        throw new AppError(`El precio histórico del detalle ID ${d.id} en el pedido N° ${p.numeroPedido} es inválido.`, 400, "INVALID_HISTORIC_PRICE");
+                    }
+                    if (d.cantidad === undefined || d.cantidad === null || isNaN(Number(d.cantidad))) {
+                        throw new AppError(`La cantidad del detalle ID ${d.id} en el pedido N° ${p.numeroPedido} es inválida.`, 400, "INVALID_QUANTITY");
+                    }
+                    const pr = Number(d.precioHistorico);
+                    const cant = Number(d.cantidad);
+                    const catNombre = d.servicio ? d.servicio.nombre : "Sin Servicio";
                     categoryMap[catNombre] = (categoryMap[catNombre] || 0) + (pr * cant);
                     return acc + (pr * cant);
                 }, 0);
             }
 
-            const totalPedido = parseFloat(p.total) > 0 ? parseFloat(p.total) : subtotalItems;
+            if (p.total === undefined || p.total === null || isNaN(Number(p.total))) {
+                throw new AppError(`El total del pedido N° ${p.numeroPedido} es inválido.`, 400, "INVALID_ORDER_TOTAL");
+            }
+            const totalPedido = Number(p.total) > 0 ? Number(p.total) : subtotalItems;
 
             if (isCancelado) {
                 cancelados++;
@@ -63,13 +76,13 @@ export class ReportePedidosService extends BaseReportService {
                 }
             }
 
-            const clienteNombre = p.cliente ? `${p.cliente.nombre || ""} ${p.cliente.apellido || ""}`.trim() : "Sin Cliente";
+            const clienteNombre = p.cliente ? `${p.cliente.nombre || ""} ${p.cliente.apellido || ""}`.trim() : "Cliente General";
 
             table.push({
                 id: p.numeroPedido,
                 codigoSeguimiento: p.codigoSeguimiento || `LAV-${p.numeroPedido}`,
-                cliente: clienteNombre || "Sin Cliente",
-                estado: p.estado || "PENDIENTE",
+                cliente: clienteNombre,
+                estado: p.estado,
                 total: totalPedido,
                 fecha: p.fechaHoraPedido ? p.fechaHoraPedido.toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
                 fechaEntrega: p.fechaEntregaEstimada ? p.fechaEntregaEstimada.toISOString().split("T")[0] : null

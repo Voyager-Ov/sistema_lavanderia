@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { BaseReportService } from "./baseReport.service.js";
+import { AppError } from "../../../utils/appError.js";
 
 export class ReporteServiciosService extends BaseReportService {
     async obtenerReporteServicios(negocioId, query = {}) {
@@ -30,12 +31,23 @@ export class ReporteServiciosService extends BaseReportService {
         let totalIngresosGeneral = 0;
 
         for (const d of detalles) {
-            const srvId = d.servicioId || d.servicio?.id || 0;
-            const nombre = d.servicio ? d.servicio.nombre : `Servicio #${srvId}`;
-            const catNombre = d.servicio?.categoria?.nombre || "General";
-            const cant = parseInt(d.cantidad) || 1;
-            const precio = parseFloat(d.precioHistorico) || 0;
+            if (!d.servicio) {
+                throw new AppError(`El detalle de pedido ID ${d.id} no posee un servicio asociado en la base de datos.`, 400, "MISSING_SERVICE");
+            }
+            if (d.cantidad === undefined || d.cantidad === null || isNaN(Number(d.cantidad))) {
+                throw new AppError(`La cantidad del detalle de pedido ID ${d.id} es inválida.`, 400, "INVALID_QUANTITY");
+            }
+            if (d.precioHistorico === undefined || d.precioHistorico === null || isNaN(Number(d.precioHistorico))) {
+                throw new AppError(`El precio histórico del detalle de pedido ID ${d.id} es inválido.`, 400, "INVALID_HISTORIC_PRICE");
+            }
+
+            const cant = Number(d.cantidad);
+            const precio = Number(d.precioHistorico);
             const subtotal = cant * precio;
+
+            const srvId = d.servicio.id;
+            const nombre = d.servicio.nombre;
+            const catNombre = d.servicio.categoria ? d.servicio.categoria.nombre : "Sin Categoría";
 
             totalIngresosGeneral += subtotal;
 
@@ -67,7 +79,7 @@ export class ReporteServiciosService extends BaseReportService {
         }));
 
         const servicesList = table.map(s => ({
-            id: parseInt(s.id) || 1,
+            id: Number(s.id),
             label: s.nombre,
             value: s.ingresos,
             displayValue: `$${s.ingresos.toLocaleString("es-AR")}`
@@ -78,8 +90,8 @@ export class ReporteServiciosService extends BaseReportService {
         for (const d of detalles) {
             const dateRaw = d.pedido?.fechaHoraPedido || d.pedido?.createdAt;
             const dateStr = dateRaw ? new Date(dateRaw).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }) : "Hoy";
-            const srvNombre = d.servicio ? d.servicio.nombre : "Servicios Generales";
-            const sub = (parseInt(d.cantidad) || 1) * (parseFloat(d.precioHistorico) || 0);
+            const srvNombre = d.servicio.nombre;
+            const sub = Number(d.cantidad) * Number(d.precioHistorico);
 
             if (!trendMap[dateStr]) {
                 trendMap[dateStr] = { name: dateStr };
