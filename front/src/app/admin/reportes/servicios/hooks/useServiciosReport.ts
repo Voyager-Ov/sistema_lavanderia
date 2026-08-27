@@ -1,35 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { apiClient } from '@/shared/lib/api-client';
+import { reportesApi, ReporteServiciosData } from '@/domains/reportes/api/reportes.api';
 
-export interface TrendItem {
-  name: string;
-  [category: string]: number | string;
-}
-
-export interface EmpleadoChartItem {
-  nombre: string;
-  servicios: number;
-}
-
-export interface ServiciosReportData {
-  kpis: {
-    ingresos: number;
-    ticket: number;
-    efectividad: number;
-    cancelados: number;
-    margenBruto: number;
-    horasOperativas: number;
-  };
-  trend: TrendItem[];
-  categoriesMetaData: { key: string; name: string; color: string }[];
-  donut: { name: string; value: number; color: string }[];
-  chartEmpleados: EmpleadoChartItem[];
-  servicesList: { id: number; label: string; value: number; displayValue: string }[];
-  table: { id: string; nombre: string; categoria: string; cantidad: number; ingresos: number; porcentajeVentas: number; tendencia: string }[];
-}
+export type { ReporteServiciosData as ServiciosReportData };
 
 export function useServiciosReport() {
-  const [data, setData] = useState<ServiciosReportData | null>(null);
+  const [data, setData] = useState<ReporteServiciosData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -42,9 +17,8 @@ export function useServiciosReport() {
       setIsLoading(true);
       setError(null);
       
-      const params = new URLSearchParams();
-      if (fechaInicio) params.append('fechaInicio', fechaInicio);
-      if (fechaFin) params.append('fechaFin', fechaFin);
+      let queryInicio = fechaInicio;
+      let queryFin = fechaFin;
       
       if (!fechaInicio && !fechaFin) {
           const now = new Date();
@@ -66,12 +40,15 @@ export function useServiciosReport() {
           }
           
           const toLocalYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          params.append('fechaInicio', toLocalYMD(start));
-          params.append('fechaFin', toLocalYMD(end));
+          queryInicio = toLocalYMD(start);
+          queryFin = toLocalYMD(end);
       }
 
-      const response = await apiClient.get<{ success: boolean; data: ServiciosReportData }>(`/reportes/servicios?${params.toString()}`);
-      setData(response.data);
+      const resData = await reportesApi.obtenerReporteServicios({
+        fechaInicio: queryInicio || undefined,
+        fechaFin: queryFin || undefined
+      });
+      setData(resData);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al cargar el reporte";
       setError(msg);

@@ -123,19 +123,25 @@ export class ReportePedidosService extends BaseReportService {
             donut.push({ name: "PENDIENTE", value: 1, color: "#f59e0b" });
         }
 
-        // 3. Employee Performance
-        const { Empleado, Caja } = await this._getModels(negocioId);
+        // 3. Performance real de empleados basada en cajas operadas y cobros
+        const { Empleado, Caja, Cobro, MovimientoCaja } = await this._getModels(negocioId);
         const empleados = await Empleado.findAll({ where: { negocioId } });
-        const cajas = await Caja.findAll();
+        const cajas = await Caja.findAll({ where: { negocioId } });
+        const cobros = await Cobro.findAll({
+            include: [{ model: MovimientoCaja, as: "movimientoCaja" }]
+        });
 
         const chartEmpleados = [];
         for (const emp of empleados) {
             const empNombre = `${emp.nombre || ''} ${emp.apellido || ''}`.trim() || `Empleado #${emp.id}`;
-            const empCajasCount = cajas.filter(c => c.empleadoId === emp.id).length;
-            const empPedidos = empCajasCount > 0 ? empCajasCount * 12 : Math.max(1, totalPedidos);
+            const empCajas = cajas.filter(c => c.empleadoId === emp.id);
+            const cajaIds = empCajas.map(c => c.idCaja);
+
+            const cobrosEmpCount = cobros.filter(cb => cb.movimientoCaja && cajaIds.includes(cb.movimientoCaja.cajaIdCaja)).length;
+            
             chartEmpleados.push({
                 nombre: empNombre,
-                pedidos: empPedidos
+                pedidos: cobrosEmpCount
             });
         }
 
@@ -146,8 +152,8 @@ export class ReportePedidosService extends BaseReportService {
                 ticket,
                 cancelados,
                 pendienteCobro,
-                margenBruto: ingresos > 0 ? 85 : 0,
-                horasOperativas: 12,
+                margenBruto: ingresos > 0 ? parseFloat(((ingresos - (pendienteCobro * 0.15)) / ingresos * 100).toFixed(1)) : 0,
+                horasOperativas: cajas.length * 8,
                 tiempoMedioEntrega: 24
             },
             trend,

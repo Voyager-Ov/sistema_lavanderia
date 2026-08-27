@@ -22,19 +22,6 @@ export class ReporteEmpleadosService extends BaseReportService {
             whereCobro.fechaHora = dateClause;
         }
 
-        // Fetch first active Empleado as fallback if historic caja records lacked an explicit empleadoId
-        let primerEmpleado = await Empleado.findOne({ where: { negocioId }, order: [["id", "ASC"]] });
-        if (!primerEmpleado) {
-            primerEmpleado = await Empleado.findOne({ order: [["id", "ASC"]] });
-        }
-        const defaultEmpleadoNombre = primerEmpleado ? `${primerEmpleado.nombre || ''} ${primerEmpleado.apellido || ''}`.trim() : "Empleado de Mostrador";
-        const defaultEmpleadoId = primerEmpleado ? primerEmpleado.id : 1;
-
-        // Auto-heal legacy cajas without employee ID in database
-        if (defaultEmpleadoId) {
-            await Caja.update({ empleadoId: defaultEmpleadoId }, { where: { empleadoId: null } }).catch(() => {});
-        }
-
         // 1. Fetch Cajas
         const cajas = await Caja.findAll({
             where: whereCaja,
@@ -102,30 +89,17 @@ export class ReporteEmpleadosService extends BaseReportService {
         const tablaEmpleados = [];
         for (const emp of empleados) {
             const empNombre = `${emp.nombre || ''} ${emp.apellido || ''}`.trim() || `Empleado #${emp.id}`;
-            const cajasEmpCount = cajas.filter(cj => (cj.empleadoId === emp.id) || (!cj.empleadoId && emp.id === defaultEmpleadoId)).length;
+            const empCajas = cajas.filter(cj => cj.empleadoId === emp.id);
+            const empCajasCount = empCajas.length;
+            const empCajaIds = empCajas.map(cj => cj.idCaja);
             
             let totalCobradoEmp = 0;
+            let empPedidosCobrados = 0;
             cobros.forEach(c => {
-                let empInCaja = c.movimientoCaja?.caja?.empleadoId;
-                if (!empInCaja && c.movimientoCaja?.cajaIdCaja) {
-                    const matchCj = cajas.find(cj => cj.idCaja === c.movimientoCaja.cajaIdCaja);
-                    empInCaja = matchCj?.empleadoId;
-                }
-                if (!empInCaja && c.fechaHora) {
-                    const fMov = new Date(c.fechaHora);
-                    const matchCj = cajas.find(cj => {
-                        const fApertura = new Date(cj.fechaHoraApertura);
-                        const fCierre = cj.fechaHoraCierre ? new Date(cj.fechaHoraCierre) : new Date();
-                        return fMov >= fApertura && fMov <= fCierre;
-                    });
-                    empInCaja = matchCj?.empleadoId;
-                }
-                if (!empInCaja) {
-                    empInCaja = defaultEmpleadoId;
-                }
-
-                if (empInCaja === emp.id) {
+                const cjId = c.movimientoCaja?.cajaIdCaja;
+                if (cjId && empCajaIds.includes(cjId)) {
                     totalCobradoEmp += parseFloat(c.montoAbonado) || 0;
+                    empPedidosCobrados++;
                 }
             });
 
@@ -133,9 +107,9 @@ export class ReporteEmpleadosService extends BaseReportService {
                 id: emp.id.toString(),
                 nombre: empNombre,
                 rol: (emp.rol || "EMPLEADO").toUpperCase(),
-                cajasAbiertas: cajasEmpCount,
-                pedidosGenerados: Math.ceil(totalPedidosCount / Math.max(1, empleados.length)),
-                pedidosCancelados: Math.ceil(pedidosCanceladosCount / Math.max(1, empleados.length)),
+                cajasAbiertas: empCajasCount,
+                pedidosGenerados: empPedidosCobrados,
+                pedidosCancelados: 0,
                 totalCobrado: totalCobradoEmp
             });
         }

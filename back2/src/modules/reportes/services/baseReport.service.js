@@ -12,6 +12,6 @@ export class BaseReportService {
     }
 
     _parseDateRange(query) {
-        return parseDateRange(query?.fechaInicio || query?.fechaDesde, query?.fechaFin || query?.fechaHasta);
+        return parseDateRange(query?.fechaInicio, query?.fechaFin);
     }
 }

@@ -2,6 +2,24 @@
 
 Todas las modificaciones notables realizadas al backend se documentarán en este archivo.
 
+## [Fecha: 2026-08-26] - Auditoría, Limpieza de Anti-Patrones y Tipado 1:1 de Módulo de Reportes
+### Modificaciones en Módulo de Reportes (`back2/src/modules/reportes`)
+- **`src/modules/reportes/validators/reportes.validator.js`**:
+  - Inyectado middleware `validateReporteFechas` para validar formato `YYYY-MM-DD` de `fechaInicio` y `fechaFin` (Fail-Fast).
+- **`src/modules/reportes/services/`**:
+  - `reportePedidos.service.js`: Eliminado multiplicador `* 12` y KPIs hardcodeados (`85%`, `12h`, `24h`), calculando rendimiento real de empleados y totales de BD.
+  - `reporteServicios.service.js`: Incluida relación con `CategoriaServicio` para obtener categorías reales de BD y eliminada tendencia hardcodeada `"+12%"`.
+  - `reporteEmpleados.service.js`: Eliminada división uniforme plana por cantidad de empleados y remoción de `.catch(() => {})`.
+  - `baseReport.service.js`: Estandarización canónica de `fechaInicio` y `fechaFin`.
+
+### Modificaciones en Front-End (`front`)
+- **`front/src/domains/reportes/api/reportes.api.ts`**:
+  - Cliente API de dominio con respuestas tipadas 1:1 (`ReportePedidosData`, `ReporteServiciosData`, `ReporteFinanzasData`, `ReporteEmpleadosData`).
+- **`front/src/app/admin/reportes/*/hooks/`**:
+  - Refactorizados `usePedidosReport.ts`, `useServiciosReport.ts` y `useEmpleadosReport.ts` para consumir `reportesApi` eliminando `any`.
+
+---
+
 ## [Fecha: 2026-08-26] - Auditoría, Limpieza de Anti-Patrones y Tipado 1:1 de RRHH / Empleados
 ### Modificaciones en Módulo de RRHH y Empleados (`back2/src/modules/rrhh`)
 - **`src/modules/rrhh/validators/empleados.validator.js`**:

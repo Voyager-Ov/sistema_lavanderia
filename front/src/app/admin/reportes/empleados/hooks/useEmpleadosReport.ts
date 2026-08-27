@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from "react"
-import { apiClient } from "@/shared/lib/api-client"
+import { reportesApi, ReporteEmpleadosData } from "@/domains/reportes/api/reportes.api"
 import { format, subDays, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek } from "date-fns"
 import { toast } from "sonner"
 
 export function useEmpleadosReport() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<ReporteEmpleadosData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -16,25 +16,14 @@ export function useEmpleadosReport() {
     setError(null)
 
     try {
-      let url = "/reportes/empleados"
-      const params = new URLSearchParams()
-      
-      if (fechaInicio) {
-        params.append("fechaInicio", format(fechaInicio, "yyyy-MM-dd"))
-      }
-      
-      if (fechaFin) {
-        params.append("fechaFin", format(fechaFin, "yyyy-MM-dd"))
-      }
+      const inicioStr = fechaInicio ? format(fechaInicio, "yyyy-MM-dd") : undefined
+      const finStr = fechaFin ? format(fechaFin, "yyyy-MM-dd") : undefined
 
-      if (params.toString()) {
-        url += `?${params.toString()}`
-      }
-
-      const response = await apiClient.get(url)
+      const resData = await reportesApi.obtenerReporteEmpleados({
+        fechaInicio: inicioStr,
+        fechaFin: finStr
+      })
       
-      // La API devuelve response.data directamente debido a nuestro interceptor en apiClient
-      const resData = (response as any)?.data
       if (resData) {
         setData(resData)
       } else {
@@ -42,7 +31,7 @@ export function useEmpleadosReport() {
       }
     } catch (err: any) {
       console.error("Error fetching reportes de empleados:", err)
-      setError(err.message || "Error al obtener datos")
+      setError(err?.message || "Error al obtener datos")
       toast.error("Error al cargar reporte de empleados")
     } finally {
       setIsLoading(false)
