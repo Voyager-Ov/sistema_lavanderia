@@ -39,8 +39,17 @@ export class ReportePedidosService extends BaseReportService {
 
         for (const p of pedidos) {
             if (!p.estado) {
-                throw new AppError(`El pedido N° ${p.numeroPedido} carece de un estado registrado.`, 400, "MISSING_ORDER_STATUS");
+                throw new AppError(`El pedido N° ${p.numeroPedido} carece de un estado registrado en la base de datos.`, 400, "MISSING_ORDER_STATUS");
             }
+            if (p.total === undefined || p.total === null || isNaN(Number(p.total))) {
+                throw new AppError(`El total del pedido N° ${p.numeroPedido} es inválido.`, 400, "INVALID_ORDER_TOTAL");
+            }
+
+            const fechaRaw = p.fechaHoraPedido || p.createdAt;
+            if (!fechaRaw) {
+                throw new AppError(`El pedido N° ${p.numeroPedido} carece de fecha registrada.`, 400, "MISSING_ORDER_DATE");
+            }
+
             const isCancelado = p.estado.toString().toUpperCase().includes("CANCELAD");
             const isCobrado = p.cobrado;
 
@@ -56,14 +65,15 @@ export class ReportePedidosService extends BaseReportService {
                     const pr = Number(d.precioHistorico);
                     const cant = Number(d.cantidad);
                     const catNombre = d.servicio ? d.servicio.nombre : "Sin Servicio";
-                    categoryMap[catNombre] = (categoryMap[catNombre] || 0) + (pr * cant);
+
+                    if (!Object.prototype.hasOwnProperty.call(categoryMap, catNombre)) {
+                        categoryMap[catNombre] = 0;
+                    }
+                    categoryMap[catNombre] += pr * cant;
                     return acc + (pr * cant);
                 }, 0);
             }
 
-            if (p.total === undefined || p.total === null || isNaN(Number(p.total))) {
-                throw new AppError(`El total del pedido N° ${p.numeroPedido} es inválido.`, 400, "INVALID_ORDER_TOTAL");
-            }
             const totalPedido = Number(p.total) > 0 ? Number(p.total) : subtotalItems;
 
             if (isCancelado) {
@@ -76,16 +86,18 @@ export class ReportePedidosService extends BaseReportService {
                 }
             }
 
-            const clienteNombre = p.cliente ? `${p.cliente.nombre || ""} ${p.cliente.apellido || ""}`.trim() : "Cliente General";
+            const clienteNombre = p.cliente 
+                ? (p.cliente.apellido ? `${p.cliente.nombre} ${p.cliente.apellido}` : p.cliente.nombre)
+                : "Consumidor Final";
 
             table.push({
                 id: p.numeroPedido,
-                codigoSeguimiento: p.codigoSeguimiento || `LAV-${p.numeroPedido}`,
+                codigoSeguimiento: p.codigoSeguimiento ? p.codigoSeguimiento : null,
                 cliente: clienteNombre,
                 estado: p.estado,
                 total: totalPedido,
-                fecha: p.fechaHoraPedido ? p.fechaHoraPedido.toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-                fechaEntrega: p.fechaEntregaEstimada ? p.fechaEntregaEstimada.toISOString().split("T")[0] : null
+                fecha: new Date(fechaRaw).toISOString().split("T")[0],
+                fechaEntrega: p.fechaEntregaEstimada ? new Date(p.fechaEntregaEstimada).toISOString().split("T")[0] : null
             });
         }
 
@@ -95,12 +107,12 @@ export class ReportePedidosService extends BaseReportService {
         // 1. Daily Trend
         const trendMap = {};
         for (const p of pedidos) {
-            const dateRaw = p.fechaHoraPedido || p.createdAt || p.fechaHoraCreacion;
-            const dateStr = dateRaw ? new Date(dateRaw).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }) : "Hoy";
-            if (!trendMap[dateStr]) {
+            const dateRaw = p.fechaHoraPedido || p.createdAt;
+            const dateStr = new Date(dateRaw).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+            if (!Object.prototype.hasOwnProperty.call(trendMap, dateStr)) {
                 trendMap[dateStr] = { name: dateStr, Ingresos: 0, Pedidos: 0 };
             }
-            const tot = parseFloat(p.total) || 0;
+            const tot = Number(p.total);
             if (p.cobrado) {
                 trendMap[dateStr].Ingresos += tot;
             }
@@ -118,23 +130,31 @@ export class ReportePedidosService extends BaseReportService {
             "PENDIENTE": "#f59e0b",
             "EN_PROCESO": "#3b82f6",
             "EN_LAVADO": "#06b6d4",
+            "EN_TALLER": "#8b5cf6",
             "LISTO": "#6366f1",
+            "LISTO_PARA_RETIRAR": "#6366f1",
             "ENTREGADO": "#10b981",
+            "RETIRADO": "#10b981",
             "CANCELADO": "#ef4444"
         };
         for (const p of pedidos) {
-            const st = (p.estado || "PENDIENTE").toString().toUpperCase();
-            statusMap[st] = (statusMap[st] || 0) + 1;
+            const st = p.estado.toString().toUpperCase();
+            if (!Object.prototype.hasOwnProperty.call(statusMap, st)) {
+                statusMap[st] = 0;
+            }
+            statusMap[st] += 1;
         }
-        const donut = Object.keys(statusMap).map(st => ({
-            name: st,
-            value: statusMap[st],
-            color: statusColors[st] || "#8b5cf6"
-        }));
-
-        if (donut.length === 0) {
-            donut.push({ name: "PENDIENTE", value: 1, color: "#f59e0b" });
-        }
+        const donut = Object.keys(statusMap).map(st => {
+            const color = statusColors[st];
+            if (!color) {
+                throw new AppError(`El estado de pedido '${st}' no posee un color asignado en el sistema.`, 400, "INVALID_ORDER_STATUS");
+            }
+            return {
+                name: st,
+                value: statusMap[st],
+                color
+            };
+        });
 
         // 3. Performance real de empleados basada en cajas operadas y cobros
         const { Empleado, Caja, Cobro, MovimientoCaja } = await this._getModels(negocioId);
@@ -146,7 +166,10 @@ export class ReportePedidosService extends BaseReportService {
 
         const chartEmpleados = [];
         for (const emp of empleados) {
-            const empNombre = `${emp.nombre || ''} ${emp.apellido || ''}`.trim() || `Empleado #${emp.id}`;
+            if (!emp.nombre) {
+                throw new AppError(`El empleado ID ${emp.id} no tiene un nombre registrado en la base de datos.`, 400, "MISSING_EMPLOYEE_NAME");
+            }
+            const empNombre = emp.apellido ? `${emp.nombre} ${emp.apellido}` : emp.nombre;
             const empCajas = cajas.filter(c => c.empleadoId === emp.id);
             const cajaIds = empCajas.map(c => c.idCaja);
 

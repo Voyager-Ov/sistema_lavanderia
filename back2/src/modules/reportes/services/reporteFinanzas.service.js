@@ -1,4 +1,5 @@
 import { BaseReportService } from "./baseReport.service.js";
+import { AppError } from "../../../utils/appError.js";
 
 export class ReporteFinanzasService extends BaseReportService {
     // Reporte de Ventas por Método de Pago dinámico del negocio
@@ -12,9 +13,16 @@ export class ReporteFinanzasService extends BaseReportService {
         const agrupado = {};
 
         for (const c of cobros) {
-            const nombreMetodo = c.metodoPago ? c.metodoPago.nombre : "Otros";
-            const iconoMetodo = c.metodoPago ? c.metodoPago.icono : "CreditCard";
-            const monto = parseFloat(c.montoAbonado) || 0;
+            if (!c.metodoPago) {
+                throw new AppError(`El cobro ID ${c.id} no posee un método de pago asociado en la base de datos.`, 400, "MISSING_PAYMENT_METHOD");
+            }
+            if (c.montoAbonado === undefined || c.montoAbonado === null || isNaN(Number(c.montoAbonado))) {
+                throw new AppError(`El monto abonado en el cobro ID ${c.id} es inválido.`, 400, "INVALID_AMOUNT");
+            }
+
+            const nombreMetodo = c.metodoPago.nombre;
+            const iconoMetodo = c.metodoPago.icono;
+            const monto = Number(c.montoAbonado);
 
             if (!agrupado[nombreMetodo]) {
                 agrupado[nombreMetodo] = {
@@ -41,12 +49,13 @@ export class ReporteFinanzasService extends BaseReportService {
     async obtenerReporteGeneralFinanzas(negocioId, query = {}) {
         const { Cobro, Pedido } = await this._getModels(negocioId);
 
-        const totalCobros = await Cobro.sum("montoAbonado") || 0;
+        const rawSum = await Cobro.sum("montoAbonado");
+        const totalCobros = rawSum !== null && !isNaN(Number(rawSum)) ? Number(rawSum) : 0;
         const totalPedidos = await Pedido.count();
         const pedidosCobrados = await Pedido.count({ where: { cobrado: true } });
 
         return {
-            totalIngresos: parseFloat(totalCobros),
+            totalIngresos: totalCobros,
             totalPedidos,
             pedidosCobrados,
             pedidosPendientesPago: totalPedidos - pedidosCobrados
