@@ -38,7 +38,7 @@ export class ReporteEmpleadosService extends BaseReportService {
         const totalPedidosCount = pedidos.length;
         const pedidosCanceladosCount = pedidos.filter(p => {
             if (!p.estado) {
-                throw new AppError(`El pedido N° ${p.numeroPedido} carece de un estado asignado.`, 400, "MISSING_ORDER_STATUS");
+                throw new AppError(`El pedido N° ${p.numeroPedido} carece de un estado asignado en la base de datos.`, 400, "MISSING_ORDER_STATUS");
             }
             return p.estado.toString().toUpperCase().includes("CANCELAD");
         }).length;
@@ -60,7 +60,7 @@ export class ReporteEmpleadosService extends BaseReportService {
 
         for (const c of cobros) {
             if (!c.metodoPago) {
-                throw new AppError(`El cobro ID ${c.id} no posee método de pago asignado.`, 400, "MISSING_PAYMENT_METHOD");
+                throw new AppError(`El cobro ID ${c.id} no posee método de pago asignado en la base de datos.`, 400, "MISSING_PAYMENT_METHOD");
             }
             if (c.montoAbonado === undefined || c.montoAbonado === null || isNaN(Number(c.montoAbonado))) {
                 throw new AppError(`El monto abonado en el cobro ID ${c.id} es inválido.`, 400, "INVALID_AMOUNT");
@@ -68,7 +68,7 @@ export class ReporteEmpleadosService extends BaseReportService {
 
             const monto = Number(c.montoAbonado);
             const metodoNombre = c.metodoPago.nombre;
-            const isEfectivo = metodoNombre.toLowerCase().includes("efectivo") || Number(c.montoRecibidoEfectivo) > 0;
+            const isEfectivo = metodoNombre.trim().toUpperCase() === "EFECTIVO";
 
             if (isEfectivo) {
                 const efectivoRecibido = Number(c.montoRecibidoEfectivo);
@@ -129,13 +129,29 @@ export class ReporteEmpleadosService extends BaseReportService {
                 }
             });
 
+            // Calculate actual canceled orders operated by employee during active cajas
+            let empPedidosCancelados = 0;
+            pedidos.forEach(p => {
+                if (p.estado && p.estado.toString().toUpperCase().includes("CANCELAD")) {
+                    const dateOrder = new Date(p.fechaHoraPedido || p.createdAt);
+                    const matchCaja = empCajas.some(cj => {
+                        const fApertura = new Date(cj.fechaHoraApertura);
+                        const fCierre = cj.fechaHoraCierre ? new Date(cj.fechaHoraCierre) : new Date();
+                        return dateOrder >= fApertura && dateOrder <= fCierre;
+                    });
+                    if (matchCaja) {
+                        empPedidosCancelados++;
+                    }
+                }
+            });
+
             tablaEmpleados.push({
                 id: emp.id.toString(),
                 nombre: empNombre,
                 rol: emp.rol.toUpperCase(),
                 cajasAbiertas: empCajasCount,
                 pedidosGenerados: empPedidosCobrados,
-                pedidosCancelados: 0,
+                pedidosCancelados: empPedidosCancelados,
                 totalCobrado: totalCobradoEmp
             });
         }
@@ -163,7 +179,7 @@ export class ReporteEmpleadosService extends BaseReportService {
 
                     const montoVal = Number(m.monto);
                     const metodoNombre = m.metodoPago.nombre;
-                    const isEfectivo = !metodoNombre.toLowerCase().includes("transferencia") && !metodoNombre.toLowerCase().includes("mercadopago") && !metodoNombre.toLowerCase().includes("tarjeta");
+                    const isEfectivo = metodoNombre.trim().toUpperCase() === "EFECTIVO";
                     if (isEfectivo) {
                         if (montoVal > 0) totalIngresosEfectivo += montoVal;
                         else totalEgresosEfectivo += Math.abs(montoVal);

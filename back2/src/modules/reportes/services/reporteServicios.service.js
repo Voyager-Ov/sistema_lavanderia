@@ -4,7 +4,7 @@ import { AppError } from "../../../utils/appError.js";
 
 export class ReporteServiciosService extends BaseReportService {
     async obtenerReporteServicios(negocioId, query = {}) {
-        const { Servicio, DetallePedido, Pedido, CategoriaServicio } = await this._getModels(negocioId);
+        const { Servicio, DetallePedido, Pedido, CategoriaServicio, Caja } = await this._getModels(negocioId);
 
         const wherePedido = { cobrado: true };
         const dateClauseSrv = this._parseDateRange(query);
@@ -26,6 +26,34 @@ export class ReporteServiciosService extends BaseReportService {
                 { model: Pedido, as: "pedido", where: wherePedido }
             ]
         });
+
+        // Count canceled service order items
+        const whereCanceledPedido = { estado: { [Op.iLike]: "%CANCELAD%" } };
+        if (dateClauseSrv) {
+            whereCanceledPedido[Op.or] = [
+                { fechaHoraCreacion: dateClauseSrv },
+                { fechaHoraPedido: dateClauseSrv },
+                { createdAt: dateClauseSrv }
+            ];
+        }
+        const canceladosCount = await DetallePedido.count({
+            include: [{ model: Pedido, as: "pedido", where: whereCanceledPedido }]
+        });
+
+        // Calculate actual open caja hours in range
+        const cajas = await Caja.findAll({ where: { negocioId } });
+        let totalHorasCajas = 0;
+        for (const cj of cajas) {
+            if (cj.fechaHoraApertura) {
+                const apertura = new Date(cj.fechaHoraApertura);
+                const cierre = cj.fechaHoraCierre ? new Date(cj.fechaHoraCierre) : new Date();
+                const diffHoras = (cierre - apertura) / (1000 * 60 * 60);
+                if (diffHoras > 0) {
+                    totalHorasCajas += diffHoras;
+                }
+            }
+        }
+        const horasOperativas = Math.round(totalHorasCajas);
 
         const serviceMap = {};
         let totalIngresosGeneral = 0;
@@ -101,15 +129,17 @@ export class ReporteServiciosService extends BaseReportService {
 
         const trend = Object.values(trendMap);
         const categoriesMetaData = donut.map(d => ({ key: d.name, name: d.name, color: d.color }));
+        const totalItemsEvaluados = detalles.length + canceladosCount;
+        const efectividad = totalItemsEvaluados > 0 ? parseFloat(((detalles.length / totalItemsEvaluados) * 100).toFixed(1)) : 0;
 
         return {
             kpis: {
                 ingresos: totalIngresosGeneral,
                 ticket: table.length > 0 ? parseFloat((totalIngresosGeneral / table.length).toFixed(2)) : 0,
-                efectividad: totalIngresosGeneral > 0 ? 100 : 0,
-                cancelados: 0,
-                margenBruto: totalIngresosGeneral > 0 ? 85 : 0,
-                horasOperativas: detalles.length
+                efectividad,
+                cancelados: canceladosCount,
+                margenBruto: totalIngresosGeneral > 0 ? 100 : 0,
+                horasOperativas
             },
             trend,
             categoriesMetaData,

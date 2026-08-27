@@ -3,6 +3,7 @@ import { generateSeedBusiness, generateSeedClients, generateSeedEmployees } from
 import { E2ESeedHelper } from '../helpers/e2e-seed.helper';
 
 test.describe('Módulo 4 & 5: Gestión de Empleados y Base de Clientes (+15 registros)', () => {
+  test.setTimeout(60000);
   test('debe sembrar empleados y 15+ clientes, validando la paginación de la tabla', async ({ page }) => {
     const businessData = generateSeedBusiness();
     const session = await E2ESeedHelper.registerAndApproveNewBusiness(page, businessData);

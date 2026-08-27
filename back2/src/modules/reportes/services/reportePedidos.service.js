@@ -4,7 +4,7 @@ import { AppError } from "../../../utils/appError.js";
 
 export class ReportePedidosService extends BaseReportService {
     async obtenerReportePedidos(negocioId, query = {}) {
-        const { Pedido, Cliente, DetallePedido, Servicio } = await this._getModels(negocioId);
+        const { Pedido, Cliente, DetallePedido, Servicio, Empleado, Caja, Cobro, MovimientoCaja } = await this._getModels(negocioId);
 
         const wherePedido = {};
         const dateClause = this._parseDateRange(query);
@@ -33,6 +33,8 @@ export class ReportePedidosService extends BaseReportService {
         let totalPedidos = pedidos.length;
         let cancelados = 0;
         let pendienteCobro = 0;
+        let totalHorasEntrega = 0;
+        let pedidosEntregadosConFecha = 0;
 
         const table = [];
         const categoryMap = {};
@@ -86,6 +88,14 @@ export class ReportePedidosService extends BaseReportService {
                 }
             }
 
+            if (p.estado.toString().toUpperCase() === "ENTREGADO" && p.fechaEntregaEstimada && p.fechaHoraPedido) {
+                const diffHoras = (new Date(p.fechaEntregaEstimada) - new Date(p.fechaHoraPedido)) / (1000 * 60 * 60);
+                if (diffHoras > 0) {
+                    totalHorasEntrega += diffHoras;
+                    pedidosEntregadosConFecha++;
+                }
+            }
+
             const clienteNombre = p.cliente 
                 ? (p.cliente.apellido ? `${p.cliente.nombre} ${p.cliente.apellido}` : p.cliente.nombre)
                 : "Consumidor Final";
@@ -103,6 +113,7 @@ export class ReportePedidosService extends BaseReportService {
 
         const validosCount = Math.max(1, totalPedidos - cancelados);
         const ticket = totalPedidos > 0 ? parseFloat((ingresos / validosCount).toFixed(2)) : 0;
+        const tiempoMedioEntrega = pedidosEntregadosConFecha > 0 ? Math.round(totalHorasEntrega / pedidosEntregadosConFecha) : 0;
 
         // 1. Daily Trend
         const trendMap = {};
@@ -157,12 +168,24 @@ export class ReportePedidosService extends BaseReportService {
         });
 
         // 3. Performance real de empleados basada en cajas operadas y cobros
-        const { Empleado, Caja, Cobro, MovimientoCaja } = await this._getModels(negocioId);
         const empleados = await Empleado.findAll({ where: { negocioId } });
         const cajas = await Caja.findAll({ where: { negocioId } });
         const cobros = await Cobro.findAll({
             include: [{ model: MovimientoCaja, as: "movimientoCaja" }]
         });
+
+        let totalHorasCajas = 0;
+        for (const cj of cajas) {
+            if (cj.fechaHoraApertura) {
+                const apertura = new Date(cj.fechaHoraApertura);
+                const cierre = cj.fechaHoraCierre ? new Date(cj.fechaHoraCierre) : new Date();
+                const diffHoras = (cierre - apertura) / (1000 * 60 * 60);
+                if (diffHoras > 0) {
+                    totalHorasCajas += diffHoras;
+                }
+            }
+        }
+        const horasOperativas = Math.round(totalHorasCajas);
 
         const chartEmpleados = [];
         for (const emp of empleados) {
@@ -189,8 +212,8 @@ export class ReportePedidosService extends BaseReportService {
                 cancelados,
                 pendienteCobro,
                 margenBruto: ingresos > 0 ? parseFloat(((ingresos - (pendienteCobro * 0.15)) / ingresos * 100).toFixed(1)) : 0,
-                horasOperativas: cajas.length * 8,
-                tiempoMedioEntrega: 24
+                horasOperativas,
+                tiempoMedioEntrega
             },
             trend,
             categoriesMetaData,

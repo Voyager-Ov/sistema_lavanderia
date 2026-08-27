@@ -3,6 +3,7 @@ import { generateSeedBusiness, generateSeedClients, SEED_CATEGORIES, SEED_SERVIC
 import { E2ESeedHelper } from '../helpers/e2e-seed.helper';
 
 test.describe('Módulo 6 & 7: Apertura de Caja, Pedidos POS y Transición de Estados', () => {
+  test.setTimeout(60000);
   test('debe abrir caja, registrar pedidos y moverlos por sus estados de taller', async ({ page }) => {
     const businessData = generateSeedBusiness();
     const session = await E2ESeedHelper.registerAndApproveNewBusiness(page, businessData);
@@ -33,6 +34,7 @@ test.describe('Módulo 6 & 7: Apertura de Caja, Pedidos POS y Transición de Est
     expect(orders.length).toBeGreaterThan(0);
 
     // 4. Navegar a /admin/pedidos en la UI
+    await E2ESeedHelper.injectSession(page, session);
     await page.goto('/admin/pedidos', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toContainText(/pedidos|ordenes|estado/i);

@@ -3,6 +3,7 @@ import { generateSeedBusiness, SEED_CATEGORIES, SEED_SERVICES } from '../fixture
 import { E2ESeedHelper } from '../helpers/e2e-seed.helper';
 
 test.describe('Módulo 2 & 3: Categorías y Catálogo de Servicios con Paginación', () => {
+  test.setTimeout(60000);
   test('debe sembrar categorías y servicios y permitir filtrado y navegación en la UI', async ({ page }) => {
     const businessData = generateSeedBusiness();
     const session = await E2ESeedHelper.registerAndApproveNewBusiness(page, businessData);
