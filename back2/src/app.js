@@ -12,6 +12,7 @@ validarVariablesEntorno();
 
 // Custom Middlewares
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { requestLogger } from "./middlewares/requestLogger.middleware.js";
 import { dynamicCors } from "./middlewares/cors.middleware.js";
 import { successResponse } from "./utils/response.util.js";
 
@@ -46,6 +47,9 @@ app.use(dynamicCors);
 // Body parsers
 app.use(express.json());
 app.use(cookieParser());
+
+// Request logging middleware
+app.use(requestLogger);
 
 // Static uploads folder
 const __filename = fileURLToPath(import.meta.url);

@@ -27,23 +27,16 @@ class PagosService {
         }
         const { MetodoPago } = await this._getModels(negocioId);
 
-        let metodos = await MetodoPago.findAll({
-            order: [["id", "ASC"]]
-        });
-
-        // Si el negocio aún no tiene métodos de pago configurados, sembramos los métodos iniciales sugeridos
-        if (metodos.length === 0) {
-            const base = this._getMetodosBase(negocioId);
-            for (const m of base) {
-                await MetodoPago.findOrCreate({
-                    where: { nombre: m.nombre },
-                    defaults: m
-                });
-            }
-            metodos = await MetodoPago.findAll({
-                order: [["id", "ASC"]]
+        const base = this._getMetodosBase(negocioId);
+        for (const m of base) {
+            await MetodoPago.findOrCreate({
+                where: { nombre: m.nombre },
+                defaults: m
             });
         }
+        const metodos = await MetodoPago.findAll({
+            order: [["id", "ASC"]]
+        });
 
         return metodos;
     }
@@ -208,7 +201,7 @@ class PagosService {
             const permitirSaldoAFavorFinal = remanenteTotalEfectivo > 0 && !!params.dejarVueltoAFavor;
 
             // Método de pago
-            let metodoId = params.metodoPagoId;
+            let metodoId = params.metodoPagoId || params.metodoId;
             if (!metodoId) {
                 const metodoDefault = await MetodoPago.findOne({ where: { activo: true }, order: [["id", "ASC"]], transaction: t });
                 if (metodoDefault) metodoId = metodoDefault.id;

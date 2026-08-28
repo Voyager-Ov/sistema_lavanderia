@@ -6,7 +6,14 @@ export class ReporteFinanzasService extends BaseReportService {
     async obtenerReporteVentasPorMetodoPago(negocioId, query = {}) {
         const { Cobro, MetodoPago } = await this._getModels(negocioId);
 
+        const whereCobro = {};
+        const dateClause = this._parseDateRange(query);
+        if (dateClause) {
+            whereCobro.fechaHora = dateClause;
+        }
+
         const cobros = await Cobro.findAll({
+            where: whereCobro,
             include: [{ model: MetodoPago, as: "metodoPago" }]
         });
 
@@ -49,10 +56,18 @@ export class ReporteFinanzasService extends BaseReportService {
     async obtenerReporteGeneralFinanzas(negocioId, query = {}) {
         const { Cobro, Pedido } = await this._getModels(negocioId);
 
-        const rawSum = await Cobro.sum("montoAbonado");
+        const whereCobro = {};
+        const wherePedido = {};
+        const dateClause = this._parseDateRange(query);
+        if (dateClause) {
+            whereCobro.fechaHora = dateClause;
+            wherePedido.createdAt = dateClause;
+        }
+
+        const rawSum = await Cobro.sum("montoAbonado", { where: whereCobro });
         const totalCobros = rawSum !== null && !isNaN(Number(rawSum)) ? Number(rawSum) : 0;
-        const totalPedidos = await Pedido.count();
-        const pedidosCobrados = await Pedido.count({ where: { cobrado: true } });
+        const totalPedidos = await Pedido.count({ where: wherePedido });
+        const pedidosCobrados = await Pedido.count({ where: { ...wherePedido, cobrado: true } });
 
         return {
             totalIngresos: totalCobros,

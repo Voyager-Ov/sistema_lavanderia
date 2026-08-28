@@ -30,10 +30,19 @@ class CajasService {
                 const isIngreso = mov.tipoMovimiento?.toLowerCase().includes("ingreso") || mov.tipoMovimiento?.toLowerCase().includes("venta") || montoVal > 0;
                 const absMonto = Math.abs(montoVal);
 
-                const metodoObj = mov.metodoPago ? mov.metodoPago : { nombre: "Efectivo", esFijo: true };
-                const metodoNombre = metodoObj.nombre ? metodoObj.nombre : "Efectivo";
-                const metodoId = metodoObj.id ? metodoObj.id : null;
-                const isEfectivo = metodoObj.esFijo !== false && !metodoNombre.toLowerCase().includes("transferencia") && !metodoNombre.toLowerCase().includes("mercadopago") && !metodoNombre.toLowerCase().includes("tarjeta");
+                const metodoObj = mov.metodoPago;
+                let metodoNombre = "Efectivo";
+                let metodoId = mov.metodoPagoId || null;
+                let isEfectivo = true;
+
+                if (metodoObj && metodoObj.nombre) {
+                    metodoNombre = metodoObj.nombre.trim();
+                    metodoId = metodoObj.id || metodoId;
+                    isEfectivo = metodoNombre.toUpperCase() === "EFECTIVO";
+                } else if (mov.metodoPagoId && mov.metodoPagoId !== 1) {
+                    metodoNombre = "Digital";
+                    isEfectivo = false;
+                }
 
                 if (!metodoMap[metodoNombre]) {
                     metodoMap[metodoNombre] = {
@@ -297,7 +306,8 @@ class CajasService {
             return this._formatCaja(caja);
         }
 
-        const efectivoReal = parseFloat(data.efectivoReal);
+        const rawEfectivo = data.efectivoReal !== undefined ? data.efectivoReal : data.montoReal;
+        const efectivoReal = parseFloat(rawEfectivo);
         if (isNaN(efectivoReal) || efectivoReal < 0) {
             throw new AppError("El efectivo real debe ser mayor o igual a cero.", 400, "INVALID_FINAL_AMOUNT");
         }

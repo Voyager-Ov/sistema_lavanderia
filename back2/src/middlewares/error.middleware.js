@@ -1,11 +1,14 @@
 export const errorHandler = (err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    const negocioId = req.user?.negocioId;
+    const tenantStr = negocioId ? ` [Tenant: ${negocioId}]` : "";
+    const routeStr = `${req.method} ${req.originalUrl || req.url}`;
 
     if (statusCode >= 500) {
-        console.error("❌ [SERVER ERROR]:", err);
+        console.error(`❌ [SERVER ERROR]${tenantStr} ${routeStr}:`, err.stack || err);
     } else {
-        console.warn(`⚠️ [${statusCode}] ${err.code || "CLIENT_ERROR"}: ${message} (${req.method} ${req.originalUrl || req.url})`);
+        console.warn(`⚠️ [CLIENT ERROR ${statusCode}]${tenantStr} ${routeStr} -> ${err.code || "BAD_REQUEST"}: ${message}`);
     }
 
     res.status(statusCode).json({

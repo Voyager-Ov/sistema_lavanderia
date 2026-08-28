@@ -169,19 +169,21 @@ class ConnectionManager {
                 // Si el negocio ya existe o en concurrencia
             }
 
-            // ─── SIEMBRA DE MÉTODO DE PAGO FIJO (EFECTIVO) ───
+            // ─── SIEMBRA DE MÉTODOS DE PAGO DEL SISTEMA ───
             try {
-                await tenantModels.MetodoPago.findOrCreate({
-                    where: { esFijo: true },
-                    defaults: {
-                        nombre: "Efectivo",
-                        icono: "Banknote",
-                        activo: true,
-                        esFijo: true,
-                        requiereIntegracion: false,
-                        negocioId
-                    }
-                });
+                const metodosBase = [
+                    { nombre: "Efectivo", activo: true, icono: "Banknote", esFijo: true, negocioId },
+                    { nombre: "Mercado Pago / QR", activo: true, icono: "QrCode", esFijo: true, negocioId },
+                    { nombre: "Tarjeta de Débito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+                    { nombre: "Tarjeta de Crédito", activo: true, icono: "CreditCard", esFijo: true, negocioId },
+                    { nombre: "Transferencia Bancaria", activo: true, icono: "Landmark", esFijo: true, negocioId }
+                ];
+                for (const m of metodosBase) {
+                    await tenantModels.MetodoPago.findOrCreate({
+                        where: { nombre: m.nombre },
+                        defaults: m
+                    });
+                }
             } catch (e) {}
 
             // ─── SIEMBRA DE ESTADOS DEL SISTEMA ───
