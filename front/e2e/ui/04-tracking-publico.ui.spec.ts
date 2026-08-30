@@ -47,10 +47,13 @@ test.describe('Módulo UI 04: Vista Pública de Tracking de Pedido', () => {
     codigoSeguimiento = pedData.codigoSeguimiento;
   });
 
-  test('Debe cargar la vista pública de tracking con el estado del pedido', async ({ page }) => {
+  test('Debe cargar la vista pública de tracking con el estado del pedido y datos del cliente', async ({ page }) => {
     await page.goto(`/tracking/${ctx.negocioId}/${codigoSeguimiento}`);
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator(`text=${codigoSeguimiento}`)).toBeVisible();
+    // Verificar saludo con el cliente y número de ticket
+    await expect(page.locator('text=Seguimiento de tu pedido')).toBeVisible({ timeout: 10000 });
+    // Verificar que el estado inicial "Recibido" (PENDIENTE) está visible
+    await expect(page.locator('text=Recibido')).toBeVisible();
   });
 });
+

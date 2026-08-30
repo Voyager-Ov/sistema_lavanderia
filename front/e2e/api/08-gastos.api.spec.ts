@@ -72,7 +72,8 @@ test.describe('Módulo 08: API de Gastos & Categorías de Egreso', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    const list = body.data?.gastos || body.data;
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
     expect(list.length).toBeGreaterThan(0);
   });
 });

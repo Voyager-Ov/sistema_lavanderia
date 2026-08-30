@@ -46,7 +46,8 @@ test.describe('Módulo 04: API de Catálogo, Categorías & Servicios', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(Array.isArray(body.data?.categorias || body.data)).toBe(true);
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
   });
 
   test('POST /api/productos - Empleado NO DEBE poder crear un producto/servicio (403)', async ({ request }) => {
@@ -89,7 +90,8 @@ test.describe('Módulo 04: API de Catálogo, Categorías & Servicios', () => {
 
     expect(res.status()).toBe(200);
     const body = await res.json();
-    const list = body.data?.productos || body.data;
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
     const prod = list.find((p: any) => p.id === productoId);
     expect(prod).toBeDefined();
     expect(prod).toHaveProperty('costoEstimado');
@@ -102,7 +104,8 @@ test.describe('Módulo 04: API de Catálogo, Categorías & Servicios', () => {
 
     expect(res.status()).toBe(200);
     const body = await res.json();
-    const list = body.data?.productos || body.data;
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
     const prod = list.find((p: any) => p.id === productoId);
     expect(prod).toBeDefined();
     expect(prod.costoEstimado).toBeUndefined();

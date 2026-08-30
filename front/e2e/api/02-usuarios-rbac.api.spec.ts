@@ -50,8 +50,9 @@ test.describe('Módulo 02: API de Usuarios & Control de Acceso (RBAC)', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    const list = body.data?.items || body.data?.usuarios || (Array.isArray(body.data) ? body.data : []);
-    expect(Array.isArray(list)).toBe(true);
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
+    expect(list.length).toBeGreaterThan(0);
   });
 
   test('GET /api/usuarios - Empleado solo puede ver sus propios datos en el listado (200)', async ({ request }) => {
@@ -62,8 +63,8 @@ test.describe('Módulo 02: API de Usuarios & Control de Acceso (RBAC)', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    const list = body.data?.items || body.data?.usuarios || body.data?.rows || (Array.isArray(body.data) ? body.data : []);
-    expect(Array.isArray(list)).toBe(true);
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
     expect(list.length).toBe(1);
     expect(list[0].id).toBe(ctx.empleado.id);
   });

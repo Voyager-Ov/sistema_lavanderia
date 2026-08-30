@@ -8,43 +8,55 @@ test.describe('Módulo UI 03: Vistas y Navegación del Panel de Administración'
     ctx = await createTenantAdmin(request);
   });
 
-  test('Debe cargar el Dashboard de Administración con métricas', async ({ page }) => {
+  test('Debe cargar el Dashboard de Administración con botones de acción y KPIs', async ({ page }) => {
     await injectAuthState(page, ctx.admin, ctx.token);
     await page.goto('/admin/dashboard');
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator('text=Dashboard')).toBeVisible();
+    // Verificar heading exacto del Dashboard Admin
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    
+    // Botón de acción rápido
+    await expect(page.getByRole('button', { name: /Crear Pedido/i })).toBeVisible();
+
+    // KPI principal del Dashboard
+    await expect(page.locator('text=Pedidos del Día').first()).toBeVisible();
+    await expect(page.locator('text=Ingresos Hoy').first()).toBeVisible();
   });
 
-  test('Debe cargar el módulo de Clientes de Administración', async ({ page }) => {
+  test('Debe cargar el módulo de Clientes de Administración con el directorio', async ({ page }) => {
     await injectAuthState(page, ctx.admin, ctx.token);
     await page.goto('/admin/clientes');
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator('text=Clientes')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Directorio de Clientes/i, level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Nuevo Cliente/i })).toBeVisible();
   });
 
   test('Debe cargar el módulo de Servicios y Categorías de Administración', async ({ page }) => {
     await injectAuthState(page, ctx.admin, ctx.token);
     await page.goto('/admin/servicios');
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator('text=Servicios')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Servicios', level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Categorías/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Nuevo Servicio/i })).toBeVisible();
   });
 
-  test('Debe cargar el módulo de Pedidos de Administración', async ({ page }) => {
+  test('Debe cargar el módulo de Pedidos de Administración con filtros de fecha', async ({ page }) => {
     await injectAuthState(page, ctx.admin, ctx.token);
     await page.goto('/admin/pedidos');
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator('text=Pedidos')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pedidos', level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Crear Nuevo Pedido/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Filtrar por Fecha/i })).toBeVisible();
   });
 
-  test('Debe cargar el módulo de Configuración de Administración', async ({ page }) => {
+  test('Debe cargar el módulo de Configuración con el menú de navegación lateral', async ({ page }) => {
     await injectAuthState(page, ctx.admin, ctx.token);
     await page.goto('/admin/configuraciones');
 
-    await expect(page.locator('body')).toBeVisible();
-    await expect(page.locator('text=Configuración')).toBeVisible();
+    // Verificar ítems de la navegación lateral del módulo de configuración
+    await expect(page.locator('button:has-text("Negocio")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Pagos")').first()).toBeVisible();
+    await expect(page.locator('button:has-text("Hardware y Tickets")').first()).toBeVisible();
   });
 });
+

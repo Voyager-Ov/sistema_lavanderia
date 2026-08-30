@@ -16,6 +16,10 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.DOUBLE,
 				allowNull: false,
 			},
+			servicioId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "detalles_pedido",

@@ -118,7 +118,8 @@ class RegisterService {
         if (nuevoUsuario) {
             nuevoUsuario.password = solicitud.passwordHash;
             nuevoUsuario.negocioId = nuevoNegocio.id;
-            nuevoUsuario.emailConfirmado = true;
+            nuevoUsuario.emailConfirmado = false;
+            nuevoUsuario.tokenConfirmacion = Math.floor(100000 + Math.random() * 900000).toString();
             nuevoUsuario.activo = true;
             await nuevoUsuario.save();
         } else {
@@ -128,7 +129,7 @@ class RegisterService {
                 password: solicitud.passwordHash,
                 negocioId: nuevoNegocio.id,
                 tokenConfirmacion,
-                emailConfirmado: true,
+                emailConfirmado: false,
                 activo: true
             });
         }

@@ -16,6 +16,14 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.DATE,
 				allowNull: true,
 			},
+			estadoId: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
+			pedidoNumeroPedido: {
+				type: DataTypes.INTEGER,
+				allowNull: true,
+			},
 		},
 		{
 			tableName: "cambios_estado_pedido",
