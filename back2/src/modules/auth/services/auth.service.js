@@ -14,6 +14,10 @@ class AuthService {
         return registerService.register(data);
     }
 
+    async sustanciarAprobacionNegocio(solicitudId, superadminEmail) {
+        return registerService.sustanciarAprobacionNegocio(solicitudId, superadminEmail);
+    }
+
     async verifyEmail(data) {
         return verifyEmailService.verifyEmail(data);
     }

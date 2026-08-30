@@ -1,1 +1,0 @@
-super_secret_jwt_key_lavanderia_2026

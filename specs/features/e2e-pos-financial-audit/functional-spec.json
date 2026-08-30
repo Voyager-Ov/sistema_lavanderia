@@ -1,0 +1,203 @@
+{
+  "feature_id": "e2e-pos-financial-audit",
+  "title": "Suite E2E de Auditoría Financiera, Punto de Venta (POS Multirrol), Cajas Chicas y Resiliencia Contable",
+  "version": "1.0.0",
+  "testing_execution_model": "100% Playwright UI Automation ejecutado desde el Front-End (Chromium Browser). Todas las interacciones, aperturas de caja, POS masivo, cobros, cierres con discrepancia y auditorías se realizan interactuando directamente sobre el DOM de Next.js para evaluar la respuesta y estabilidad real del backend.",
+  "description": "Especificación funcional exhaustiva para la suite de pruebas E2E y sembrado masivo que audita la operación de Punto de Venta (POS) en portales de Administrador y Empleado, gestión de múltiples Cajas Chicas (apertura, cierres de turno, arqueo y discrepancias), registro de Gastos, movimientos de Cuenta Corriente (crédito/vuelto a favor) y verificación matemática 1:1 de métricas y estados financieros en tiempo real.",
+  "scope": {
+    "in_scope": [
+      "Simulación de onboarding 100% UI: Registro de nuevo Negocio, aprobación visual por SuperAdmin e inicio de sesión de Administrador y Empleados.",
+      "Sembrado masivo de catálogo: 5 Categorías, 15 Servicios con listas de precios diferidos e históricos.",
+      "Sembrado masivo de personal y clientes: 4 Empleados con roles diferenciados (ADMIN, EMPLEADO/CAJERO) y 25 Clientes para pruebas intensivas de paginación y cuenta corriente.",
+      "Operación multirrol de POS desde el Portal Admin y Portal Empleado (generación de 25+ pedidos en diferentes turnos).",
+      "Ciclo de vida completo de cajas chicas: Apertura de turno mañana (Caja 1), cobros y gastos en turno 1, arqueo de caja con discrepancia física (sobrante/faltante), cierre de turno, apertura de turno tarde (Caja 2) por empleado cajero, cobros y cierre de turno 2.",
+      "Módulo de Gastos del Negocio: Registro de egresos en efectivo y transferencia con categoría de gasto, afectación directa a la Caja Chica y al estado de resultados neto.",
+      "Mecanismo de Cuenta Corriente y Saldo a Favor: Generación atómica de saldo a favor por vueltos excedentes, acreditaciones manuales y consumo atómico en nuevos cobros de pedidos.",
+      "Auditoría de Resiliencia y Manejo de Errores (Error Boundaries & Validaciones): Intentos de cobro en pedidos cancelados, cobro sin caja abierta, cobros duplicados, sobrepagos en transferencia, transiciones inválidas de estado y recuperación visual mediante toasts y banners de advertencia sin caídas ni crash de app.",
+      "Generación automatizada de Matriz de Auditoría Financiera 1:1 en Markdown y capturas PNG del Dashboard y Reportes de Finanzas."
+    ],
+    "out_of_scope": [
+      "Integraciones con pasarelas de pago externas en producción real (MercadoPago API live webhooks con dinero real).",
+      "Impresión física de tickets de papel por hardware térmico USB/POS (se valida la generación del HTML/DOM).",
+      "Facturación electrónica AFIP en entorno de producción real con certificado digital (se simula el flujo de comprobante)."
+    ]
+  },
+  "user_journeys": [
+    {
+      "journey_id": "UJ-001",
+      "title": "Onboarding y Aprobación Visual de Negocio por SuperAdmin",
+      "actor": "Dueño de Lavandería / SuperAdministrador",
+      "steps": [
+        "El cliente ingresa a '/register' y completa la solicitud con nombre del negocio, email del administrador, contraseña y teléfono.",
+        "El sistema crea la solicitud en estado PENDIENTE y muestra mensaje de espera de autorización.",
+        "El SuperAdmin inicia sesión en '/superadmin/login' con credenciales máster.",
+        "El SuperAdmin navega a '/superadmin/solicitudes', localiza la solicitud del nuevo negocio y presiona 'Aprobar'.",
+        "El backend crea atómicamente el esquema de base de datos PostgreSQL aislado 'tenant_X' e instancia los 5 estados del sistema, roles y métodos de pago por defecto.",
+        "El Administrador del negocio inicia sesión exitosamente en '/login' y accede al dashboard principal."
+      ]
+    },
+    {
+      "journey_id": "UJ-002",
+      "title": "Configuración Inicial de Catálogos, Personal y Clientes",
+      "actor": "Administrador del Negocio",
+      "steps": [
+        "El Administrador navega a '/admin/servicios' y crea 5 categorías principales.",
+        "El Administrador crea 15 servicios con sus respectivas tarifas, imágenes de referencia y tiempos estimados de entrega.",
+        "El Administrador navega a '/admin/empleados' y registra 3 empleados adicionando sus credenciales de acceso y asignando roles 'ADMIN' y 'EMPLEADO'.",
+        "El Administrador navega a '/admin/clientes' y registra masivamente 25 clientes con datos de contacto completos.",
+        "El Administrador verifica visualmente la tabla de clientes con paginación de 10 registros por página (Página 1: 10 clientes, Página 2: 10 clientes, Página 3: 5 clientes)."
+      ]
+    },
+    {
+      "journey_id": "UJ-003",
+      "title": "Gestión de Turno Mañana: Apertura de Caja, POS Masivo y Registro de Gastos (Portal Admin)",
+      "actor": "Administrador / Cajero Mañana",
+      "steps": [
+        "El Administrador abre la Caja Chica Turno Mañana (Caja #1) con un fondo inicial en efectivo de $20.000.",
+        "El Administrador opera el módulo Punto de Venta (POS) en '/admin/pedidos/nuevo' o mediante modal lateral.",
+        "Genera 12 pedidos asignados a distintos clientes con combinaciones de ítems de lavado, secado, planchado y tintorería.",
+        "Procesa el ciclo de taller de los pedidos transicionando libremente entre PENDIENTE, EN_PROCESO y LISTO (o LISTO_PARA_RETIRAR).",
+        "Efectúa cobros individuales en efectivo registrando vueltos a favor en Cuenta Corriente para generar crédito reutilizable.",
+        "Navega al módulo '/admin/gastos' y registra 2 gastos operativos en efectivo (Compra de Detergente $3.500 y Compra de Bolsas $1.500), vinculándolos automáticamente a la caja del turno activo."
+      ]
+    },
+    {
+      "journey_id": "UJ-004",
+      "title": "Cierre de Turno Mañana con Arqueo de Caja y Detección de Discrepancia",
+      "actor": "Administrador / Cajero Mañana",
+      "steps": [
+        "El cajero o administrador navega a '/admin/cajas' para realizar el cierre del Turno Mañana.",
+        "El sistema muestra el Saldo Esperado Teórico calculado automáticamente: (Monto Inicial + Cobros en Efectivo - Gastos en Efectivo).",
+        "El usuario ingresa el arqueo físico de dinero contando los billetes en caja.",
+        "El usuario declara un arqueo con discrepancia intencional (ejemplo: $200 de faltante o sobrante por error de cambio).",
+        "El sistema registra la discrepancia en la caja, emite un aviso visual de cierre con observaciones y pasa la caja a estado 'CERRADA'.",
+        "Cualquier intento posterior de cobrar un pedido sin abrir una nueva caja es rechazado visualmente con el banner '⚠️ Caja Cerrada'."
+      ]
+    },
+    {
+      "journey_id": "UJ-005",
+      "title": "Gestión de Turno Tarde: Operación de POS desde Portal Empleado (Rol EMPLEADO)",
+      "actor": "Empleado Cajero (Turno Tarde)",
+      "steps": [
+        "El empleado de turno tarde inicia sesión en '/login' con sus propias credenciales de rol 'EMPLEADO'.",
+        "El sistema valida su token, restringe el acceso a paneles administrativos de configuración global y lo redirige a la vista operativa del empleado.",
+        "El empleado abre la Caja Chica Turno Tarde (Caja #2) con un monto inicial de $15.000.",
+        "El empleado registra 13 nuevos pedidos en el POS para clientes nuevos y recurrentes.",
+        "Procesa cobros utilizando saldo a favor acumulado en Cuenta Corriente por clientes del Turno Mañana, descontando atómicamente el crédito disponible.",
+        "Efectúa cobros digitales mediante Transferencia Bancaria y MercadoPago/QR.",
+        "Transiciona pedidos a estado ENTREGADO y realiza la cancelación de 1 pedido especificando el motivo de cancelación.",
+        "Realiza el cierre de la Caja Chica Turno Tarde declarando coincidencia física exactas sin discrepancias."
+      ]
+    },
+    {
+      "journey_id": "UJ-006",
+      "title": "Auditoría de Resiliencia, Barreras de Error y Consistencia Financiera 1:1",
+      "actor": "Administrador / Auditor Financiero",
+      "steps": [
+        "El Administrador reingresa a '/admin/dashboard' y '/admin/finanzas'.",
+        "El sistema calcula de forma centralizada las métricas consolidadas del negocio sumando ambos turnos de caja.",
+        "Somete el sistema a pruebas de resistencia: intento de cobrar un pedido cancelado, intento de aplicar saldo a favor superior al crédito disponible, cobro simultáneo con caja cerrada y cambio de estado fuera de la máquina de estados.",
+        "El sistema captura la pantalla de los componentes de Dashboard, Finanzas y Cajas Chicas.",
+        "Genera la Matriz de Auditoría Financiera 1:1 en Markdown verificando la ecuación contable matemática exacta contra la interfaz visual."
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion_id": "AC-001",
+      "title": "Aislamiento Multitenant Estricto sin Valores Hardcodeados",
+      "given": "Un usuario autenticado perteneciendo al Negocio X (Tenant X)",
+      "when": "Ejecuta cualquier operación en el POS, Cajas, Clientes, Empleados o Finanzas",
+      "then": "El backend obtiene el 'negocioId' exclusivamente del token verificado de la sesión. De no existir o ser inválido, retorna HTTP 400 'MISSING_TENANT_ID' sin fallbacks a negocioId = 1."
+    },
+    {
+      "criterion_id": "AC-002",
+      "title": "Apertura y Validación Obligatoria de Caja Chica Activa para Transacciones",
+      "given": "El módulo de cobros de pedidos o registro de gastos",
+      "when": "Se intenta procesar un pago o registrar un gasto en efectivo mientras la caja chica del turno está 'CERRADA'",
+      "then": "El backend rechaza la operación con HTTP 400 'NO_OPEN_CASH_REGISTER' y el frontend despliega el banner '⚠️ Caja Cerrada', deshabilitando el botón de confirmación."
+    },
+    {
+      "criterion_id": "AC-003",
+      "title": "Consistencia Atómica de Cobro Único por Pedido y Consumo de Crédito",
+      "given": "Un pedido activo en estado PENDIENTE, EN_PROCESO, LISTO o ENTREGADO sin cobrar",
+      "when": "Se procesa la transacción de pago aplicando saldo a favor del cliente y dejando vuelto excedente",
+      "then": "La operación se ejecuta dentro de una transacción SQL atómica ACID. Si el vuelto debe quedar a favor, se acredita en Cuenta Corriente como movimiento de Crédito. Si se usa saldo a favor, se debita atómicamente hasta cubrir el total del pedido."
+    },
+    {
+      "criterion_id": "AC-004",
+      "title": "Rechazo Atómico de Cobro en Pedidos Cancelados o Previamente Cobrados",
+      "given": "Un pedido en estado CANCELADO o con atributo 'cobrado = true'",
+      "when": "Se envía una solicitud de cobro a '/api/pagos'",
+      "then": "El servidor revierte la transacción atómicamente y responde con HTTP 400 'CANNOT_CHARGE_CANCELLED_ORDER' o 'ORDER_ALREADY_PAID', notificando visualmente con un toast de error."
+    },
+    {
+      "criterion_id": "AC-005",
+      "title": "Máquina de 5 Estados Oficiales y Movilidad Libre Activa",
+      "given": "Un pedido existente en el sistema",
+      "when": "Se solicita una transición de estado mediante '/api/pedidos/:id/estado'",
+      "then": "Solo se permiten los 5 estados oficiales: PENDIENTE, EN_PROCESO, LISTO (LISTO_PARA_RETIRAR), ENTREGADO y CANCELADO. Entre PENDIENTE, EN_PROCESO y LISTO la transición es 100% libre y bidireccional. La inclusión de cualquier otro estado es rechazada."
+    },
+    {
+      "criterion_id": "AC-006",
+      "title": "Arqueo de Caja Diario y Registro de Discrepancias",
+      "given": "Una Caja Chica activa con transacciones registradas",
+      "when": "El usuario realiza el cierre declarando un arqueo físico diferente al saldo teórico esperado",
+      "then": "El sistema calcula automáticamente la discrepancia (Sobrante o Faltante), guarda el registro histórico en 'Caja', vincula el usuario de cierre y cambia el estado de la caja a 'Cerrada'."
+    },
+    {
+      "criterion_id": "AC-007",
+      "title": "Impatación de Gastos Operativos en Caja Chica y Balance Neto",
+      "given": "Un negocio con una Caja Chica abierta",
+      "when": "Se registra un gasto con medio de pago 'Efectivo'",
+      "then": "Se crea el registro en 'Gasto', se genera automáticamente un movimiento de egreso en 'MovimientoCaja' y se resta del saldo físico disponible en la caja del turno activo."
+    },
+    {
+      "criterion_id": "AC-008",
+      "title": "Paginación y Filtrado Visual de Clientes y Pedidos",
+      "given": "Una base de datos sembrada con 25 clientes y 25+ pedidos",
+      "when": "El Administrador o Empleado navega a la tabla de Clientes o Pedidos",
+      "then": "El frontend renderiza los datos paginados correctamente (10 por página), permitiendo navegar entre páginas 1, 2 y 3 sin cuelgues ni duplicación de registros."
+    },
+    {
+      "criterion_id": "AC-009",
+      "title": "Coincidencia Matemática 1:1 en Dashboard y Reportes Financieros",
+      "given": "La totalidad de transacciones procesadas durante el sembrado E2E masivo",
+      "when": "Se consulta la API de dashboard y reportes (/api/dashboard/stats y /api/reportes/financiero)",
+      "then": "La suma exacta de Ventas Brutas, Ingresos Cobrados, Deuda Exigible (Entregados sin cobrar), Monto en Taller (Pendientes/Proceso/Listos sin cobrar), Gastos Totales y Saldo Teórico en Caja coincide al 100% ($1:1$) con la matriz matemática esperada."
+    }
+  ],
+  "ux_interaction_expectations": {
+    "overlays": "Uso obligatorio del componente ResponsiveSheet ('src/shared/ui/overlays/responsive-sheet.tsx') para paneles de nuevo pedido, cobro y apertura/cierre de caja sin alterar dimensiones de pantalla.",
+    "feedback": "Notificaciones emergentes inmediatas (toast.success / toast.error) ante cada acción del usuario (creación de pedido, cobro, gasto, cambio de estado o error de validación).",
+    "banners": "Banner visual prominente de alerta '⚠️ Caja Cerrada' en el módulo POS y Cobros cuando no exista un turno de caja activo para el empleado autenticado.",
+    "loading_states": "Spinners y esqueletos de carga ('loading') deshabilitando botones de submit para prevenir doble envío durante transacciones atómicas."
+  },
+  "business_rules": [
+    {
+      "rule_id": "BR-FIN-001",
+      "name": "Deuda Exigible vs Monto en Taller",
+      "description": "Deuda Exigible engloba únicamente los pedidos en estado ENTREGADO que no han sido cobrados (cobrado = false). Monto en Taller comprende los pedidos en proceso (PENDIENTE, EN_PROCESO, LISTO) que no representan una deuda vencida al cliente."
+    },
+    {
+      "rule_id": "BR-FIN-002",
+      "name": "Cobro Unificado de 1 Pedido por Transacción ACID",
+      "description": "Toda operación de cobro procesa exactamente 1 único pedido por transacción SQL atómica. Quedan prohibidos los cobros masivos en lote para evitar inconsistencias en el cálculo de vuelto y saldo a favor."
+    },
+    {
+      "rule_id": "BR-FIN-003",
+      "name": "Modelo Mostrador 100% On-Site (Sin Cargo por Envío)",
+      "description": "El negocio opera bajo atención en mostrador. costoEnvio = 0. El total del pedido es estrictamente igual a la suma de sus ítems (Total = Subtotal)."
+    },
+    {
+      "rule_id": "BR-FIN-004",
+      "name": "Inmutabilidad de Precios Históricos",
+      "description": "Los ítems de un pedido guardan el precioHistorico al momento de su creación. Cambios posteriores en el catálogo de servicios no alteran pedidos creados anteriormente."
+    },
+    {
+      "rule_id": "BR-FIN-005",
+      "name": "Tratamiento de Fechas y Zona Horaria Local",
+      "description": "Las consultas de rango de fechas (fechaInicio/fechaFin) extienden la fecha final hasta las 23:59:59.999 en hora local usando el helper parseDateRange, consultando mediante [Op.or] sobre fechaHoraCreacion, fechaHoraPedido y createdAt."
+    }
+  ]
+}

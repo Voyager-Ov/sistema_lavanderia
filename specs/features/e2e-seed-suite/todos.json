@@ -1,105 +1,71 @@
-{
-  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
-  "todos": [
-    {
-      "id": "TASK-001",
-      "title": "Crear Fixtures y Helpers de Datos para el Sembrado E2E",
-      "owner_role": "Test Engineer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": [],
-      "outputs": [
-        "front/e2e/fixtures/seed-data.ts",
-        "front/e2e/helpers/e2e-seed.helper.ts"
-      ],
-      "exit_criteria": "Exportar funciones de generación de datos únicos (negocio, categorías, servicios, clientes, pedidos) y helpers de interacción UI en Playwright."
-    },
-    {
-      "id": "TASK-002",
-      "title": "Implementar Módulo 1: Registro de Negocio y Autenticación E2E",
-      "owner_role": "Fullstack Developer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": ["TASK-001"],
-      "outputs": [
-        "front/e2e/seed/01-registro-negocio-setup.spec.ts"
-      ],
-      "exit_criteria": "El test se ejecuta visualmente en Chromium en /register, verifica email, realiza /login y redirige a /dashboard con negocioId aislado."
-    },
-    {
-      "id": "TASK-003",
-      "title": "Implementar Módulo 2 y 3: Categorías y Catálogo de Servicios con Paginación",
-      "owner_role": "Fullstack Developer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": ["TASK-002"],
-      "outputs": [
-        "front/e2e/seed/02-catalogo-servicios.spec.ts"
-      ],
-      "exit_criteria": "Creación de 4 categorías y 12+ servicios desde la UI. Verificación de filtrado por categoría y paginación de la tabla de servicios."
-    },
-    {
-      "id": "TASK-004",
-      "title": "Implementar Módulo 4 y 5: Empleados y Base de Clientes (+15 registros)",
-      "owner_role": "Fullstack Developer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": ["TASK-003"],
-      "outputs": [
-        "front/e2e/seed/03-empleados-clientes.spec.ts"
-      ],
-      "exit_criteria": "Creación de empleados y 15+ clientes desde la UI. Verificación de paginado (Siguiente/Anterior) y acciones por fila en tabla de clientes."
-    },
-    {
-      "id": "TASK-005",
-      "title": "Implementar Módulo 6 y 7: Apertura de Caja, Pedidos POS y Transiciones de Estado",
-      "owner_role": "Fullstack Developer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": ["TASK-004"],
-      "outputs": [
-        "front/e2e/seed/04-pos-pedidos-estados.spec.ts"
-      ],
-      "exit_criteria": "Apertura de caja, creación de 10 pedidos en /pedidos/nuevo y avance por estados (PENDIENTE -> EN_LAVADO -> LISTO -> ENTREGADO)."
-    },
-    {
-      "id": "TASK-006",
-      "title": "Implementar Módulo 8, 9 y 10: Cobros, Saldo a Favor, Caja Chica y Dashboard 1:1",
-      "owner_role": "Fullstack Developer",
-      "status": "completed",
-      "parallelizable": false,
-      "depends_on": ["TASK-005"],
-      "outputs": [
-        "front/e2e/seed/05-cobros-caja-dashboard.spec.ts",
-        "front/e2e/seed/master-seed-suite.spec.ts"
-      ],
-      "exit_criteria": "Procesamiento de cobros con vuelto a favor, consumo de crédito, egreso de caja y comprobación 1:1 de los gráficos y KPIs en /dashboard."
-    }
-  ],
-  "execution_batches": [
-    {
-      "batch_number": 1,
-      "tasks": ["TASK-001"]
-    },
-    {
-      "batch_number": 2,
-      "tasks": ["TASK-002"]
-    },
-    {
-      "batch_number": 3,
-      "tasks": ["TASK-003"]
-    },
-    {
-      "batch_number": 4,
-      "tasks": ["TASK-004"]
-    },
-    {
-      "batch_number": 5,
-      "tasks": ["TASK-005"]
-    },
-    {
-      "batch_number": 6,
-      "tasks": ["TASK-006"]
-    }
-  ]
-}
+[
+  {
+    "id": "TASK-001",
+    "title": "Configuración del Dataset Granular en Fixtures",
+    "description": "Actualizar front/e2e/fixtures/seed-data.ts con las estructuras y constantes requeridas: 4 categorías (CAT1-CAT4), 12 servicios (S01-S12), 3 empleados (E01-E03), 15 clientes (C01-C15) y 10 pedidos especificando sus ítems.",
+    "status": "completed",
+    "parallelizable": false,
+    "dependencies": [],
+    "target_files": ["front/e2e/fixtures/seed-data.ts"],
+    "subtasks": [
+      { "id": "SUB-1.1", "description": "Definir constantes SEED_CATEGORIES, SEED_SERVICES, SEED_EMPLOYEES y SEED_CLIENTS exactas.", "status": "completed" },
+      { "id": "SUB-1.2", "description": "Definir el arreglo de 10 pedidos con desglose de ítems, cantidades, clientes asignados y cobros.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-002",
+    "title": "Implementación de Clase Helper E2EUIHelper (100% UI)",
+    "description": "Crear front/e2e/helpers/e2e-seed-ui.helper.ts implementando todos los métodos de automatización visual sobre el DOM de Next.js.",
+    "status": "completed",
+    "parallelizable": false,
+    "dependencies": ["TASK-001"],
+    "target_files": ["front/e2e/helpers/e2e-seed-ui.helper.ts"],
+    "subtasks": [
+      { "id": "SUB-2.1", "description": "Implementar registerBusinessViaUI y loginSuperAdminAndApproveViaUI.", "status": "completed" },
+      { "id": "SUB-2.2", "description": "Implementar loginAdminViaUI, createCategoriesViaUI y createServicesViaUI.", "status": "completed" },
+      { "id": "SUB-2.3", "description": "Implementar createEmployeesViaUI y createClientsAndVerifyPaginationViaUI.", "status": "completed" },
+      { "id": "SUB-2.4", "description": "Implementar openCashRegisterViaUI, createPosOrderViaUI y transitionOrderStatusViaUI.", "status": "completed" },
+      { "id": "SUB-2.5", "description": "Implementar processPaymentViaUI y verifyDashboardKpisAndScreenshotsViaUI.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-003",
+    "title": "Implementación del Spec Integrado Secuencial",
+    "description": "Crear front/e2e/seed/master-seed-suite.spec.ts para invocar secuencialmente los 13 pasos del flujo UI con Playwright.",
+    "status": "completed",
+    "parallelizable": false,
+    "dependencies": ["TASK-002"],
+    "target_files": ["front/e2e/seed/master-seed-suite.spec.ts"],
+    "subtasks": [
+      { "id": "SUB-3.1", "description": "Configurar test.setTimeout(180000) y ejecutar la secuencia completa de Registro -> SuperAdmin UI Approval -> Setup -> Pedidos -> Cobros -> Dashboard.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-004",
+    "title": "Ejecución Visual en Chromium y Captura de Screenshots",
+    "description": "Ejecutar la suite E2E en Chromium con Playwright (--headed) y guardar las capturas PNG en front/test-results/audit-screenshots/.",
+    "status": "completed",
+    "parallelizable": false,
+    "dependencies": ["TASK-003"],
+    "target_files": [
+      "front/test-results/audit-screenshots/dashboard-kpis.png",
+      "front/test-results/audit-screenshots/finanzas-reportes.png"
+    ],
+    "subtasks": [
+      { "id": "SUB-4.1", "description": "Ejecutar npm run test:seed o npx playwright test e2e/seed/master-seed-suite.spec.ts --headed --project=ui.", "status": "completed" },
+      { "id": "SUB-4.2", "description": "Verificar la generación de capturas PNG de alta resolución en la carpeta de auditoría.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-005",
+    "title": "Generación del Reporte de Auditoría Matemática 1:1",
+    "description": "Crear front/e2e/seed/matriz_auditoria_financiera.md documentando el deslose exacto de ventas ($62.700), cobros ($14.200), deuda exigible ($20.200) y monto en taller ($28.300).",
+    "status": "completed",
+    "parallelizable": false,
+    "dependencies": ["TASK-004"],
+    "target_files": ["front/e2e/seed/matriz_auditoria_financiera.md"],
+    "subtasks": [
+      { "id": "SUB-5.1", "description": "Formatear las tablas de auditoría comparativa comprobando coincidencia 1:1 entre los datos sembrados y el Dashboard.", "status": "completed" }
+    ]
+  }
+]

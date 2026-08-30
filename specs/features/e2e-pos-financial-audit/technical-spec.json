@@ -1,0 +1,183 @@
+{
+  "feature_id": "e2e-pos-financial-audit",
+  "title": "Especificación Técnica: Suite E2E 100% UI con Playwright para Auditoría Financiera, POS Multirrol y Cajas Chicas",
+  "version": "1.0.0",
+  "execution_framework": "Playwright Chromium Headed Mode (100% UI Automation)",
+  "target_spec_files": {
+    "functional_spec": "specs/features/e2e-pos-financial-audit/functional-spec.json",
+    "technical_spec": "specs/features/e2e-pos-financial-audit/technical-spec.json",
+    "todos": "specs/features/e2e-pos-financial-audit/todos.json"
+  },
+  "architecture_and_components": {
+    "frontend_layer": {
+      "framework": "Next.js App Router (React)",
+      "ui_components": [
+        "ResponsiveSheet ('src/shared/ui/overlays/responsive-sheet.tsx') para formularios laterales de pedidos, cobros y aperturas/cierres de caja.",
+        "Toast Manager ('sonner' / 'react-hot-toast') para notificaciones visuales inmediatas de éxito o error.",
+        "Banner '⚠️ Caja Cerrada' para advertencias de estado de caja chica en la vista POS.",
+        "Componentes KPI de Dashboard y Tabla de Clientes con paginador (10 filas/página)."
+      ],
+      "routes_tested": [
+        "/register",
+        "/superadmin/login",
+        "/superadmin/solicitudes",
+        "/login",
+        "/admin/dashboard",
+        "/admin/servicios",
+        "/admin/empleados",
+        "/admin/clientes",
+        "/admin/cajas",
+        "/admin/pedidos/nuevo",
+        "/admin/pedidos",
+        "/admin/gastos",
+        "/admin/finanzas"
+      ]
+    },
+    "backend_layer": {
+      "framework": "Express.js con Sequelize ORM en Neon PostgreSQL (Multi-tenant por esquema tenant_X)",
+      "endpoints_audited": [
+        "POST /api/auth/register",
+        "POST /api/auth/login",
+        "GET /api/superadmin/solicitudes",
+        "PATCH /api/superadmin/solicitudes/:id/aprobar",
+        "POST /api/categorias",
+        "POST /api/servicios",
+        "POST /api/empleados",
+        "POST /api/clientes",
+        "GET /api/clientes",
+        "POST /api/cajas/abrir",
+        "GET /api/cajas/actual",
+        "POST /api/cajas/cerrar",
+        "POST /api/pedidos",
+        "PATCH /api/pedidos/:id/estado",
+        "POST /api/pagos",
+        "POST /api/gastos",
+        "GET /api/dashboard/stats",
+        "GET /api/reportes/financiero"
+      ]
+    }
+  },
+  "dataset_fixtures": {
+    "categories_count": 5,
+    "services_count": 15,
+    "employees_count": 4,
+    "clients_count": 25,
+    "orders_count": 25,
+    "cash_registers_count": 2,
+    "expenses_count": 2,
+    "employee_roles": [
+      { "email": "admin_audit@lavanderiaexpress.com", "rol": "ADMIN", "nombre": "Admin Principal" },
+      { "email": "cajero_manana@lavanderiaexpress.com", "rol": "EMPLEADO", "nombre": "Carlos Cajero Mañana" },
+      { "email": "taller_personal@lavanderiaexpress.com", "rol": "EMPLEADO", "nombre": "Marta Operario Taller" },
+      { "email": "cajero_tarde@lavanderiaexpress.com", "rol": "EMPLEADO", "nombre": "Roberto Cajero Tarde" }
+    ],
+    "shifts": [
+      {
+        "shift_name": "Turno Mañana (Caja #1)",
+        "actor_email": "admin_audit@lavanderiaexpress.com",
+        "initial_cash": 20000,
+        "orders_count": 12,
+        "expenses": [
+          { "descripcion": "Compra Insumo Detergente Industrial", "monto": 3500, "metodoPago": "EFECTIVO", "categoria": "Insumos" },
+          { "descripcion": "Compra Bolsas Plásticas Transparentes", "monto": 1500, "metodoPago": "EFECTIVO", "categoria": "Materiales" }
+        ],
+        "close_cash_declared": 38200,
+        "discrepancy_expected": -200
+      },
+      {
+        "shift_name": "Turno Tarde (Caja #2)",
+        "actor_email": "cajero_tarde@lavanderiaexpress.com",
+        "initial_cash": 15000,
+        "orders_count": 13,
+        "expenses": [],
+        "close_cash_declared": 42500,
+        "discrepancy_expected": 0
+      }
+    ]
+  },
+  "financial_equations": {
+    "total_gross_sales": "Suma de todos los pedidos creados (excluyendo CANCELADO)",
+    "total_collected": "Suma de todos los cobros efectivamente ingresados (Efectivo + Transferencia + MercadoPago + SaldoAFavor)",
+    "exigible_debt": "Suma del monto total de pedidos en estado ENTREGADO que tengan cobrado = false",
+    "workshop_amount": "Suma del monto total de pedidos en estado PENDIENTE, EN_PROCESO o LISTO (LISTO_PARA_RETIRAR) que tengan cobrado = false",
+    "cash_drawer_balance_shift_1": "MontoInicial (20.000) + CobrosEfectivo (23.200) - GastosEfectivo (5.000) = $38.200 Teórico",
+    "cash_drawer_balance_shift_2": "MontoInicial (15.000) + CobrosEfectivo (27.500) = $42.500 Teórico",
+    "net_operating_balance": "TotalCobrados - TotalGastos"
+  },
+  "error_boundaries_and_resilience_assertions": [
+    {
+      "scenario": "Cobro sin Caja Chica Abierta",
+      "trigger": "Intentar procesar un cobro cuando la caja chica está CERRADA",
+      "expected_response": "HTTP 400 'NO_OPEN_CASH_REGISTER'",
+      "ui_assertion": "Se muestra el banner '⚠️ Caja Cerrada' y el botón de cobro está inhabilitado."
+    },
+    {
+      "scenario": "Cobro en Pedido Cancelado",
+      "trigger": "Enviar solicitud de pago para un pedido con estado CANCELADO",
+      "expected_response": "HTTP 400 'CANNOT_CHARGE_CANCELLED_ORDER'",
+      "ui_assertion": "Se revierte la transacción atómicamente y se muestra toast.error."
+    },
+    {
+      "scenario": "Doble Cobro de Pedido",
+      "trigger": "Enviar solicitud de pago para un pedido previamente cobrado (cobrado = true)",
+      "expected_response": "HTTP 400 'ORDER_ALREADY_PAID'",
+      "ui_assertion": "Notificación emergente indicando que el pedido ya fue abonado."
+    },
+    {
+      "scenario": "Transición de Estado Inválida",
+      "trigger": "Intentar transicionar un pedido a un estado inventado fuera de los 5 canónicos",
+      "expected_response": "HTTP 400 'INVALID_STATE_TRANSITION'",
+      "ui_assertion": "El backend rechaza la transición y mantiene el pedido en su estado previo."
+    },
+    {
+      "scenario": "Consumo de Crédito Insuficiente",
+      "trigger": "Intentar aplicar saldo a favor cuando el cliente no posee crédito acumulado",
+      "expected_response": "Consumo de $0 saldo a favor y exigencia del saldo remanente en efectivo/digital",
+      "ui_assertion": "La UI no permite descontar monto superior al saldo disponible en Cuenta Corriente."
+    }
+  ],
+  "dom_selectors_and_ui_contracts": {
+    "login_page": {
+      "email_input": "input[name='email'], input[type='email']",
+      "password_input": "input[name='password'], input[type='password']",
+      "submit_btn": "button[type='submit']"
+    },
+    "register_page": {
+      "business_name": "input[name='nombre']",
+      "email": "input[name='email']",
+      "password": "input[name='password']",
+      "phone": "input[name='telefono']",
+      "submit_btn": "button[type='submit']"
+    },
+    "superadmin_solicitudes": {
+      "solicitudes_table": "table, div[role='table']",
+      "aprobar_btn": "button:has-text('Aprobar')"
+    },
+    "pos_page": {
+      "cliente_select": "select[name='clienteId'], button:has-text('Seleccionar Cliente')",
+      "servicio_card": "div:has-text('Agregar'), button:has-text('Añadir')",
+      "crear_pedido_btn": "button:has-text('Crear Pedido'), button:has-text('Confirmar Pedido')",
+      "caja_cerrada_banner": "div:has-text('Caja Cerrada')"
+    },
+    "cajas_page": {
+      "abrir_caja_btn": "button:has-text('Abrir Caja')",
+      "monto_inicial_input": "input[name='montoInicial']",
+      "cerrar_caja_btn": "button:has-text('Cerrar Caja')",
+      "arqueo_input": "input[name='montoFisicoDeclaro'], input[name='montoReal']"
+    },
+    "gastos_page": {
+      "nuevo_gasto_btn": "button:has-text('Nuevo Gasto')",
+      "descripcion_input": "input[name='descripcion']",
+      "monto_input": "input[name='monto']",
+      "metodo_select": "select[name='metodoPago']"
+    }
+  },
+  "quality_gates_and_deliverables": [
+    "Ejecución 100% exitosa del spec master-pos-financial-suite.spec.ts en Chromium headed mode.",
+    "Sembrado completo de 25 clientes, 15 servicios, 4 empleados y 25 pedidos.",
+    "Verificación de paginación UI en 3 páginas de clientes.",
+    "Apertura y Cierre de 2 turnos de Cajas Chicas con registro de discrepancia en Turno 1.",
+    "Generación de matriz contable 1:1 en e2e/seed/matriz_auditoria_financiera_pos.md.",
+    "Capturas PNG guardadas en test-results/audit-screenshots/."
+  ]
+}

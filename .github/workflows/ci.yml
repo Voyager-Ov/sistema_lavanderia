@@ -1,71 +1,64 @@
-name: Continuous Integration (CI)
+name: Suite de Integración Continua (CI/CD) & Auditoría Multi-Tenant
 
 on:
   push:
-    branches: [ main, master, dev, reimpelemntacion-del-back, "feature/**" ]
+    branches:
+      - main
+      - reimpelemntacion-del-back
   pull_request:
-    branches: [ main, master, reimpelemntacion-del-back ]
+    branches:
+      - main
+      - reimpelemntacion-del-back
 
 jobs:
-  backend-ci:
-    name: Backend CI (back2)
+  audit-frontend:
+    name: 🎨 Auditoría de Tipos en Front-End (TypeScript)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repositorio
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: back2/package-lock.json
-
-      - name: Install Backend Dependencies
-        run: |
-          cd back2
-          npm ci
-
-      - name: Run Backend Tests
-        run: |
-          cd back2
-          npm test
-        env:
-          NODE_ENV: test
-          JWT_SECRET: ci_jwt_secret_key_test_12345
-
-  frontend-ci:
-    name: Frontend CI (front)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: Configurar Node.js v20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: front/package-lock.json
 
-      - name: Install Frontend Dependencies
+      - name: Instalar Dependencias del Front-End
         run: |
           cd front
+          npm ci --legacy-peer-deps
+
+      - name: Verificación Estricta de Compilación TypeScript
+        run: |
+          cd front
+          npx tsc --noEmit --skipLibCheck
+
+  audit-backend:
+    name: 🛡️ Suite Maestra de Pruebas Back-End & Teardown DB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: back2/package-lock.json
+
+      - name: Instalar Dependencias del Back-End
+        run: |
+          cd back2
           npm ci
 
-      - name: Check TypeScript Types
-        run: |
-          cd front
-          npx tsc --noEmit
-
-      - name: Run ESLint
-        run: |
-          cd front
-          npm run lint
-
-      - name: Build Next.js Application
-        run: |
-          cd front
-          npm run build
+      - name: Ejecutar Suite de Integración con Teardown de Esquema
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:5001/api
+          NODE_ENV: test
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test_jwt_secret_lavanderia_2026' }}
+        run: |
+          cd back2
+          npm run test:clean

@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { connectionManager } from "./src/models/connectionManager.js";
-import { authService } from "./src/modules/auth/services/auth.service.js";
+import { connectionManager } from "../models/connectionManager.js";
+import { authService } from "../modules/auth/services/auth.service.js";
 
 async function runAuthTests() {
     process.env.NODE_ENV = "test";
@@ -23,11 +23,18 @@ async function runAuthTests() {
             cuit: "20334445556",
             rol: "ADMIN"
         });
-        console.log("  ✅ Registro completado exitosamente.");
-        console.log("  📌 Código de confirmación generado:", regResult.tokenConfirmacion);
+        console.log("  ✅ Registro de solicitud completado exitosamente.");
+
+        console.log("\n2️⃣ Probando Aprobación de Negocio por Super Admin...");
+        const aprobacionRes = await authService.sustanciarAprobacionNegocio(regResult.solicitud.id);
+        console.log("  ✅ Negocio aprobado por Super Admin:", aprobacionRes.mensaje);
+
+        const { Usuario } = connectionManager.centralModels;
+        const usuarioDbCreated = await Usuario.findOne({ where: { email: testEmail } });
+        const codeConfirmacion = usuarioDbCreated ? usuarioDbCreated.tokenConfirmacion : null;
 
         // 3. Probar Login ANTES de verificar el correo (debe fallar con 403)
-        console.log("\n2️⃣ Probando Login antes de verificar correo (debe denegarse)...");
+        console.log("\n3️⃣ Probando Login antes de verificar correo (debe denegarse)...");
         try {
             await authService.login({ email: testEmail, password: testPassword });
             console.error("  ❌ ERROR: El login debería haber fallado por correo no verificado.");
@@ -40,10 +47,10 @@ async function runAuthTests() {
         }
 
         // 4. Probar Confirmación de Correo Electrónico
-        console.log("\n3️⃣ Probando Verificación de Correo con Código...");
+        console.log("\n4️⃣ Probando Verificación de Correo con Código...");
         const verifyRes = await authService.verifyEmail({
             email: testEmail,
-            code: regResult.tokenConfirmacion
+            code: codeConfirmacion
         });
         console.log("  ✅", verifyRes.message);
 
@@ -62,8 +69,7 @@ async function runAuthTests() {
         const forgotRes = await authService.forgotPassword(testEmail);
         console.log("  ✅", forgotRes.message);
 
-        const { Usuario } = connectionManager.centralModels;
-        const usuarioDb = await Usuario.findByPk(testEmail);
+        const usuarioDb = await Usuario.findOne({ where: { email: testEmail } });
         const resetToken = usuarioDb.tokenConfirmacion;
         console.log("  📌 Token de restablecimiento en DB:", resetToken);
 

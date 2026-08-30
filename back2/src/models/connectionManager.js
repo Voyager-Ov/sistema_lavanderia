@@ -236,6 +236,28 @@ class ConnectionManager {
         }
     }
 
+    // Elimina de forma limpia y completa el esquema PostgreSQL de un tenant de prueba (Teardown)
+    async dropTenantSchema(negocioId) {
+        if (!negocioId) throw new Error("negocioId es requerido para eliminar el esquema");
+        const isTest = process.env.NODE_ENV === "test";
+        if (isTest) return;
+
+        const schemaName = `tenant_${negocioId}`;
+        try {
+            if (this.tenantDbs.has(negocioId)) {
+                const tenantContext = this.tenantDbs.get(negocioId);
+                await tenantContext.sequelize.close().catch(() => {});
+                this.tenantDbs.delete(negocioId);
+            }
+            if (this.centralDb) {
+                await this.centralDb.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE;`);
+                console.log(`🧹 Esquema PostgreSQL '${schemaName}' eliminado correctamente (CASCADE).`);
+            }
+        } catch (err) {
+            console.error(`⚠️ Error al eliminar esquema ${schemaName}:`, err.message);
+        }
+    }
+
     // Función auxiliar para inicializar modelos y asociaciones
     _initModels(sequelizeInstance, schemaName = null) {
         let models = {

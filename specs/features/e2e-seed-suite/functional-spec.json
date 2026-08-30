@@ -1,62 +1,236 @@
 {
-  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
+  "feature": "E2E Seed & Integration Test Suite - Especificación Funcional Granular y Matriz de Auditoría 1:1",
   "scope": {
     "in_scope": [
-      "Simulación completa E2E en Chromium (Playwright visual con --headed) de un negocio creado 100% desde cero.",
-      "Módulo 1: Registro de nuevo Negocio ('Lavandería E2E Test Suite') vía formulario de registro (/register).",
-      "Verificación de código de correo y autenticación inicial para obtener sesión de Administrador y Negocio ID único.",
-      "Setup inicial de configuración del negocio (nombre, dirección, teléfono, parámetros operacionales).",
-      "Diseño modular que encadena las etapas posteriores: Categorías -> Servicios -> Empleados -> Clientes -> Pedidos (POS) -> Transiciones de Estado -> Cobros/Saldo a Favor -> Caja -> Reportes/Finanzas.",
-      "Garantizar que los datos generados permitan probar paginación de tablas, acciones por fila, cálculos de deuda exigible vs taller y gráficos en Dashboard."
+      "Simulación 100% UI en Chromium (Playwright --headed) de un negocio creado desde cero sin bypasses ni llamadas API directas.",
+      "1. Autenticación & Aprobación en UI: Registro en /register -> Login SuperAdmin en /superadmin/login -> Aprobación visual en /superadmin/solicitudes -> Login Admin en /login.",
+      "2. Setup Inicial Granular en UI: Creación de 4 Categorías, 12 Servicios con precios y duraciones exactas, 3 Empleados y 15 Clientes para evaluar paginación (10 en pág 1, 5 en pág 2).",
+      "3. Operaciones POS & Tránsito de Estados en UI: Apertura de Caja ($20.000), Creación de 10 Pedidos específicos con sus ítems, y avance por estados (PENDIENTE, EN_LAVADO, EN_PROCESO, LISTO, ENTREGADO, CANCELADO).",
+      "4. Cobranzas & Regla de Deuda Única en UI: Cobro con vuelto a favor en efectivo, consumo de crédito en cuenta corriente y pedidos ENTREGADOS sin cobrar para generar Deuda Exigible real.",
+      "5. Documentación de Auditoría Contable & Capturas Visuales: Generación de matriz matemática detallada y captura de screenshots del Dashboard (/admin/dashboard y /admin/finanzas) para validar coherencia 1:1."
     ],
     "out_of_scope": [
       "Modificación de esquemas de base de datos en producción.",
-      "Bypasses silenciosos o datos hardcodeados que omitan los formularios y validaciones de la interfaz del usuario."
+      "Llamadas API directas para bypass de la interfaz de usuario."
     ]
+  },
+  "detailed_seed_data": {
+    "business": {
+      "negocioNombre": "Lavandería Express E2E Audit",
+      "adminNombre": "Gonzalo Administrador",
+      "email": "admin.audit@lavanderiaexpress.com",
+      "password": "Password123!",
+      "telefono": "1133445566"
+    },
+    "superadmin_credentials": {
+      "email": "octavio.velo2022@gmail.com",
+      "password": "123456789"
+    },
+    "categories": [
+      { "id_alias": "CAT1", "nombre": "Lavado Diario", "descripcion": "Lavado y secado común por kilo y pack", "icono": "WashingMachine", "color": "#3B82F6" },
+      { "id_alias": "CAT2", "nombre": "Planchado Premium", "descripcion": "Planchado profesional a vapor en percha", "icono": "Shirt", "color": "#10B981" },
+      { "id_alias": "CAT3", "nombre": "Tintorería Fina", "descripcion": "Limpieza a seco de prendas delicadas y abrigo", "icono": "Sparkles", "color": "#8B5CF6" },
+      { "id_alias": "CAT4", "nombre": "Artículos de Hogar", "descripcion": "Lavado de edredones, frazadas y cortinas", "icono": "Home", "color": "#F59E0B" }
+    ],
+    "services": [
+      { "id_alias": "S01", "nombre": "Lavado por Kilo (Hasta 5kg)", "categoria": "Lavado Diario", "precio": 3500, "tiempoMinutos": 180, "unidad": "kilo" },
+      { "id_alias": "S02", "nombre": "Lavado por Kilo Adicional", "categoria": "Lavado Diario", "precio": 800, "tiempoMinutos": 30, "unidad": "kilo" },
+      { "id_alias": "S03", "nombre": "Lavado de Camisas (x5)", "categoria": "Lavado Diario", "precio": 4200, "tiempoMinutos": 120, "unidad": "pack" },
+      { "id_alias": "S04", "nombre": "Planchado de Camisa", "categoria": "Planchado Premium", "precio": 1200, "tiempoMinutos": 20, "unidad": "unidad" },
+      { "id_alias": "S05", "nombre": "Planchado Traje Completo", "categoria": "Planchado Premium", "precio": 3200, "tiempoMinutos": 45, "unidad": "unidad" },
+      { "id_alias": "S06", "nombre": "Planchado de Pantalón", "categoria": "Planchado Premium", "precio": 1000, "tiempoMinutos": 15, "unidad": "unidad" },
+      { "id_alias": "S07", "nombre": "Tintorería Tapado / Abrigo", "categoria": "Tintorería Fina", "precio": 7500, "tiempoMinutos": 1440, "unidad": "unidad" },
+      { "id_alias": "S08", "nombre": "Tintorería Vestido Fiesta", "categoria": "Tintorería Fina", "precio": 9500, "tiempoMinutos": 1440, "unidad": "unidad" },
+      { "id_alias": "S09", "nombre": "Tintorería Campera Cuero", "categoria": "Tintorería Fina", "precio": 12000, "tiempoMinutos": 2880, "unidad": "unidad" },
+      { "id_alias": "S10", "nombre": "Lavado Edredón 2 Plazas", "categoria": "Artículos de Hogar", "precio": 8500, "tiempoMinutos": 360, "unidad": "unidad" },
+      { "id_alias": "S11", "nombre": "Lavado Frazada / Manta", "categoria": "Artículos de Hogar", "precio": 6200, "tiempoMinutos": 240, "unidad": "unidad" },
+      { "id_alias": "S12", "nombre": "Lavado Cortinas por Paño", "categoria": "Artículos de Hogar", "precio": 4800, "tiempoMinutos": 360, "unidad": "unidad" }
+    ],
+    "employees": [
+      { "id_alias": "E01", "nombre": "Carlos Cajero", "email": "cajero@lavanderiaexpress.com", "rol": "CAJERO", "telefono": "1155667788" },
+      { "id_alias": "E02", "nombre": "Marta Taller", "email": "taller@lavanderiaexpress.com", "rol": "EMPLEADO", "telefono": "1166778899" },
+      { "id_alias": "E03", "nombre": "Roberto Encargado", "email": "encargado@lavanderiaexpress.com", "rol": "ADMIN", "telefono": "1177889900" }
+    ],
+    "clients": [
+      { "id_alias": "C01", "nombre": "Juan", "apellido": "Perez", "telefono": "1111000001", "email": "juan.perez@test.com", "direccion": "Av. Corrientes 1200" },
+      { "id_alias": "C02", "nombre": "Maria", "apellido": "Gonzalez", "telefono": "1111000002", "email": "maria.gonzalez@test.com", "direccion": "Calle Florida 450" },
+      { "id_alias": "C03", "nombre": "Pedro", "apellido": "Rodriguez", "telefono": "1111000003", "email": "pedro.rodriguez@test.com", "direccion": "Av. Santa Fe 3200" },
+      { "id_alias": "C04", "nombre": "Ana", "apellido": "Fernandez", "telefono": "1111000004", "email": "ana.fernandez@test.com", "direccion": "Av. Cabildo 1500" },
+      { "id_alias": "C05", "nombre": "Lucas", "apellido": "Lopez", "telefono": "1111000005", "email": "lucas.lopez@test.com", "direccion": "Av. Rivadavia 8900" },
+      { "id_alias": "C06", "nombre": "Sofia", "apellido": "Martinez", "telefono": "1111000006", "email": "sofia.martinez@test.com", "direccion": "Belgrano 430" },
+      { "id_alias": "C07", "nombre": "Gonzalo", "apellido": "Sanchez", "telefono": "1111000007", "email": "gonzalo.sanchez@test.com", "direccion": "San Martin 120" },
+      { "id_alias": "C08", "nombre": "Lucia", "apellido": "Gomez", "telefono": "1111000008", "email": "lucia.gomez@test.com", "direccion": "Mitre 770" },
+      { "id_alias": "C09", "nombre": "Agustin", "apellido": "Diaz", "telefono": "1111000009", "email": "agustin.diaz@test.com", "direccion": "Urquiza 540" },
+      { "id_alias": "C10", "nombre": "Camila", "apellido": "Alvarez", "telefono": "1111000010", "email": "camila.alvarez@test.com", "direccion": "Sarmiento 2100" },
+      { "id_alias": "C11", "nombre": "Mateo", "apellido": "Romero", "telefono": "1111000011", "email": "mateo.romero@test.com", "direccion": "Lavalle 1600" },
+      { "id_alias": "C12", "nombre": "Valentina", "apellido": "Sosa", "telefono": "1111000012", "email": "valentina.sosa@test.com", "direccion": "Callao 800" },
+      { "id_alias": "C13", "nombre": "Diego", "apellido": "Torres", "telefono": "1111000013", "email": "diego.torres@test.com", "direccion": "Pueyrredon 1100" },
+      { "id_alias": "C14", "nombre": "Martina", "apellido": "Ruiz", "telefono": "1111000014", "email": "martina.ruiz@test.com", "direccion": "Jujuy 450" },
+      { "id_alias": "C15", "nombre": "Joaquin", "apellido": "Castro", "telefono": "1111000015", "email": "joaquin.castro@test.com", "direccion": "Boedo 620" }
+    ],
+    "orders": [
+      {
+        "id_alias": "P01",
+        "cliente": "C01 (Juan Perez)",
+        "items": [ { "servicio": "S01", "cantidad": 1, "subtotal": 3500 }, { "servicio": "S04", "cantidad": 1, "subtotal": 1200 } ],
+        "montoTotal": 4700,
+        "estadoFinal": "ENTREGADO",
+        "cobrado": true,
+        "pago": { "montoAbonado": 5000, "metodo": "EFECTIVO", "vueltoAFavor": 300 }
+      },
+      {
+        "id_alias": "P02",
+        "cliente": "C02 (Maria Gonzalez)",
+        "items": [ { "servicio": "S10", "cantidad": 1, "subtotal": 8500 } ],
+        "montoTotal": 8500,
+        "estadoFinal": "ENTREGADO",
+        "cobrado": true,
+        "pago": { "montoAbonado": 8500, "metodo": "TRANSFERENCIA", "vueltoAFavor": 0 }
+      },
+      {
+        "id_alias": "P03",
+        "cliente": "C03 (Pedro Rodriguez)",
+        "items": [ { "servicio": "S07", "cantidad": 1, "subtotal": 7500 }, { "servicio": "S05", "cantidad": 1, "subtotal": 3200 } ],
+        "montoTotal": 10700,
+        "estadoFinal": "ENTREGADO",
+        "cobrado": false,
+        "impactoContable": "DEUDA_EXIGIBLE"
+      },
+      {
+        "id_alias": "P04",
+        "cliente": "C04 (Ana Fernandez)",
+        "items": [ { "servicio": "S08", "cantidad": 1, "subtotal": 9500 } ],
+        "montoTotal": 9500,
+        "estadoFinal": "ENTREGADO",
+        "cobrado": false,
+        "impactoContable": "DEUDA_EXIGIBLE"
+      },
+      {
+        "id_alias": "P05",
+        "cliente": "C05 (Lucas Lopez)",
+        "items": [ { "servicio": "S03", "cantidad": 1, "subtotal": 4200 }, { "servicio": "S04", "cantidad": 2, "subtotal": 2400 } ],
+        "montoTotal": 6600,
+        "estadoFinal": "LISTO",
+        "cobrado": false,
+        "impactoContable": "MONTO_EN_TALLER"
+      },
+      {
+        "id_alias": "P06",
+        "cliente": "C06 (Sofia Martinez)",
+        "items": [ { "servicio": "S11", "cantidad": 1, "subtotal": 6200 } ],
+        "montoTotal": 6200,
+        "estadoFinal": "EN_PROCESO",
+        "cobrado": false,
+        "impactoContable": "MONTO_EN_TALLER"
+      },
+      {
+        "id_alias": "P07",
+        "cliente": "C07 (Gonzalo Sanchez)",
+        "items": [ { "servicio": "S01", "cantidad": 1, "subtotal": 3500 } ],
+        "montoTotal": 3500,
+        "estadoFinal": "EN_LAVADO",
+        "cobrado": false,
+        "impactoContable": "MONTO_EN_TALLER"
+      },
+      {
+        "id_alias": "P08",
+        "cliente": "C08 (Lucia Gomez)",
+        "items": [ { "servicio": "S09", "cantidad": 1, "subtotal": 12000 } ],
+        "montoTotal": 12000,
+        "estadoFinal": "PENDIENTE",
+        "cobrado": false,
+        "impactoContable": "MONTO_EN_TALLER"
+      },
+      {
+        "id_alias": "P09",
+        "cliente": "C01 (Juan Perez)",
+        "items": [ { "servicio": "S06", "cantidad": 1, "subtotal": 1000 } ],
+        "montoTotal": 1000,
+        "estadoFinal": "ENTREGADO",
+        "cobrado": true,
+        "pago": { "montoAbonado": 700, "saldoAFavorUsado": 300, "metodo": "EFECTIVO", "vueltoAFavor": 0 }
+      },
+      {
+        "id_alias": "P10",
+        "cliente": "C09 (Agustin Diaz)",
+        "items": [ { "servicio": "S12", "cantidad": 1, "subtotal": 4800 } ],
+        "montoTotal": 4800,
+        "estadoFinal": "CANCELADO",
+        "cobrado": false,
+        "impactoContable": "NINGUNO"
+      }
+    ]
+  },
+  "mathematical_audit_matrix": {
+    "total_ventas_brutas": 62700,
+    "total_cobros_efectivos_ingresados": 14200,
+    "deuda_exigible_esperada": 20200,
+    "monto_en_taller_esperado": 28300,
+    "saldo_a_favor_remanente_cliente_c01": 0,
+    "saldo_teorico_caja_efectivo": 25700
   },
   "user_journeys": [
     {
-      "actor": "Dueño de Negocio (Administrador)",
-      "goal": "Registrar un negocio desde cero a través de la UI del sistema, verificar la cuenta e ingresar al dashboard inicial.",
+      "actor": "Super Admin & Administrador de Negocio",
+      "goal": "Registrar el negocio, aprobarlo desde el panel de SuperAdmin en UI, configurar catálogo, operar pedidos y auditar la exactitud contable en el Dashboard.",
       "flow": [
-        "Navega a la pantalla de Registro de Negocio (/register) en Chromium.",
-        "Completa el formulario con nombre del negocio ('Lavandería E2E Test Suite'), nombre del administrador, email dinámico único y contraseña segura.",
-        "Envía el formulario y recibe el código de verificación.",
-        "Ingresa el código en la pantalla de Verificación (/verify-email) o mediante la API de testing E2E.",
-        "Inicia sesión con sus credenciales en la pantalla de Login (/login).",
-        "Redirige exitosamente al Dashboard principal (/dashboard) y valida la bienvenida y el estado del nuevo tenant creado."
+        "1. Abre Chromium en /register y completa el formulario con datos de 'Lavandería Express E2E Audit'.",
+        "2. Redirige a /solicitud-pendiente y navega a /superadmin/login.",
+        "3. Inicia sesión como Super Admin (octavio.velo2022@gmail.com / 123456789) y va a /superadmin/solicitudes.",
+        "4. Busca la solicitud de 'admin.audit@lavanderiaexpress.com' y presiona 'Aprobar'.",
+        "5. Navega a /login e inicia sesión con el Administrador recién activado.",
+        "6. En /admin/servicios: crea las 4 Categorías (CAT1-CAT4) y los 12 Servicios (S01-S12) con sus precios y categorías correspondientes.",
+        "7. En /admin/empleados: registra los 3 Empleados (E01-E03).",
+        "8. En /admin/clientes: registra los 15 Clientes (C01-C15) y valida que la pág 1 muestre 10 registros y la pág 2 muestre 5.",
+        "9. En /admin/caja: realiza la apertura de caja con $20.000 de monto inicial.",
+        "10. En /admin/pedidos/nuevo (POS): registra los 10 Pedidos (P01-P10) vinculados a sus clientes e ítems.",
+        "11. En /admin/pedidos: mueve de estado los pedidos secuencialmente (PENDIENTE -> EN_LAVADO -> EN_PROCESO -> LISTO -> ENTREGADO / CANCELADO).",
+        "12. En /admin/cobros: procesa P01 en efectivo con vuelto a favor ($300), P02 en transferencia, P09 consumiendo el saldo a favor de C01. Mantiene P03 y P04 ENTREGADOS sin cobrar.",
+        "13. En /admin/dashboard y /admin/finanzas: realiza la captura de pantalla de los gráficos y verifica que Ventas = $62.700, Cobros = $14.200, Deuda Exigible = $20.200 y Monto en Taller = $28.300."
       ]
     }
   ],
   "acceptance_criteria": [
     {
-      "scenario": "Registro exitoso de un negocio desde la UI",
-      "given": "Un navegador Chromium abierto en la ruta /register con un estado limpio",
-      "when": "El usuario ingresa un nombre de negocio, nombre de administrador, email válido no registrado y password válida, y presiona 'Registrarse'",
-      "then": "El servidor crea el registro de Negocio y Usuario Admin en la base de datos y muestra la pantalla de verificación o redirección."
+      "scenario": "Aprobación UI por SuperAdmin y primer login de Negocio",
+      "given": "La solicitud enviada desde la pantalla de registro /register",
+      "when": "El SuperAdmin hace clic en 'Aprobar' en la tabla de /superadmin/solicitudes",
+      "then": "El tenant queda instanciado y el Administrador puede ingresar en /login con sus credenciales."
     },
     {
-      "scenario": "Inicio de sesión y persistencia de sesión",
-      "given": "El usuario ha verificado su cuenta recién registrada",
-      "when": "Ingresa sus credenciales en /login y presiona 'Iniciar Sesión'",
-      "then": "El JWT token y datos del usuario se almacenan en el estado de autenticación de la app y la UI navega a /dashboard."
+      "scenario": "Verificación de Paginado en Tabla de Clientes",
+      "given": "15 clientes creados en la base de datos del negocio",
+      "when": "El usuario navega a /admin/clientes",
+      "then": "La página 1 muestra exactamente 10 clientes y al hacer clic en 'Siguiente' la página 2 muestra los 5 restantes."
     },
     {
-      "scenario": "Aislamiento y consistencia del Tenant",
-      "given": "El usuario administrador ha iniciado sesión",
-      "when": "Se consulta /api/auth/me",
-      "then": "El negocioId devuelto coincide con el registro creado y req.user contiene las credenciales de dicho tenant únicamente."
+      "scenario": "Diferenciación estricta de Deuda Exigible ($20.200) vs Monto en Taller ($28.300)",
+      "given": "Pedidos P03 y P04 ENTREGADOS sin cobrar, y P05, P06, P07, P08 en taller sin cobrar",
+      "when": "Se consultan los KPIs del Dashboard en /admin/dashboard",
+      "then": "Deuda Exigible refleja $20.200 (10.700 + 9.500) y Monto en Taller refleja $28.300 (6.600 + 6.200 + 3.500 + 12.000)."
+    },
+    {
+      "scenario": "Cobro atómico con Vuelto a Favor y consumo de Crédito",
+      "given": "Cliente C01 con vuelto a favor de $300 generado en P01",
+      "when": "Se cobra P09 ($1.000) aplicando saldo a favor",
+      "then": "Se consumen los $300 de crédito y el saldo remanente a abonar en efectivo es de $700, dejando el crédito en $0."
+    },
+    {
+      "scenario": "Auditoría Contable Visual 1:1 con Screenshots",
+      "given": "Toda la data sembrada por la suite",
+      "when": "Se capturan los componentes visuales de /admin/dashboard y /admin/finanzas",
+      "then": "Los indicadores y gráficos concuerdan exactamente con la matriz matemática de auditoría (Ventas: $62.700, Cobros: $14.200, Deuda Exigible: $20.200, Taller: $28.300)."
     }
   ],
   "ux_behavior": {
-    "aesthetics": "Ejecución visible e interactiva en Chromium Playwright a velocidad adecuada para seguimiento en tiempo real.",
-    "interactions": "Comportamiento 1:1 con un usuario real haciendo clic en botones, rellenando inputs, recibiendo feedback con toast notifications y navegando por rutas de Next.js.",
-    "performance": "La suite de pruebas ejecuta cada paso verificando respuestas de API y renderizado de la UI antes de avanzar al siguiente módulo."
+    "aesthetics": "Ejecución visual 100% interactiva en Chromium Playwright a velocidad adecuada con slowMo pacing.",
+    "interactions": "Clics en botones reales, completado de formularios, interacción con selects, modales y tablas de la UI de Next.js.",
+    "performance": "Captura automática de screenshots en carpeta test-results/audit-screenshots para verificación visual."
   },
   "business_rules": [
-    "No se deben usar fallbacks de negocioId = 1 ni datos hardcodeados.",
-    "El registro debe generar un Negocio ID independiente en la base de datos PostgreSQL.",
-    "El Administrador creado debe poseer los permisos completos de administración sobre la empresa registrada.",
-    "Cada módulo siguiente del test (Categorías, Servicios, Empleados, Clientes, Pedidos, Cobros, Finanzas) se ejecutará secuencialmente utilizando este mismo tenant recién creado."
+    "Respetar la regla de Deuda Única: Deuda Exigible = Pedidos ENTREGADOS con cobrado = false.",
+    "Respetar la regla de Cobro Unificado: 1 pedido por transacción de cobro.",
+    "Garantizar aislamiento multitenant sin fallbacks de negocioId = 1.",
+    "Comprobar 1:1 los cálculos matemáticos contra los gráficos visuales de Recharts."
   ]
 }

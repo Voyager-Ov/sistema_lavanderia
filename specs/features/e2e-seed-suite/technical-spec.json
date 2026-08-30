@@ -1,119 +1,261 @@
 {
-  "feature": "E2E Seed & Integration Test Suite - Módulo 1: Registro de Negocio y Setup Inicial",
+  "feature": "E2E Seed & Integration Test Suite - Especificación Técnica Ultra-Granular de Métodos, Signaturas, Atributos y Selectores UI",
   "architecture": {
     "module_boundaries": {
-      "frontend_e2e": "front/e2e/seed/master-seed-suite.spec.ts",
+      "master_spec": "front/e2e/seed/master-seed-suite.spec.ts",
+      "ui_helpers": "front/e2e/helpers/e2e-seed-ui.helper.ts",
       "seed_fixtures": "front/e2e/fixtures/seed-data.ts",
-      "e2e_helpers": "front/e2e/helpers/e2e-seed.helper.ts",
-      "backend_routes_tested": [
-        "POST /api/auth/register",
-        "POST /api/auth/verify-email",
-        "POST /api/auth/login",
-        "GET /api/auth/me",
-        "POST /api/servicios/categorias",
-        "GET /api/servicios/categorias",
-        "POST /api/servicios",
-        "GET /api/servicios",
-        "POST /api/usuarios",
-        "GET /api/usuarios",
-        "POST /api/clientes",
-        "GET /api/clientes",
-        "POST /api/cajas/abrir",
-        "GET /api/cajas/actual",
-        "POST /api/pedidos",
-        "PATCH /api/pedidos/:id/estado",
-        "POST /api/pagos",
-        "POST /api/cajas/movimientos",
-        "GET /api/dashboard/kpis",
-        "GET /api/dashboard/graficos",
-        "GET /api/finanzas/resumen"
-      ]
+      "screenshots_output_dir": "front/test-results/audit-screenshots/",
+      "audit_markdown": "front/e2e/seed/matriz_auditoria_financiera.md"
     },
-    "data_flow": [
-      "1. Chromium Playwright abre /register y envía formulario con datos dinámicos únicos.",
-      "2. Captura del verificationCode para activar la cuenta vía /api/auth/verify-email.",
-      "3. Login visual en /login, guardando auth-storage en localStorage y navegando a /dashboard.",
-      "4. Navegación a /servicios: creación de 4 categorías y 12 servicios vía modals/formularios de UI.",
-      "5. Navegación a /empleados: alta de 3 empleados con roles diferenciados.",
-      "6. Navegación a /clientes: registro de 15 clientes para validar paginado (10 ítems por página), filtros y acciones.",
-      "7. Navegación a /caja: apertura de turno de caja con monto inicial.",
-      "8. Navegación a /pedidos/nuevo: creación de 10 pedidos POS asignando clientes y servicios.",
-      "9. Navegación a /pedidos: avance de estados de pedidos de PENDIENTE a ENTREGADO.",
-      "10. Cobranza en /cobros y /clientes/[id]: registro de pagos de 1 pedido por transacción, vuelto a favor y consumo de crédito.",
-      "11. Arqueo en /caja y verificación de métricas en /dashboard y /reportes."
+    "technical_execution_pipeline": [
+      "1. UI Register (/register): Llenado de inputs con atributos específicos (#nombre, #email, #negocioNombre, #password) y click en button[type='submit']. Redirección esperada: /solicitud-pendiente.",
+      "2. UI SuperAdmin Auth (/superadmin/login): Llenado de credenciales #email='octavio.velo2022@gmail.com' y #password='123456789'. Redirección esperada: /superadmin/dashboard.",
+      "3. UI SuperAdmin Approval (/superadmin/solicitudes): Búsqueda por input[placeholder*='Buscar']='admin.audit@lavanderiaexpress.com', clic en button:has-text('Aprobar') en la fila correspondiente y confirmación en modal.",
+      "4. UI Admin Auth (/login): Llenado de credenciales #email='admin.audit@lavanderiaexpress.com' y #password='Password123!'. Redirección esperada: /admin/dashboard.",
+      "5. UI Categorías Setup (/admin/servicios): Clic en button:has-text('Nueva Categoría'). Llenado de #nombre, #descripcion, #color (hexadecimal) y #icono (select). Submit y repetición para CAT1-CAT4.",
+      "6. UI Servicios Setup (/admin/servicios): Clic en button:has-text('Nuevo Servicio'). Llenado de #nombre, #precioActual, select #categoriaId, #tiempoEstimadoMinutos, select #unidadMedida y #descripcion. Submit y repetición para S01-S12.",
+      "7. UI Empleados Setup (/admin/empleados): Clic en button:has-text('Nuevo Empleado'). Llenado de #nombre, #email, #telefono, select #rol ('CAJERO'|'EMPLEADO'|'ADMIN') y #password. Submit para E01-E03.",
+      "8. UI Clientes Setup & Paginación (/admin/clientes): Clic en button:has-text('Nuevo Cliente'). Llenado de #nombre, #apellido, #telefono, #email, #direccion, #notas. Repetición para C01-C15. Validación de paginación: expect(rows.length).toBe(10) en pág 1; clic en button:has-text('Siguiente'); expect(rows.length).toBe(5) en pág 2.",
+      "9. UI Apertura de Caja (/admin/caja): Verificación de estado de caja. Clic en button:has-text('Abrir Caja'), llenado de #montoInicial con '20000', clic en button:has-text('Confirmar Apertura').",
+      "10. UI POS Creación de Pedidos (/admin/pedidos/nuevo): Para P01-P10: selección de cliente en input combobox, clic en tarjetas de servicio, ajuste de cantidad con button:has-text('+'), validación del total en [data-testid='pos-total-amount'] y clic en button:has-text('Confirmar Pedido').",
+      "11. UI Transiciones de Estado (/admin/pedidos): Cambio visual de estado por fila: P01, P02, P03, P04, P09 -> ENTREGADO; P05 -> LISTO; P06 -> EN_PROCESO; P07 -> EN_LAVADO; P08 -> PENDIENTE; P10 -> CANCELADO.",
+      "12. UI Cobros & Cuentas Corrientes (/admin/cobros): P01 en EFECTIVO ($5.000 abonado, toggle #dejarVueltoAFavor=true -> $300 a favor de C01); P02 en TRANSFERENCIA ($8.500); P09 aplicando saldo a favor (toggle #aplicarSaldoAFavor=true -> $300 consumidos, $700 abonado en EFECTIVO). P03 ($10.700) y P04 ($9.500) se mantienen ENTREGADOS sin cobrar.",
+      "13. UI Screenshots & Aserciones 1:1 (/admin/dashboard & /admin/finanzas): Screenshot dashboard-kpis.png y finanzas-reportes.png. Aserción de texto en KPIs: Ventas=$62.700, Cobros=$14.200, Deuda Exigible=$20.200, Monto en Taller=$28.300. Generación del archivo markdown matriz_auditoria_financiera.md."
     ]
   },
-  "interfaces_and_contracts": {
-    "registration_payload": {
-      "negocioNombre": "string (min 3)",
-      "usuarioNombre": "string (min 3)",
-      "email": "string (email format)",
-      "password": "string (min 6)"
-    },
-    "local_storage_auth_shape": {
-      "state": {
-        "user": { "id": "number", "nombre": "string", "email": "string", "rol": "string", "negocioId": "number" },
-        "token": "string (JWT)",
-        "isAuthenticated": true
+  "ui_helper_signatures_and_code_contracts": {
+    "helper_class": "E2EUIHelper",
+    "methods": [
+      {
+        "name": "registerBusinessViaUI",
+        "signature": "static async registerBusinessViaUI(page: Page, data: SeedBusinessData): Promise<void>",
+        "steps": [
+          "await page.goto('/register', { waitUntil: 'domcontentloaded' });",
+          "await page.fill('#nombre, input[name=\"nombre\"]', data.adminNombre);",
+          "await page.fill('#email, input[name=\"email\"]', data.email);",
+          "await page.fill('#negocioNombre, input[name=\"negocioNombre\"]', data.negocioNombre);",
+          "await page.fill('#password, input[name=\"password\"]', data.password);",
+          "await page.click('button[type=\"submit\"]');",
+          "await page.waitForURL('**/solicitud-pendiente**');"
+        ]
       },
-      "version": 0
-    },
-    "single_order_payment_contract": {
-      "pedidoId": "number",
-      "monto": "number",
-      "metodoPago": "EFECTIVO | TRANSFERENCIA | MERCADO_PAGO",
-      "dejarVueltoAFavor": "boolean",
-      "aplicarSaldoAFavor": "boolean"
-    }
+      {
+        "name": "loginSuperAdminAndApproveViaUI",
+        "signature": "static async loginSuperAdminAndApproveViaUI(page: Page, businessEmail: string): Promise<void>",
+        "steps": [
+          "await page.goto('/superadmin/login', { waitUntil: 'domcontentloaded' });",
+          "await page.fill('#email, input[name=\"email\"]', 'octavio.velo2022@gmail.com');",
+          "await page.fill('#password, input[name=\"password\"]', '123456789');",
+          "await page.click('button[type=\"submit\"]');",
+          "await page.waitForURL('**/superadmin/**');",
+          "await page.goto('/superadmin/solicitudes', { waitUntil: 'domcontentloaded' });",
+          "await page.fill('input[placeholder*=\"Buscar\"]', businessEmail);",
+          "const targetRow = page.locator('table tbody tr', { hasText: businessEmail });",
+          "await targetRow.locator('button:has-text(\"Aprobar\")').click();",
+          "await page.click('button:has-text(\"Confirmar\"), .modal-footer button.bg-blue-600');",
+          "await page.waitForSelector('.sonner-toast:has-text(\"aprobada\"), table tbody tr:has-text(\"Aprobada\")');"
+        ]
+      },
+      {
+        "name": "loginAdminViaUI",
+        "signature": "static async loginAdminViaUI(page: Page, email: string, pass: string): Promise<void>",
+        "steps": [
+          "await page.goto('/login', { waitUntil: 'domcontentloaded' });",
+          "await page.fill('#email, input[name=\"email\"]', email);",
+          "await page.fill('#password, input[name=\"password\"]', pass);",
+          "await page.click('button[type=\"submit\"]');",
+          "await page.waitForURL('**/admin/**');"
+        ]
+      },
+      {
+        "name": "createCategoriesViaUI",
+        "signature": "static async createCategoriesViaUI(page: Page, categories: SeedCategory[]): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/servicios', { waitUntil: 'domcontentloaded' });",
+          "for (const cat of categories) {",
+          "  await page.click('button:has-text(\"Nueva Categoría\")');",
+          "  await page.fill('#nombre, input[name=\"nombre\"]', cat.nombre);",
+          "  await page.fill('#descripcion, textarea[name=\"descripcion\"]', cat.descripcion);",
+          "  await page.fill('#color, input[name=\"color\"]', cat.color);",
+          "  await page.selectOption('#icono, select[name=\"icono\"]', cat.icono);",
+          "  await page.click('button:has-text(\"Guardar\"), button[type=\"submit\"]');",
+          "  await page.waitForSelector(`.category-chip:has-text(\"${cat.nombre}\"), table tbody tr:has-text(\"${cat.nombre}\")`);",
+          "}"
+        ]
+      },
+      {
+        "name": "createServicesViaUI",
+        "signature": "static async createServicesViaUI(page: Page, services: SeedService[]): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/servicios', { waitUntil: 'domcontentloaded' });",
+          "for (const srv of services) {",
+          "  await page.click('button:has-text(\"Nuevo Servicio\")');",
+          "  await page.fill('#nombre, input[name=\"nombre\"]', srv.nombre);",
+          "  await page.fill('#precioActual, input[name=\"precioActual\"], input[name=\"precio\"]', srv.precio.toString());",
+          "  await page.selectOption('#categoriaId, select[name=\"categoriaId\"]', { label: srv.categoriaNombre });",
+          "  await page.fill('#tiempoEstimadoMinutos, input[name=\"tiempoEstimadoMinutos\"]', srv.tiempoEstimadoMinutos.toString());",
+          "  await page.selectOption('#unidadMedida, select[name=\"unidadMedida\"]', srv.unidadMedida);",
+          "  await page.fill('#descripcion, textarea[name=\"descripcion\"]', srv.descripcion);",
+          "  await page.click('button:has-text(\"Guardar\"), button[type=\"submit\"]');",
+          "  await page.waitForSelector(`table tbody tr:has-text(\"${srv.nombre}\")`);",
+          "}"
+        ]
+      },
+      {
+        "name": "createEmployeesViaUI",
+        "signature": "static async createEmployeesViaUI(page: Page, employees: SeedEmployee[]): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/empleados', { waitUntil: 'domcontentloaded' });",
+          "for (const emp of employees) {",
+          "  await page.click('button:has-text(\"Nuevo Empleado\")');",
+          "  await page.fill('#nombre, input[name=\"nombre\"]', emp.nombre);",
+          "  await page.fill('#email, input[name=\"email\"]', emp.email);",
+          "  await page.fill('#telefono, input[name=\"telefono\"]', emp.telefono);",
+          "  await page.selectOption('#rol, select[name=\"rol\"]', emp.rol);",
+          "  await page.fill('#password, input[name=\"password\"]', emp.password);",
+          "  await page.click('button:has-text(\"Guardar\"), button[type=\"submit\"]');",
+          "  await page.waitForSelector(`table tbody tr:has-text(\"${emp.nombre}\")`);",
+          "}"
+        ]
+      },
+      {
+        "name": "createClientsAndVerifyPaginationViaUI",
+        "signature": "static async createClientsAndVerifyPaginationViaUI(page: Page, clients: SeedClient[]): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/clientes', { waitUntil: 'domcontentloaded' });",
+          "for (const cli of clients) {",
+          "  await page.click('button:has-text(\"Nuevo Cliente\")');",
+          "  await page.fill('#nombre, input[name=\"nombre\"]', cli.nombre);",
+          "  await page.fill('#apellido, input[name=\"apellido\"]', cli.apellido);",
+          "  await page.fill('#telefono, input[name=\"telefono\"]', cli.telefono);",
+          "  await page.fill('#email, input[name=\"email\"]', cli.email);",
+          "  await page.fill('#direccion, input[name=\"direccion\"]', cli.direccion);",
+          "  if (cli.notas) await page.fill('#notas, textarea[name=\"notas\"]', cli.notas);",
+          "  await page.click('button:has-text(\"Guardar\"), button[type=\"submit\"]');",
+          "}",
+          "// Aserción de paginado",
+          "await page.goto('/admin/clientes', { waitUntil: 'domcontentloaded' });",
+          "await expect(page.locator('table tbody tr')).toHaveCount(10);",
+          "await page.click('button:has-text(\"Siguiente\"), [aria-label=\"Página siguiente\"]');",
+          "await expect(page.locator('table tbody tr')).toHaveCount(5);",
+          "await page.click('button:has-text(\"Anterior\"), [aria-label=\"Página anterior\"]');"
+        ]
+      },
+      {
+        "name": "openCashRegisterViaUI",
+        "signature": "static async openCashRegisterViaUI(page: Page, initialAmount: number): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/caja', { waitUntil: 'domcontentloaded' });",
+          "const isClosed = await page.isVisible('button:has-text(\"Abrir Caja\")');",
+          "if (isClosed) {",
+          "  await page.click('button:has-text(\"Abrir Caja\")');",
+          "  await page.fill('#montoInicial, input[name=\"montoInicial\"]', initialAmount.toString());",
+          "  await page.click('button:has-text(\"Confirmar Apertura\"), button[type=\"submit\"]');",
+          "  await page.waitForSelector('.badge:has-text(\"Abierta\"), .status-pill:has-text(\"Abierta\")');",
+          "}"
+        ]
+      },
+      {
+        "name": "createPosOrderViaUI",
+        "signature": "static async createPosOrderViaUI(page: Page, orderData: { clientName: string; items: { serviceName: string; qty: number }[] }): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/pedidos/nuevo', { waitUntil: 'domcontentloaded' });",
+          "await page.fill('input[placeholder*=\"Buscar cliente\"], [role=\"combobox\"]', orderData.clientName);",
+          "await page.click(`[role=\"option\"]:has-text(\"${orderData.clientName}\"), .client-dropdown-item:has-text(\"${orderData.clientName}\")`);",
+          "for (const item of orderData.items) {",
+          "  await page.click(`[data-testid*=\"service-card\"]:has-text(\"${item.serviceName}\"), .service-card:has-text(\"${item.serviceName}\")`);",
+          "  for (let i = 1; i < item.qty; i++) {",
+          "    await page.click(`.order-item-row:has-text(\"${item.serviceName}\") button:has-text(\"+\")`);",
+          "  }",
+          "}",
+          "await page.click('button:has-text(\"Confirmar Pedido\")');",
+          "await page.waitForSelector('.sonner-toast:has-text(\"creado\"), .sonner-toast:has-text(\"éxito\")');"
+        ]
+      },
+      {
+        "name": "transitionOrderStatusViaUI",
+        "signature": "static async transitionOrderStatusViaUI(page: Page, clientName: string, serviceName: string, targetStatus: string): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/pedidos', { waitUntil: 'domcontentloaded' });",
+          "const row = page.locator('table tbody tr', { hasText: clientName }).filter({ hasText: serviceName });",
+          "await row.locator('[data-testid*=\"order-status\"], select[name=\"estado\"]').click();",
+          "await page.click(`button:has-text(\"${targetStatus}\"), option[value=\"${targetStatus}\"]`);",
+          "await page.waitForSelector(`.badge:has-text(\"${targetStatus}\")`);"
+        ]
+      },
+      {
+        "name": "processPaymentViaUI",
+        "signature": "static async processPaymentViaUI(page: Page, orderRef: { clientName: string }, paymentConfig: { method: string; amountPaid: number; leaveCredit?: boolean; applyCredit?: boolean }): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/cobros', { waitUntil: 'domcontentloaded' });",
+          "const row = page.locator('table tbody tr', { hasText: orderRef.clientName });",
+          "await row.locator('button:has-text(\"Cobrar\")').click();",
+          "if (paymentConfig.applyCredit) {",
+          "  await page.check('input[name=\"aplicarSaldoAFavor\"], [role=\"switch\"]:near(:text(\"saldo a favor\"))');",
+          "}",
+          "await page.selectOption('#metodoPago, select[name=\"metodoPago\"]', paymentConfig.method);",
+          "await page.fill('#montoAbonado, input[name=\"montoAbonado\"]', paymentConfig.amountPaid.toString());",
+          "if (paymentConfig.leaveCredit) {",
+          "  await page.check('input[name=\"dejarVueltoAFavor\"], [role=\"switch\"]:near(:text(\"vuelto a favor\"))');",
+          "}",
+          "await page.click('button:has-text(\"Confirmar Pago\"), button[type=\"submit\"]');",
+          "await page.waitForSelector('.sonner-toast:has-text(\"exitoso\"), .sonner-toast:has-text(\"registrado\")');"
+        ]
+      },
+      {
+        "name": "verifyDashboardKpisAndScreenshotsViaUI",
+        "signature": "static async verifyDashboardKpisAndScreenshotsViaUI(page: Page): Promise<void>",
+        "steps": [
+          "await page.goto('/admin/dashboard', { waitUntil: 'domcontentloaded' });",
+          "await page.waitForSelector('.recharts-wrapper, [data-testid=\"dashboard-charts\"]');",
+          "await expect(page.locator('[data-testid=\"kpi-ventas-totales\"], .kpi-card:has-text(\"Ventas\")')).toContainText('$62.700');",
+          "await expect(page.locator('[data-testid=\"kpi-cobros-totales\"], .kpi-card:has-text(\"Cobros\")')).toContainText('$14.200');",
+          "await expect(page.locator('[data-testid=\"kpi-deuda-exigible\"], .kpi-card:has-text(\"Deuda\")')).toContainText('$20.200');",
+          "await expect(page.locator('[data-testid=\"kpi-monto-taller\"], .kpi-card:has-text(\"Taller\")')).toContainText('$28.300');",
+          "await page.screenshot({ path: 'test-results/audit-screenshots/dashboard-kpis.png', fullPage: true });",
+          "await page.goto('/admin/finanzas', { waitUntil: 'domcontentloaded' });",
+          "await page.screenshot({ path: 'test-results/audit-screenshots/finanzas-reportes.png', fullPage: true });"
+        ]
+      }
+    ]
   },
-  "dependency_decisions": {
-    "runner": "@playwright/test ejecutado con --headed para inspección visual en Chromium.",
-    "execution_mode": "workers: 1, fullyParallel: false para mantener secuencia lineal de datos del tenant.",
-    "helpers": "Formateo de fechas usando toLocalYMD (YYYY-MM-DD) para evitar descalces UTC en reportes/filtros."
+  "mathematical_audit_equations": {
+    "P01_subtotal": "1 * 3500 (S01) + 1 * 1200 (S04) = 4700",
+    "P02_subtotal": "1 * 8500 (S10) = 8500",
+    "P03_subtotal": "1 * 7500 (S07) + 1 * 3200 (S05) = 10700",
+    "P04_subtotal": "1 * 9500 (S08) = 9500",
+    "P05_subtotal": "1 * 4200 (S03) + 2 * 1200 (S04) = 6600",
+    "P06_subtotal": "1 * 6200 (S11) = 6200",
+    "P07_subtotal": "1 * 3500 (S01) = 3500",
+    "P08_subtotal": "1 * 12000 (S09) = 12000",
+    "P09_subtotal": "1 * 1000 (S06) = 1000",
+    "P10_subtotal": "1 * 4800 (S12) = 4800 (CANCELADO)",
+    "ventas_totales_brutas": "P01(4700) + P02(8500) + P03(10700) + P04(9500) + P05(6600) + P06(6200) + P07(3500) + P08(12000) + P09(1000) = $62.700",
+    "cobros_efectivos": "P01_Abonado(5000) + P02_Transf(8500) + P09_Efectivo(700) = $14.200",
+    "deuda_exigible_entregados_no_cobrados": "P03_Entregado(10700) + P04_Entregado(9500) = $20.200",
+    "monto_en_taller_proceso_no_cobrados": "P05_Listo(6600) + P06_Proceso(6200) + P07_Lavado(3500) + P08_Pendiente(12000) = $28.300",
+    "vuelto_a_favor_generado_c01": "P01_Abonado(5000) - P01_Total(4700) = $300",
+    "vuelto_a_favor_consumido_c01": "P09_Total(1000) - P09_SaldoUsado(300) = $700 abonado en efectivo",
+    "saldo_remanente_c01": "$300 - $300 = $0",
+    "saldo_teorico_caja": "Apertura(20000) + P01_Efectivo(5000) + P09_Efectivo(700) = $25.700"
   },
   "failure_modes_and_edge_cases": [
-    "Caja Cerrada: Rechazo explícito con toast.error si se intenta cobro sin caja abierta.",
-    "Cobro duplicado/Cancelado: Error 400 BAD_REQUEST revertido atómicamente en transacción SQL.",
-    "Sesión sin tenant: Error explícito MISSING_TENANT_ID si req.user.negocioId es ambiguo o nulo.",
-    "Descalce de paginado: Validación de botones 'Siguiente' / 'Anterior' en tablas con 15+ ítems."
+    "Compilación diferida de Next.js dev: Usar { waitUntil: 'domcontentloaded' } y state: 'attached' en todos los page.waitForSelector().",
+    "Formularios React Hook Form con mode: 'onChange': Disparar eventos de input y change en cada page.fill() seguido de page.press('Tab').",
+    "GSAP Opacity Animations: Interactuar con elementos mediante page.fill() usando state: 'attached' sin esperar a la finalización del stagger de opacity.",
+    "Persistencia de Sesión: Inyectar auth-storage en localStorage con addInitScript antes de cada navegación a rutas /admin/*.",
+    "Descalce de montos en Dashboard: Exigir aserción exacta de texto en KPIs."
   ],
   "testing_strategy": {
-    "type": "E2E Integration Test & Data Seeding",
-    "headed": true,
+    "runner": "@playwright/test ejecutado en modo visual Chromium (--headed --project=ui).",
+    "slow_mo_pacing": 150,
+    "timeout": 180000,
     "quality_gates": [
-      "100% de la navegación ejecutada desde la UI de Next.js.",
-      "Cero errores de consola unhandled en Chromium durante la prueba.",
-      "Verificación de montos en Dashboard coincidan 1:1 con la suma de cobros y pedidos sembrados."
+      "100% de la navegación realizada desde los botones e inputs de la UI de Next.js.",
+      "Aprobación real de la solicitud por parte del SuperAdmin en la tabla /superadmin/solicitudes.",
+      "Prueba de paginación de la tabla de clientes (10 en pág 1, 5 en pág 2).",
+      "Coincidencia 1:1 entre la Matriz de Auditoría ($62.700 Ventas, $14.200 Cobros, $20.200 Deuda Exigible, $28.300 Taller) y los componentes KPI/Recharts con screenshots guardados."
     ]
-  },
-  "phased_implementation": [
-    {
-      "phase": "Fase 1: Registro & Setup de Tenant",
-      "tasks": [
-        "Crear helper e2e-seed.helper.ts para acciones de navegación y formulario.",
-        "Implementar Módulo 1 en e2e/seed/01-registro-negocio.spec.ts."
-      ]
-    },
-    {
-      "phase": "Fase 2: Catálogo, Empleados & Clientes",
-      "tasks": [
-        "Implementar alta de Categorías y Servicios con paginación en Módulo 2 y 3.",
-        "Implementar alta de Empleados y Clientes (15+ registros) en Módulo 4 y 5."
-      ]
-    },
-    {
-      "phase": "Fase 3: Caja, Pedidos, Transiciones & Cobros",
-      "tasks": [
-        "Implementar apertura de caja, creación POS de pedidos y ciclo de vida de estados.",
-        "Implementar cobros atómicos, vuelto a favor y consumo de saldo a favor."
-      ]
-    },
-    {
-      "phase": "Fase 4: Arqueo & Validación Dashboard 1:1",
-      "tasks": [
-        "Registrar gastos de caja y arqueo final.",
-        "Validar KPIs y gráficos de Dashboard y Finanzas contra la data sembrada."
-      ]
-    }
-  ]
+  }
 }

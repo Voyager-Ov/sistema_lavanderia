@@ -1,0 +1,81 @@
+[
+  {
+    "id": "TASK-001",
+    "title": "Ampliación del Dataset Masivo de Fixtures (seed-data-pos.ts)",
+    "owner_role": "Test Automation Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": [],
+    "outputs": ["front/e2e/fixtures/seed-data-pos.ts"],
+    "exit_criteria": "Definición completa de 5 categorías, 15 servicios, 4 empleados con roles, 25 clientes y 25 pedidos (P01 a P25) con parámetros de cobro, vuelto y crédito.",
+    "subtasks": [
+      { "id": "SUB-1.1", "description": "Definir SEED_POS_CATEGORIES, SEED_POS_SERVICES, SEED_POS_EMPLOYEES y SEED_POS_CLIENTS (25 clientes).", "status": "completed" },
+      { "id": "SUB-1.2", "description": "Definir la estructura de 25 pedidos POS con desglose de ítems, clientes asignados, montos esperados e impacto contable.", "status": "completed" },
+      { "id": "SUB-1.3", "description": "Definir configuración de 2 turnos de caja chica (Turno Mañana con discrepancia y Turno Tarde sin discrepancia) y 2 gastos operativos.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-002",
+    "title": "Implementación de Clase Helper E2EPOSFinancialUIHelper (100% UI Automation)",
+    "owner_role": "Playwright Automation Specialist",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["TASK-001"],
+    "outputs": ["front/e2e/helpers/e2e-pos-financial-ui.helper.ts"],
+    "exit_criteria": "Todos los métodos de automatización visual sobre el DOM de Next.js implementados y testeados.",
+    "subtasks": [
+      { "id": "SUB-2.1", "description": "Implementar registerBusinessViaUI, loginSuperAdminAndApproveViaUI y loginUserViaUI.", "status": "completed" },
+      { "id": "SUB-2.2", "description": "Implementar createCategoriesAndServices, createEmployees, y createClientsAndVerify3PagePaginationViaUI.", "status": "completed" },
+      { "id": "SUB-2.3", "description": "Implementar openCashRegisterViaUI, createPOSOrdersViaUI, transitionOrderStatusesViaUI y registerExpensesViaUI.", "status": "completed" },
+      { "id": "SUB-2.4", "description": "Implementar closeCashRegisterWithDiscrepancyViaUI y processPaymentsWithCreditBalanceViaUI.", "status": "completed" },
+      { "id": "SUB-2.5", "description": "Implementar assertErrorBoundaries (caja cerrada, pedidos cancelados/cobrados) y verifyDashboardMetricsAndTakeScreenshots.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-003",
+    "title": "Implementación del Spec Maestro Integrado (master-pos-financial-suite.spec.ts)",
+    "owner_role": "E2E Test Lead",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["TASK-002"],
+    "outputs": ["front/e2e/seed/master-pos-financial-suite.spec.ts"],
+    "exit_criteria": "Spec secuencial E2E que ejecuta el flujo multirrol de 2 turnos de caja, 25 pedidos, cobros, gastos y auditoría contable.",
+    "subtasks": [
+      { "id": "SUB-3.1", "description": "Crear master-pos-financial-suite.spec.ts integrando todos los pasos del flujo con timeout adecuado.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-004",
+    "title": "Ejecución E2E en Chromium Headed Mode y Verificación de Capturas Visuales",
+    "owner_role": "QA Test Engineer",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["TASK-003"],
+    "outputs": [
+      "front/test-results/audit-screenshots/pos-dashboard-kpis.png",
+      "front/test-results/audit-screenshots/pos-finanzas-reportes.png",
+      "front/test-results/audit-screenshots/pos-cajas-arqueo.png"
+    ],
+    "exit_criteria": "Ejecución 100% exitosa ('1 passed') en Chromium headed mode generando las capturas PNG de evidencia.",
+    "subtasks": [
+      { "id": "SUB-4.1", "description": "Ejecutar npx playwright test e2e/seed/master-pos-financial-suite.spec.ts --project=ui --reporter=line.", "status": "completed" },
+      { "id": "SUB-4.2", "description": "Validar la generación de capturas de pantalla de alta resolución.", "status": "completed" }
+    ]
+  },
+  {
+    "id": "TASK-005",
+    "title": "Generación de Matriz de Auditoría Financiera 1:1 y Documentación Walkthrough",
+    "owner_role": "Technical Writer & Auditor",
+    "status": "completed",
+    "parallelizable": false,
+    "depends_on": ["TASK-004"],
+    "outputs": [
+      "front/e2e/seed/matriz_auditoria_financiera_pos.md",
+      "walkthrough.md"
+    ],
+    "exit_criteria": "Documento Markdown generado comprobando la coincidencia matemática 1:1 entre los datos sembrados y la interfaz visual.",
+    "subtasks": [
+      { "id": "SUB-5.1", "description": "Generar matriz_auditoria_financiera_pos.md y actualizar el artefacto walkthrough.md.", "status": "completed" }
+    ]
+  }
+]
