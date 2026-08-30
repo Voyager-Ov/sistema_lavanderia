@@ -144,7 +144,7 @@ class ConnectionManager {
             } else {
                 const tenantModelKeys = Object.keys(tenantModels).filter(k => !['Usuario', 'Negocio', 'Rol'].includes(k));
                 for (const key of tenantModelKeys) {
-                    await tenantModels[key].sync({ alter: true }).catch(() => {});
+                    await tenantModels[key].sync();
                 }
             }
 
@@ -154,12 +154,6 @@ class ConnectionManager {
                     await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."pedidos" ADD COLUMN IF NOT EXISTS "fechaHoraPedido" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;`);
                     await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."clientes" ADD COLUMN IF NOT EXISTS "activo" BOOLEAN DEFAULT true;`);
                     await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."movimientos_caja" ADD COLUMN IF NOT EXISTS "metodoPagoId" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."detalles_pedido" ADD COLUMN IF NOT EXISTS "servicioId" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."cambios_estado_pedido" ADD COLUMN IF NOT EXISTS "estadoId" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."cambios_estado_pedido" ADD COLUMN IF NOT EXISTS "pedidoNumeroPedido" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."cobros" ADD COLUMN IF NOT EXISTS "movimientoCajaId" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."cobros" ADD COLUMN IF NOT EXISTS "metodoPagoId" INTEGER;`);
-                    await tenantDb.query(`ALTER TABLE "${schemaNameArg}"."cobros" ADD COLUMN IF NOT EXISTS "pedidoNumeroPedido" INTEGER;`);
                 } catch (colErr) {
                     console.warn(`[Auto-Migration] Error asegurando columnas en ${schemaNameArg}:`, colErr.message);
                 }

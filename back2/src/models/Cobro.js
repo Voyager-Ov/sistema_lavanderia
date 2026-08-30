@@ -24,18 +24,6 @@ export default (sequelize, DataTypes) => {
 				type: DataTypes.DOUBLE,
 				allowNull: true,
 			},
-			movimientoCajaId: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-			},
-			metodoPagoId: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-			},
-			pedidoNumeroPedido: {
-				type: DataTypes.INTEGER,
-				allowNull: true,
-			},
 		},
 		{
 			tableName: "cobros",
