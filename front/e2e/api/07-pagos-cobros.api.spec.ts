@@ -18,7 +18,13 @@ test.describe('Módulo 07: API de Pagos, Métodos & Anulaciones', () => {
       headers: ctx.empleadoHeaders
     });
     const metodos = (await metodosRes.json()).data;
-    const efec = metodos.find((m: any) => m.nombre.toLowerCase().includes('efectivo')) || metodos[0];
+    const efec = metodos.find((m: any) => m.nombre.trim().toUpperCase() === 'EFECTIVO');
+    if (!efec) {
+      throw new Error(
+        `[07-pagos-cobros] No se encontró el método de pago "EFECTIVO" en la BD. ` +
+        `Métodos disponibles: ${metodos.map((m: any) => m.nombre).join(', ')}`
+      );
+    }
     metodoEfectivoId = efec.id;
 
     // Cliente

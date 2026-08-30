@@ -94,7 +94,13 @@ export async function createTenantAdmin(
     }
   });
   const meData = await meRes.json();
-  const negocioId = meData.data?.negocioId || meData.data?.negocio?.id || admin.negocioId;
+  const negocioId = meData.data?.negocioId ?? meData.data?.negocio?.id;
+  if (!negocioId) {
+    throw new Error(
+      `[auth.fixture] No se pudo resolver negocioId desde GET /api/auth/me. ` +
+      `Respuesta recibida: ${JSON.stringify(meData)}`
+    );
+  }
 
   return {
     token,

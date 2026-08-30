@@ -64,7 +64,8 @@ test.describe('Módulo 03: API de Clientes & Cuenta Corriente', () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    const list = body.data?.items || body.data?.clientes || (Array.isArray(body.data) ? body.data : []);
+    const list = body.data?.items;
+    expect(Array.isArray(list), `Se esperaba body.data.items como array. Recibido: ${JSON.stringify(body.data)}`).toBe(true);
     expect(list.length).toBeGreaterThan(0);
   });
 

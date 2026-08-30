@@ -159,27 +159,30 @@ test.describe('Módulo 01: API de Autenticación y Cuentas', () => {
     });
     expect(forgotRes.status()).toBe(200);
     const forgotBody = await forgotRes.json();
-    const resetToken = forgotBody.data?.resetPasswordToken || forgotBody.resetPasswordToken;
+    const resetToken = forgotBody.data?.resetPasswordToken ?? forgotBody.resetPasswordToken;
+    expect(
+      resetToken,
+      `[01-auth] POST /api/auth/forgot-password debería devolver resetPasswordToken en la respuesta ` +
+      `(campo del backend para testing). Respuesta: ${JSON.stringify(forgotBody)}`
+    ).toBeTruthy();
 
-    if (resetToken) {
-      const newPass = 'NewSecurePassword123';
-      const resetRes = await request.post('/api/auth/reset-password', {
-        data: {
-          token: resetToken,
-          newPassword: newPass
-        }
-      });
-      expect(resetRes.status()).toBe(200);
+    const newPass = 'NewSecurePassword123';
+    const resetRes = await request.post('/api/auth/reset-password', {
+      data: {
+        token: resetToken,
+        newPassword: newPass
+      }
+    });
+    expect(resetRes.status()).toBe(200);
 
-      // Iniciar sesión con la nueva contraseña
-      const loginNewRes = await request.post('/api/auth/login', {
-        data: {
-          email: registeredEmail,
-          password: newPass
-        }
-      });
-      expect(loginNewRes.status()).toBe(200);
-    }
+    // Iniciar sesión con la nueva contraseña
+    const loginNewRes = await request.post('/api/auth/login', {
+      data: {
+        email: registeredEmail,
+        password: newPass
+      }
+    });
+    expect(loginNewRes.status()).toBe(200);
   });
 
   test('POST /api/auth/reset-password - Debe rechazar token inválido (400)', async ({ request }) => {
